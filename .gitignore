@@ -1,0 +1,12 @@
+# Dependency directories
+node_modules
+yarn.lock
+
+# Build artifacts
+build/
+
+# Flattened contracts
+flattened/
+
+# Environmental configuration files
+.env

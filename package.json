@@ -1,0 +1,37 @@
+{
+  "name": "witty-pixels-contracts",
+  "version": "1.0.0",
+  "description": "WittyPixelsTM Solidity Contracts",
+  "author": "Guillermo Diaz <guillermo@otherplane.com>",
+  "license": "MIT",
+  "private": false,
+  "scripts": {
+    "compile": "truffle compile",
+    "console": "truffle console",
+    "flatten": "node ./scripts/flatten.js 2>&1",
+    "fmt:sol": "solhint --max-warnings 0 \"contracts/**/*.sol\" && yarn fmt:js && solhint \"test/**/*.sol\"",
+    "fmt:sol!": "solhint --max-warnings 0 \"contracts/**/*.sol\" --fix && yarn fmt:js! && solhint \"test/**/*.sol\" --fix",
+    "fmt:js": "eslint test --ext .js,.ts,.cjs --ignore-path .gitignore",
+    "fmt:js!": "eslint test --ext .js,.ts,.cjs --fix --ignore-path .gitignore",
+    "lint": "yarn fmt:sol! && yarn fmt:js!",
+    "migrate": "truffle migrate",
+    "test": "truffle test"
+  },
+  "keywords": [],
+  "dependencies": {
+    "@openzeppelin/contracts": "4.8.0",
+    "witnet-solidity-bridge": "https://github.com/guidiaz/witnet-solidity-bridge#feat/bytecodes#6dc79b5895179700648052f684892a4a1bf739b2"
+  },
+  "devDependencies": {
+    "chai": "4.3.6",
+    "dotenv": "8.2.0",
+    "lodash": "^4.17.21",
+    "solhint": "3.3.7",
+    "solidity-stringutils": "https://github.com/Arachnid/solidity-stringutils/",
+    "truffle": "^5.5.15",
+    "truffle-assertions": "0.9.2",
+    "witnet-requests": "~0.9.6",
+    "@openzeppelin/test-helpers": "0.5.5",
+    "@witnet/truffle-flattener-single-experimental": "^0.1.0"
+  }
+}
