@@ -2,9 +2,10 @@
     "polygon": {
         "polygon.goerli": {
             "WitnetRequestImageDigest": "",
-            "WitnetRequestWittyPixelsMetadata": "",
+            "WitnetRequestTokenRoots": "",
             "WittyPixelsToken": "",
-            "WittyPixelsTokenProxy": ""
+            "WittyPixelsTokenProxy": "",
+            "WittyPixelsTokenVaultPrototype": ""
         }
     }
 }

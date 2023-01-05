@@ -2,7 +2,9 @@ const { merge } = require("lodash")
 module.exports = {
   core: {
     collection: {
-      baseURI: "https://api.wittypixels.com/v1/",
+      baseURI: "https://api.wittypixels.com/",
+      name: "WittyPixels.art",
+      symbol: "ART",
       upgradable: true,
     },
     vaults: [
@@ -19,7 +21,7 @@ module.exports = {
             enabled: true,
             runs: 200, 
             details: {
-              yul: false
+              yul: true
             }
           },
           

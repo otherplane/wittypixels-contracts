@@ -10,4 +10,8 @@ module.exports = {
             //     .parseJSONMap()
             //     .getString("Etag")
     },
+    "token-roots": {
+        requestAuthority: "https://api.witty-pixels.art/roots/\\0\\",
+        requestScript: "0x80", // TODO
+    }
 }

@@ -1,4 +1,5 @@
 require("dotenv").config()
+const fs = require("fs")
 const readline = require("readline")
 const web3 = require("web3")
 
@@ -8,6 +9,7 @@ module.exports = {
   getRealmNetworkFromString,
   isNullAddress,
   prompt,
+  saveAddresses
 }
 
 function fromAscii (str) {
@@ -91,4 +93,12 @@ async function prompt (text) {
     })
   })
   return answer
+}
+
+function saveAddresses(path, addrs) {
+  fs.writeFileSync(
+    `${path}/addresses.json`,
+    JSON.stringify(addrs, null, 4),
+    { flag: 'w+' }
+  )
 }
