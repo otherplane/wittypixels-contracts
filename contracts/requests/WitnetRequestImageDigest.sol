@@ -3,8 +3,9 @@
 pragma solidity >=0.7.0 <0.9.0;
 pragma experimental ABIEncoderV2;
 
-import "witnet-solidity-bridge/contracts/requests/WitnetRequestTemplate.sol";
+
 import "witnet-solidity-bridge/contracts/libs/WitnetCBOR.sol";
+import "witnet-solidity-bridge/contracts/requests/WitnetRequestTemplate.sol";
 
 contract WitnetRequestImageDigest
     is
@@ -16,14 +17,17 @@ contract WitnetRequestImageDigest
             WitnetRequestBoard _witnet,
             IWitnetBytecodes _registry,
             bytes32[] memory _sources,
-            bytes32 _aggregator
+            bytes32 _aggregator,
+            bytes32 _tally
         )
         WitnetRequestTemplate(
             _witnet,
             _registry,
             _sources,
             _aggregator,
-            WitnetV2.RadonDataTypes.String
+            _tally,
+            WitnetV2.RadonDataTypes.String,
+            0
         )
     {}
 

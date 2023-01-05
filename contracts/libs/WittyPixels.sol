@@ -2,11 +2,80 @@
 pragma solidity ^0.8.0;
 
 import "witnet-solidity-bridge/contracts/requests/WitnetRequestTemplate.sol";
-import "../interfaces/ITokenVaultWitnet.sol";
+import "../interfaces/IWittyPixelsTokenVault.sol";
 
 library WittyPixels {
 
-    enum TokenStatus {
+    struct TokenInitParams {
+        string baseURI;
+        string name;
+        string symbol;
+    }
+
+    struct TokenStorage {
+        address implementation;
+        
+        // --- ERC721
+        string  baseURI;
+        uint256 totalSupply;
+        mapping (uint256 => ERC721Token) items;
+        
+        // --- ITokenVaultFactory
+        IWittyPixelsTokenVault tokenVaultPrototype;
+        uint256 totalTokenVaults;
+        mapping (uint256 => IWittyPixelsTokenVault) vaults;
+
+        // --- WittyPixelsToken
+        uint mintingTokenId;
+        mapping (uint256 => ERC721TokenWitnetRequests) witnetRequests;
+        mapping (uint256 => uint256) tokenVaultIndex;
+        mapping (uint256 => ERC721TokenSponsors) sponsors;        
+    }
+
+    struct TokenVaultOwnershipDeeds {
+        address parentToken;
+        uint256 parentTokenId;
+        address playerAddress;
+        uint256 playerIndex;
+        uint256 playerScore;
+        bytes32[] playerScoreProof;
+    }
+
+    struct TokenVaultInitParams {
+        address curator;
+        string  name;
+        bytes   settings;
+        uint256 supply;
+        string  symbol;
+        uint256 tokenId;      
+    }
+
+    struct TokenVaultStorage {
+        // --- IERC1633
+        address parentToken;
+        uint256 parentTokenId;
+
+        // --- IWittyPixelsTokenVault
+        address curator;
+        uint256 finalPrice;
+        uint256 totalScore;
+        uint256 totalSupply;
+        bytes32 witnetRandomness;
+        uint256 witnetRandomnessBlock;
+        address[] members;
+        mapping (uint256 => bool) mints;
+        mapping (address => uint256) withdrawals;
+        mapping (address => TokenVaultJackpotWinner) winners;        
+        IWittyPixelsTokenVaultAuctionDutch.Settings settings;
+    }
+
+    struct TokenVaultJackpotWinner {
+        bool awarded;
+        bool claimed;
+        uint256 index;
+    }
+
+    enum ERC721TokenStatus {
         Void,
         Minting,
         Minted,
@@ -14,85 +83,60 @@ library WittyPixels {
         SoldOut
     }
 
-    struct TokenEvent {
+    struct ERC721Token {
+        uint256 block;
+        string  imageURI;
+        bytes32 imageDigest;
+        ERC721TokenEvent theEvent;
+        ERC721TokenCanvas theCanvas;
+        ERC721TokenStats theStats;
+        ERC721TokenRoots theRoots;
+    }
+    
+    struct ERC721TokenEvent {
         string  name;
         string  venue;
         uint256 startTs;
         uint256 endTs;
     }
 
-    struct TokenCanvas {
+    struct ERC721TokenCanvas {
         uint256 colors;
         uint256 height;
         uint256 width;
     }
 
-    struct TokenRoots {
+    struct ERC721TokenRoots {
         bytes32 data;
         bytes32 names;
         bytes32 scores;
     }
 
-    struct TokenStats {
+    struct ERC721TokenStats {
         uint256 totalPixels;
         uint256 totalPlayers;
         uint256 totalPlays;
         uint256 totalScore;
     }
-    
-    struct TokenMetadata {
-        uint256 block;
-        string  imageURI;
-        bytes32 imageDigest;
-        TokenEvent theEvent;
-        TokenCanvas theCanvas;
-        TokenStats theStats;
-        TokenRoots theRoots;
+
+    struct ERC721TokenSponsors {
+        address[] addresses;
+        uint256 totalJackpots;        
+        mapping (address => ERC721TokenJackpot) jackpots;
     }
 
-    struct TokenWitnetRequests {
+    struct ERC721TokenJackpot {
+        bool authorized;
+        address winner;
+        uint256 value;
+        string text;
+    }
+    
+    struct ERC721TokenWitnetRequests {
         WitnetRequestTemplate imageDigest;
         WitnetRequestTemplate tokenRoots;
     }
 
-    struct TokenStorage {
-        // --- Upgradable
-        address base;
-        
-        // --- Ownable
-        address owner;
-        
-        // --- Ownable2Step
-        address pendingOwner;
-        
-        // --- ERC721
-        string  baseURI;
-        uint256 totalSupply;
-        mapping (uint256 => TokenMetadata) items;
-        
-        // --- ITokenVaultFactory
-        ITokenVaultWitnet tokenVaultPrototype;
-        uint256 totalTokenVaults;
-        mapping (uint256 => ITokenVaultWitnet) vaults;
-
-        // --- WittyPixelsToken
-        uint mintingTokenId;
-        mapping (uint256 => TokenWitnetRequests) witnetRequests;
-        mapping (uint256 => uint256) tokenVaultIndex;
-    }
-
-    struct TokenVaultInitParams {
-        address curator;
-        uint256 tokenId;
-        uint256 erc20Supply;
-        string  erc20Name;
-        string  erc20Symbol;
-        bytes   settings;
-    }
-
-    struct TokenVaultSettings {
-        uint256 listPriceWei;
-    }
 
     function checkBaseURI(string memory uri)
         internal pure
@@ -105,14 +149,6 @@ library WittyPixels {
                 ] == bytes1("/")
             ), "WittyPixels: bad uri"
         );
-        return uri;
-    }
-
-    function checkImageURI(string memory uri)
-        internal pure
-        returns (string memory)
-    {
-        // TODO
         return uri;
     }
 
@@ -135,6 +171,31 @@ library WittyPixels {
             root = _hash(root, proof[i]);
         }
     }
+
+    /// Recovers address from hash and signature.
+    function recoverAddr(bytes32 hash_, bytes memory signature)
+        internal pure
+        returns (address)
+    {
+        if (signature.length != 65) {
+            return (address(0));
+        }
+        bytes32 r;
+        bytes32 s;
+        uint8 v;
+        assembly {
+            r := mload(add(signature, 0x20))
+            s := mload(add(signature, 0x40))
+            v := byte(0, mload(add(signature, 0x60)))
+        }
+        if (uint256(s) > 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0) {
+            return address(0);
+        }
+        if (v != 27 && v != 28) {
+            return address(0);
+        }
+        return ecrecover(hash_, v, r, s);
+    }   
 
     function slice(bytes memory src, uint offset)
         internal pure
@@ -175,7 +236,7 @@ library WittyPixels {
         }
     }
 
-    function toJSON(TokenMetadata memory self)
+    function toJSON(ERC721Token memory self)
         internal pure
         returns (string memory)
     {

@@ -1,37 +1,58 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
 
+import "witnet-solidity-bridge/contracts/impls/WitnetProxy.sol";
 import "witnet-solidity-bridge/contracts/interfaces/IWitnetRequest.sol";
 import "witnet-solidity-bridge/contracts/patterns/Clonable.sol";
 
-import "./impls/WittyPixelsUpgradableBase.sol";
 import "./interfaces/ITokenVaultFactory.sol";
-import "./interfaces/IWittyPixels.sol";
-import "./interfaces/IWittyPixelsAdmin.sol";
+import "./interfaces/IWittyPixelsToken.sol";
+import "./interfaces/IWittyPixelsTokenAdmin.sol";
+import "./interfaces/IWittyPixelsTokenJackpots.sol";
 
-/// @title  Witty Pixels NFT - ERC721 Token contract
+import "./patterns/WittyPixelsUpgradeableBase.sol";
+
+/// @title  Witty Pixels NFT - ERC721 token contract
 /// @author Otherplane Labs Ltd., 2022
-/// @dev    https://github.com/guidiaz
+/// @dev    This contract needs to be proxified.
 contract WittyPixelsToken
     is
-        ERC721,
+        ERC721Upgradeable,
         ITokenVaultFactory,
-        IWittyPixels,
-        IWittyPixelsAdmin,
-        WittyPixelsUpgradableBase
+        IWittyPixelsToken,
+        IWittyPixelsTokenAdmin,
+        IWittyPixelsTokenJackpots,
+        WittyPixelsUpgradeableBase
 {
     using ERC165Checker for address;
     using Strings for uint256;
     using WittyPixels for bytes;
     using WittyPixels for bytes32[];
-    using WittyPixels for WittyPixels.TokenMetadata;
+    using WittyPixels for WittyPixels.ERC721Token;
 
     WitnetRequestTemplate immutable public witnetRequestImageDigest;
     WitnetRequestTemplate immutable public witnetRequestTokenRoots;
     WittyPixels.TokenStorage internal __storage;
+
+    modifier initialized {
+        require(
+            __storage.implementation != address(0),
+            "WittyPixelsToken: not initialized"
+        );
+        _;
+    }
+
+    modifier onlyTokenSponsors(uint256 _tokenId) {
+        require(
+            __storage.sponsors[_tokenId].jackpots[msg.sender].authorized,
+            "WittyPixelsToken: not authorized"
+        );
+        _;
+    }
 
     modifier tokenExists(uint256 _tokenId) {
         require(
@@ -41,29 +62,29 @@ contract WittyPixelsToken
         _;
     }
 
+    modifier tokenInStatus(uint256 _tokenId, WittyPixels.ERC721TokenStatus _status) {
+        require(getTokenStatus(_tokenId) == _status, "WittyPixelsToken: bad mood");
+        _;
+    }
+
     constructor(
             WitnetRequestTemplate _requestImageDigest,
             WitnetRequestTemplate _requestTokenRoots,
-            string memory _baseuri,
             bool _upgradable,
             bytes32 _version
         )
-        ERC721("WittyPixels ", "WPX")
-        WittyPixelsUpgradableBase(
+        WittyPixelsUpgradeableBase(
             _upgradable,
             _version,
-            "io.witnet.games.witty-pixels"
+            "art.wittypixels.token"
         )
     {
         assert(address(_requestImageDigest) != address(0));
-        assert(address(_requestTokenRoots) != address(0));        
-        __storage.baseURI = WittyPixels.checkBaseURI(_baseuri);
+        assert(address(_requestTokenRoots) != address(0));
         witnetRequestImageDigest = _requestImageDigest;
         witnetRequestTokenRoots = _requestTokenRoots;
-        
     }
 
-    receive() external payable override {}
 
     // ================================================================================================================
     // --- Overrides IERC165 interface --------------------------------------------------------------------------------
@@ -72,119 +93,61 @@ contract WittyPixelsToken
     function supportsInterface(bytes4 _interfaceId)
       public view
       virtual override
+      onlyDelegateCalls
       returns (bool)
     {
         return _interfaceId == type(ITokenVaultFactory).interfaceId
-            || _interfaceId == type(IWittyPixelsAdmin).interfaceId
-            || ERC721.supportsInterface(_interfaceId)
-            || _interfaceId == type(Ownable).interfaceId
-            || _interfaceId == type(Ownable2Step).interfaceId
-            || _interfaceId == type(Upgradable).interfaceId
+            || _interfaceId == type(IWittyPixelsToken).interfaceId
+            || _interfaceId == type(IWittyPixelsTokenJackpots).interfaceId
+            || ERC721Upgradeable.supportsInterface(_interfaceId)
+            || _interfaceId == type(Ownable2StepUpgradeable).interfaceId
+            || _interfaceId == type(Upgradeable).interfaceId
+            || _interfaceId == type(IWittyPixelsTokenAdmin).interfaceId
         ;
     }
 
 
     // ================================================================================================================
-    // --- Overrides 'Ownable2Step' -----------------------------------------------------------------------------------
-
-    /// Returns the address of the pending owner.
-    function pendingOwner()
-        public view
-        virtual override
-        returns (address)
-    {
-        return __storage.pendingOwner;
-    }
-
-    /// Returns the address of the current owner.
-    function owner()
-        public view
-        virtual override
-        returns (address)
-    {
-        return __storage.owner;
-    }
-
-    /// Starts the ownership transfer of the contract to a new account. Replaces the pending transfer if there is one.
-    /// @dev Can only be called by the current owner.
-    function transferOwnership(address _newOwner)
-        public
-        virtual override
-        onlyOwner
-    {
-        __storage.pendingOwner = _newOwner;
-        emit OwnershipTransferStarted(owner(), _newOwner);
-    }
-
-    /// @dev Transfers ownership of the contract to a new account (`_newOwner`) and deletes any pending owner.
-    /// @dev Internal function without access restriction.
-    function _transferOwnership(address _newOwner)
-        internal
-        virtual override
-    {
-        delete __storage.pendingOwner;
-        address _oldOwner = owner();
-        if (_newOwner != _oldOwner) {
-            __storage.owner = _newOwner;
-            emit OwnershipTransferred(_oldOwner, _newOwner);
-        }
-    }
-
-
-    // ================================================================================================================
-    // --- Overrides 'Upgradable' -------------------------------------------------------------------------------------
+    // --- Overrides 'Upgradeable' ------------------------------------------------------------------------------------
 
     /// Initialize storage-context when invoked as delegatecall. 
     /// @dev Must fail when trying to initialize same instance more than once.
-    function initialize(bytes memory) 
+    function initialize(bytes memory _initdata) 
         public
         virtual override
+        onlyDelegateCalls // => we don't want the logic base contract to be ever initialized
     {
-        address _owner = __storage.owner;
-        if (_owner == address(0)) {
-            // set owner if none set yet
-            _owner = msg.sender;
-            __storage.owner = _owner;
-        } else {
-            // only owner can initialize:
-            if (msg.sender != _owner) revert WittyPixelsUpgradableBase.OnlyOwner(_owner);
+        address _implementation = __storage.implementation;
+        if (_implementation == address(0)) {
+            // a proxy is beining initilized for the first time ...
+            _initializeProxy(_initdata);
         }
-
-        if (__storage.base != address(0)) {
-            // current implementation cannot be initialized more than once:
-            if(__storage.base == base()) revert WittyPixelsUpgradableBase.AlreadyInitialized(base());
-        }        
-        __storage.base = base();
-
-        emit Upgraded(msg.sender, base(), codehash(), version());
-    }
-
-    /// Tells whether provided address could eventually upgrade the contract.
-    function isUpgradableFrom(address _from) external view override returns (bool) {
-        address _owner = __storage.owner;
-        return (
-            // false if the WRB is intrinsically not upgradable, or `_from` is no owner
-            isUpgradable()
-                && _owner == _from
-        );
-    }
+        else {
+            // a proxy is being upgraded ...
+            // only the proxy's owner can upgrade it
+            require(
+                msg.sender == owner(),
+                "WittyPixelsToken: not the owner"
+            );
+            // the implementation cannot be upgraded more than once, though
+            require(
+                _implementation != base(),
+                "WittyPixelsToken: already initialized"
+            );
+            emit Upgraded(
+                msg.sender,
+                base(),
+                codehash(),
+                version()
+            );
+        }
+        __storage.implementation = base();    
+    }    
 
     
-    // ========================================================================
-    // --- Overrides 'ERC721TokenMetadata' overriden functions ---------------------
+    // ================================================================================================================
+    // --- Overrides 'ERC721TokenMetadata' overriden functions --------------------------------------------------------
 
-    /// Pre-minting phase:
-    /// api.wittypixels.art/metadata/chainid/tokenid    --> api-ethdenver23/metadata/chainid
-    /// api.wittypixels.art/roots/chainid/tokenid              --> api-ethdenver23/image
-    // {
-    //     players: [
-    //         { name: "name", score: 1234 },
-    //     ],
-    //     roots: {
-    //         names: "0x",
-    //         scores: "0x",
-    //     }
-    // }
     function tokenURI(uint256 _tokenId)
         public view
         virtual override
@@ -201,12 +164,12 @@ contract WittyPixelsToken
     }
 
 
-    // ========================================================================
-    // --- Implementation of 'ITokenVaultFactory' -----------------------------
+    // ================================================================================================================
+    // --- Implementation of 'ITokenVaultFactory' ---------------------------------------------------------------------
 
-    /// @notice Fractionalize given token by transferring ownership to new instance of ERC-20 Token Vault. 
+    /// @notice Fractionalize given token by transferring ownership to new instance of ERC-20 ERC721Token Vault. 
     /// @dev This vault factory is only intended for fractionalizing its own tokens.
-    function fractionalize(address, uint256, string memory, string memory, bytes memory)
+    function fractionalize(address, uint256, bytes memory)
         external pure
         override
         returns (ITokenVault)
@@ -215,24 +178,19 @@ contract WittyPixelsToken
     }
 
     /// @notice Fractionalize given token by transferring ownership to new instance
-    /// @notice of ERC-20 Token Vault. 
+    /// @notice of ERC-20 ERC721Token Vault. 
     /// @dev Caller must be the owner of specified token.
-    /// @param _tokenId Token identifier within that collection.
-    /// @param _tokenVaultName Name of the ERC-20 Token Vault to be created.
-    /// @param _tokenVaultSymbol Symbol of the ERC-20 Token Vault to be created.
+    /// @param _tokenId ERC721Token identifier within that collection.
     /// @param _tokenVaultSettings Extra settings to be passed when initializing the token vault contract.
     function fractionalize(
             uint256 _tokenId,
-            string  memory _tokenVaultName,
-            string  memory _tokenVaultSymbol,
             bytes   memory _tokenVaultSettings
         )
         external
         tokenExists(_tokenId)
-        returns (ITokenVault _tokenVault)
+        returns (ITokenVault)
     {
         // check required conditions
-        WittyPixels.TokenMetadata storage __token = __storage.items[_tokenId];
         require(
             address(__storage.tokenVaultPrototype) != address(0),
             "WittyPixelsToken: no token vault prototype"
@@ -246,25 +204,23 @@ contract WittyPixelsToken
             "WittyPixelsToken: already fractionalized"
         );
         
-        // clone token vault prototype
-        _tokenVault = ITokenVault(address(
-            __storage.tokenVaultPrototype.clone()
+        // clone token vault prototype and initialize cloned instance
+        IWittyPixelsTokenVault _tokenVault = IWittyPixelsTokenVault(address(
+            __storage.tokenVaultPrototype.cloneAndInitialize(abi.encode(
+                WittyPixels.TokenVaultInitParams({
+                    curator: msg.sender,
+                    name: string(abi.encode(name(), " #", _tokenId.toString())),
+                    symbol: symbol(),
+                    supply: 10 ** 18,
+                    settings: _tokenVaultSettings,
+                    tokenId: _tokenId
+                })
+            ))
         ));
-
-        // initialize newly created token vault contract
-        bytes memory _initData = abi.encode(WittyPixels.TokenVaultInitParams({
-            curator: msg.sender,
-            tokenId: _tokenId,
-            erc20Supply:  __token.theStats.totalScore,
-            erc20Name: _tokenVaultName,
-            erc20Symbol: _tokenVaultSymbol,
-            settings: _tokenVaultSettings
-        }));
-        Initializable(address(_tokenVault)).initialize(_initData);
 
         // store token vault contract
         uint _tokenVaultIndex = ++ __storage.totalTokenVaults;
-        __storage.vaults[_tokenVaultIndex] = ITokenVaultWitnet(address(_tokenVault));
+        __storage.vaults[_tokenVaultIndex] = _tokenVault;
 
         // update reference to token vault contract in token's metadata
         __storage.tokenVaultIndex[_tokenId] = _tokenVaultIndex;
@@ -277,6 +233,8 @@ contract WittyPixelsToken
             _tokenVaultIndex,
             address(_tokenVault)
         );
+
+        return ITokenVault(address(_tokenVault));
     }
 
     /// @notice Gets data of a token vault created by this factory.
@@ -332,8 +290,8 @@ contract WittyPixelsToken
     }
 
 
-    // ========================================================================
-    // --- Implementation of 'IWittyPixels' -----------------------------------
+    // ================================================================================================================
+    // --- Implementation of 'IWittyPixelsToken' ----------------------------------------------------------------------
 
     /// @notice Returns base URI for all tokens of this collection.
     function baseURI()
@@ -348,42 +306,42 @@ contract WittyPixelsToken
     function getTokenStatus(uint256 tokenId)
         public view
         override
-        returns (WittyPixels.TokenStatus)
+        returns (WittyPixels.ERC721TokenStatus)
     {
         if (tokenId > __storage.totalSupply && tokenId > 0) {
-            WittyPixels.TokenMetadata storage __metadata = __storage.items[tokenId];
+            WittyPixels.ERC721Token storage __metadata = __storage.items[tokenId];
             if (__metadata.block > 0) {
                 uint _vaultIndex = __storage.tokenVaultIndex[tokenId];
                 if (_vaultIndex > 0) {
                     if (ownerOf(tokenId) != address(__storage.vaults[_vaultIndex])) {
-                        return WittyPixels.TokenStatus.SoldOut;
+                        return WittyPixels.ERC721TokenStatus.SoldOut;
                     } else {
-                        return WittyPixels.TokenStatus.Fractionalized;
+                        return WittyPixels.ERC721TokenStatus.Fractionalized;
                     }
                 } else {
-                    return WittyPixels.TokenStatus.Minted;
+                    return WittyPixels.ERC721TokenStatus.Minted;
                 }
             } else {
-                return WittyPixels.TokenStatus.Minting;
+                return WittyPixels.ERC721TokenStatus.Minting;
             }
         } else {
-            return WittyPixels.TokenStatus.Void;
+            return WittyPixels.ERC721TokenStatus.Void;
         }
     }
 
-    /// @notice Gets token TokenMetadata.
+    /// @notice Gets token ERC721Token.
     function getTokenMetadata(uint256 _tokenId)
         external view
         override
         tokenExists(_tokenId)
-        returns (WittyPixels.TokenMetadata memory)
+        returns (WittyPixels.ERC721Token memory)
     {
         return __storage.items[_tokenId];
     }
     
     /// @notice Gets token vault contract, if any.
     function getTokenVault(uint256 _tokenId)
-        external view
+        public view
         override
         tokenExists(_tokenId)
         returns (ITokenVaultWitnet)
@@ -400,12 +358,12 @@ contract WittyPixelsToken
         external view
         override
         tokenExists(_tokenId)
-        returns (WittyPixels.TokenWitnetRequests memory)
+        returns (WittyPixels.ERC721TokenWitnetRequests memory)
     {
         return __storage.witnetRequests[_tokenId];
     }
 
-    /// @notice Serialize token TokenMetadata to JSON string.
+    /// @notice Serialize token ERC721Token to JSON string.
     function metadata(uint256 _tokenId)
         external view 
         override
@@ -435,7 +393,7 @@ contract WittyPixelsToken
         tokenExists(_tokenId)
         returns (bool)
     {
-        WittyPixels.TokenMetadata storage __metadata = __storage.items[_tokenId];
+        WittyPixels.ERC721Token storage __metadata = __storage.items[_tokenId];
         return (
             _playerIndex < __metadata.theStats.totalPlayers
                 && _proof.merkle(keccak256(abi.encode(
@@ -456,7 +414,7 @@ contract WittyPixelsToken
         tokenExists(_tokenId)
         returns (bool)
     {
-        WittyPixels.TokenMetadata storage __metadata = __storage.items[_tokenId];
+        WittyPixels.ERC721Token storage __metadata = __storage.items[_tokenId];
         return (
             _playerIndex < __metadata.theStats.totalPlayers
                 && _proof.merkle(keccak256(abi.encode(
@@ -467,36 +425,36 @@ contract WittyPixelsToken
     }
 
 
-    // ========================================================================
-    // --- Implementation of 'IWittyPixelsAdmin' ------------------------------
+    // ================================================================================================================
+    // --- Implementation of 'IWittyPixelsTokenAdmin' -----------------------------------------------------------------
 
     function premint(
             uint256 _tokenId,
-            string calldata _imageURI,
-            bytes32 _tallyHash, // TODO: should it be inherent to WitnetRequestTemplate?
-            bytes32 _slaHash
+            bytes32 _slaHash,
+            string calldata _imageURI
         )
         external payable
         override
         onlyOwner
         nonReentrant
+        initialized
     {
-        WittyPixels.TokenStatus _status = getTokenStatus(_tokenId);
+        WittyPixels.ERC721TokenStatus _status = getTokenStatus(_tokenId);
         require(
-            _status == WittyPixels.TokenStatus.Void && _tokenId == __storage.totalSupply + 1
-                || _status == WittyPixels.TokenStatus.Minting,
+            _status == WittyPixels.ERC721TokenStatus.Void && _tokenId == __storage.totalSupply + 1
+                || _status == WittyPixels.ERC721TokenStatus.Minting,
             "WittyPixelsToken: bad mood"
         );
         require(
             bytes(_imageURI).length > 0,
             "WittyPixelsToken: no image URI"
         );        
-        if (_status == WittyPixels.TokenStatus.Void) {
+        if (_status == WittyPixels.ERC721TokenStatus.Void) {
             // increase total supply only upon first premint of this token id:
             __storage.totalSupply ++;
         }
-        WittyPixels.TokenMetadata storage __metadata = __storage.items[_tokenId];        
-        WittyPixels.TokenWitnetRequests storage __requests = __storage.witnetRequests[_tokenId];
+        WittyPixels.ERC721Token storage __metadata = __storage.items[_tokenId];        
+        WittyPixels.ERC721TokenWitnetRequests storage __requests = __storage.witnetRequests[_tokenId];
         
         // Ask Witnet to confirm the token's image URI actually exists:
         uint _usedFunds;
@@ -505,12 +463,12 @@ contract WittyPixelsToken
             _args[0] = new string[](1);
             _args[0][0] = _imageURI;
             __requests.imageDigest = WitnetRequestTemplate(payable(address(witnetRequestImageDigest.clone())));
-            __requests.imageDigest.initialize(abi.encode(WitnetRequestTemplate.InitData({
-                args: _args,
-                tallyHash: _tallyHash,
-                slaHash: _slaHash,
-                resultMaxSize: 0
-            })));
+            __requests.imageDigest.initialize(abi.encode(
+                WitnetRequestTemplate.InitData({
+                    args: _args,
+                    slaHash: _slaHash
+                })
+            ));
             __metadata.imageURI = _imageURI;
             _usedFunds += __requests.imageDigest.post{value: msg.value}();
         }
@@ -529,9 +487,7 @@ contract WittyPixelsToken
             __requests.tokenRoots = WitnetRequestTemplate(payable(address(witnetRequestTokenRoots.clone())));
             __requests.tokenRoots.initialize(abi.encode(WitnetRequestTemplate.InitData({
                 args: _args,
-                tallyHash: _tallyHash,
-                slaHash: _slaHash,
-                resultMaxSize: 0
+                slaHash: _slaHash
             })));
             _usedFunds += __requests.imageDigest.post{value: msg.value - _usedFunds}();
         }
@@ -542,26 +498,21 @@ contract WittyPixelsToken
         }
 
         emit Minting(_tokenId, baseURI(), _imageURI, _slaHash);
-    }
-
-    modifier tokenInStatus(uint256 _tokenId, WittyPixels.TokenStatus _status) {
-        require(getTokenStatus(_tokenId) == _status, "WittyPixelsToken: bad mood");
-        _;
-    }
+    }    
 
     function mint(
             uint256 _tokenId,
-            WittyPixels.TokenEvent memory _theEvent,
-            WittyPixels.TokenCanvas memory _theCanvas,
-            WittyPixels.TokenStats memory _theStats
+            WittyPixels.ERC721TokenEvent memory _theEvent,
+            WittyPixels.ERC721TokenCanvas memory _theCanvas,
+            WittyPixels.ERC721TokenStats memory _theStats
         )
         external
         onlyOwner
         nonReentrant
-        tokenInStatus(_tokenId, WittyPixels.TokenStatus.Minting)
+        tokenInStatus(_tokenId, WittyPixels.ERC721TokenStatus.Minting)
     {
-        WittyPixels.TokenMetadata storage __metadata = __storage.items[_tokenId];
-        WittyPixels.TokenWitnetRequests storage __requests = __storage.witnetRequests[_tokenId];
+        WittyPixels.ERC721Token storage __metadata = __storage.items[_tokenId];
+        WittyPixels.ERC721TokenWitnetRequests storage __requests = __storage.witnetRequests[_tokenId];
         
         bool _resultOk; bytes memory _resultBytes;        
         // Check the image URI actually exists, and store image digest hash, 
@@ -578,7 +529,7 @@ contract WittyPixelsToken
         {
             (_resultOk, _resultBytes) = __requests.tokenRoots.read();
             require(_resultOk, "WittyPixelsToken: token roots failed");
-            WittyPixels.TokenRoots memory _roots = abi.decode(_resultBytes, (WittyPixels.TokenRoots));
+            WittyPixels.ERC721TokenRoots memory _roots = abi.decode(_resultBytes, (WittyPixels.ERC721TokenRoots));
             require(
                 keccak256(abi.encode(
                     __metadata.imageDigest,
@@ -622,8 +573,45 @@ contract WittyPixelsToken
         external 
         override
         onlyOwner
+        initialized
     {
         __storage.baseURI = WittyPixels.checkBaseURI(_uri);
+    }
+
+    /// @notice Update sponsors access-list by adding new members. 
+    /// @dev If already included in the list, names could still be updated.
+    function setTokenSponsors(
+            uint256 _tokenId,
+            address[] calldata _addresses,
+            string[] calldata _texts
+        )
+        external
+        override
+        onlyOwner
+        initialized
+    {
+        assert(_addresses.length == _texts.length);
+        // tokenId can only be current totalSupply + 1: not minted, and not in the process of being minted
+        require(
+            _tokenId == __storage.totalSupply + 1,
+            "WittyPixelsToken: invalid token"
+        );
+        // add new sponsor addresses to the access list if not yet there:
+        WittyPixels.ERC721TokenSponsors storage __sponsors = __storage.sponsors[_tokenId];
+        for (uint _i = 0; _i < _addresses.length; _i ++) {
+            address _addr = _addresses[_i];
+            if (!__sponsors.jackpots[_addr].authorized) {
+                __sponsors.addresses.push(_addr);
+                __sponsors.jackpots[_addr].authorized = true;
+                emit NewTokenSponsor(
+                    _tokenId,
+                    __sponsors.addresses.length - 1,
+                    _addr
+                );
+            }
+            // update sponsor name in all cases
+            __sponsors.jackpots[_addr].text = _texts[_i];
+        }
     }
 
     /// @notice Vault logic contract to be used in next fractions.
@@ -632,17 +620,143 @@ contract WittyPixelsToken
         external
         override
         onlyOwner
+        initialized
+    {
+        _verifyPrototypeCompliance(_prototype);
+        __storage.tokenVaultPrototype = IWittyPixelsTokenVault(_prototype);
+    }
+
+
+    // ================================================================================================================
+    // --- Implementation of 'IWittyPixelsTokenJackpots' --------------------------------------------------------------
+
+    function getTokenJackpotByIndex(
+            uint256 _tokenId,
+            uint256 _index
+        )
+        external view
+        override
+        returns (
+            address _sponsor,
+            address _winner,
+            uint256 _value,
+            string memory _text
+        )
+    {
+        WittyPixels.ERC721TokenSponsors storage __sponsors = __storage.sponsors[_tokenId];
+        if (_index < __sponsors.addresses.length) {
+            _sponsor = __sponsors.addresses[_index];
+            WittyPixels.ERC721TokenJackpot storage __jackpot = __sponsors.jackpots[_sponsor];
+            _text = __jackpot.text;
+            _value = __jackpot.value;
+            _winner = __jackpot.winner;
+        }
+    }
+
+    function getTokenJackpotsCount(uint256 _tokenId)
+        external view
+        override
+        returns (uint256)
+    {
+        return __storage.sponsors[_tokenId].addresses.length;
+    }
+
+    function getTokenJackpotsTotalValue(uint256 _tokenId)
+        external view
+        override
+        returns (uint256)
+    {
+        return __storage.sponsors[_tokenId].totalJackpots;
+    }
+
+    function sponsoriseToken(uint256 _tokenId)
+        external payable
+        override
+        onlyTokenSponsors(_tokenId)
+        tokenInStatus(_tokenId, WittyPixels.ERC721TokenStatus.Void)
+    {
+        WittyPixels.ERC721TokenSponsors storage __sponsors = __storage.sponsors[_tokenId];
+        __sponsors.jackpots[msg.sender].value += msg.value;
+        __sponsors.totalJackpots += msg.value;
+    }
+
+    function transferTokenJackpot(
+            uint256 _tokenId,
+            uint256 _index,
+            address payable _winner
+        )
+        external
+        override
+        tokenExists(_tokenId)
+        returns (uint256 _value)
     {
         require(
-            _prototype.supportsInterface(type(ITokenVaultWitnet).interfaceId)
-                && _prototype.supportsInterface(type(Clonable).interfaceId)
-                && _prototype.supportsInterface(type(Ownable).interfaceId),
-            "WittyPixelsToken: uncompliant prototype"
+            getTokenVault(_tokenId).parentToken() == address(this),
+            "WittyPixelsToken: unauthorized"
+        );
+        assert(_winner != address(0));
+        WittyPixels.ERC721TokenSponsors storage __sponsors = __storage.sponsors[_tokenId];
+        assert(_index < __sponsors.addresses.length);
+        address _sponsor = __sponsors.addresses[_index];
+        WittyPixels.ERC721TokenJackpot storage __jackpot = __sponsors.jackpots[_sponsor];
+        require(
+            __jackpot.winner == address(0), "WittyPixelsToken: already claimed"
+        );
+        _value = __jackpot.value;
+        require(
+            _value > 0,
+            "WittyPixelsToken: no jackpot value"
         );
         require(
-            Ownable(_prototype).owner() == address(this), 
-            "WittyPixelsToken: unowned protype"
+            _value < address(this).balance,
+            "WittyPixelsToken: not enough balance"
         );
-        __storage.tokenVaultPrototype = ITokenVaultWitnet(_prototype);
+        __jackpot.value = 0;
+        __jackpot.winner = _winner;
+        _winner.transfer(_value);
+        emit Jackpot(
+            _tokenId, 
+            _index,
+            _winner,
+            _value
+        );
     }
+
+
+    // ================================================================================================================
+    // --- Internal virtual methods -----------------------------------------------------------------------------------
+
+    function _initializeProxy(bytes memory _initdata)
+        virtual internal
+        initializer 
+    {
+        // As for OpenZeppelin's ERC721Upgradeable implementation,
+        // name and symbol can only be initialized once;
+        // as for an upgradable (and proxiable) contract as this one,
+        // the setting of name and symbol needs to be invoked in
+        // a dedicated and unique 'initializer' method, other from the
+        // `initialize(bytes)` method that gets called every time
+        // a proxy contract is upgraded.
+
+        // read and set ERC721 initialization parameters
+        WittyPixels.TokenInitParams memory _params = abi.decode(
+            _initdata,
+            (WittyPixels.TokenInitParams)
+        );
+        __storage.baseURI = WittyPixels.checkBaseURI(_params.baseURI);
+        __ERC721_init(
+            _params.name,
+            _params.symbol
+        );        
+        __Ownable2Step_init();
+        __ReentrancyGuard_init();
+    }
+
+    function _verifyPrototypeCompliance(address _prototype) virtual internal view {
+        require(
+            _prototype.supportsInterface(type(IWittyPixelsTokenVault).interfaceId),
+            "WittyPixelsToken: uncompliant prototype"
+        );
+    }
+
 }

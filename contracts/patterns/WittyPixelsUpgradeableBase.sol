@@ -3,17 +3,19 @@
 
 pragma solidity >=0.8.0 <0.9.0;
 
-import "witnet-solidity-bridge/contracts/patterns/Ownable2Step.sol";
-import "witnet-solidity-bridge/contracts/patterns/ReentrancyGuard.sol";
-import "witnet-solidity-bridge/contracts/patterns/Upgradable.sol";
+import "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 
-/// @title Witnet Request Board base contract, with an Upgradable (and Destructible) touch.
+import "witnet-solidity-bridge/contracts/patterns/Upgradeable.sol";
+import "witnet-solidity-bridge/contracts/impls/WitnetProxy.sol";
+
+/// @title Witnet Request Board base contract, with an Upgradeable (and Destructible) touch.
 /// @author The Witnet Foundation.
-abstract contract WittyPixelsUpgradableBase
+abstract contract WittyPixelsUpgradeableBase
     is
-        Ownable2Step,
-        Upgradable, 
-        ReentrancyGuard
+        Ownable2StepUpgradeable,
+        ReentrancyGuardUpgradeable,
+        Upgradeable
 {
     bytes32 internal immutable _UPGRADABLE_VERSION_TAG;
 
@@ -27,32 +29,42 @@ abstract contract WittyPixelsUpgradableBase
             bytes32 _versionTag,
             string memory _proxiableUUID
         )
-        Upgradable(_upgradable)
+        Upgradeable(_upgradable)
     {
         _UPGRADABLE_VERSION_TAG = _versionTag;
-        proxiableUUID = keccak256(bytes(_proxiableUUID));
+        proxiableUUID = keccak256(bytes(_proxiableUUID));        
+        // make sure the (uninitilized) base implementation is owned by the deployer:
+        _transferOwnership(msg.sender);
     }
-
-    receive() external payable virtual;
     
     /// @dev Reverts if proxy delegatecalls to unexistent method.
-    fallback() external payable {
-        revert("WittyPixelsUpgradableBase: not implemented");
+    fallback() external { // solhint-disable
+        revert("WittyPixelsUpgradeableBase: not implemented");
     }
 
 
     // ================================================================================================================
     // --- Overrides 'Proxiable' --------------------------------------------------------------------------------------
 
-    /// @dev Gets immutable "heritage blood line" (ie. genotype) as a Proxiable, and eventually Upgradable, contract.
-    ///      If implemented as an Upgradable touch, upgrading this contract to another one with a different 
+    /// @dev Gets immutable "heritage blood line" (ie. genotype) as a Proxiable, and eventually Upgradeable, contract.
+    ///      If implemented as an Upgradeable touch, upgrading this contract to another one with a different 
     ///      `proxiableUUID()` value should fail.
     bytes32 public immutable override proxiableUUID;
 
 
     // ================================================================================================================
-    // --- Overrides 'Upgradable' --------------------------------------------------------------------------------------
+    // --- Overrides 'Upgradeable' --------------------------------------------------------------------------------------
 
+    /// Tells whether provided address could eventually upgrade the contract.
+    function isUpgradableFrom(address _from) external view override returns (bool) {
+        return (
+            // false if the WRB is intrinsically not upgradable, or `_from` is no owner
+            isUpgradable()
+                && _from == owner()
+        );
+    }
+
+    
     /// Retrieves human-readable version tag of current implementation.
     function version() public view override returns (string memory) {
         return _toString(_UPGRADABLE_VERSION_TAG);

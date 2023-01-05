@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import "./IERC165.sol";
 import "../libs/WittyPixels.sol";
 
-interface IWittyPixelsAdmin {
+interface IWittyPixelsTokenAdmin {
 
     error PremintPendingResponse (uint tokenId, string uri);
     error PremintFailedResponse  (uint tokenId, string uri, string reason);
@@ -12,32 +12,30 @@ interface IWittyPixelsAdmin {
     
     event Minting(uint256 tokenId, string baseURI, string imageURI, bytes32 slaHash);
 
+    event NewTokenSponsor(uint256 tokenId, uint256 index, address indexed addr);
+
     function premint(
             uint256 tokenId,
-            string calldata imageURI,
-            bytes32 tallyHash,
-            bytes32 slaHash
+            bytes32 slaHash,
+            string calldata imageURI
         ) external payable;
 
-    /// @notice Mint new WittyPixels token: one new token id per TokenEvent where WittyPixelsTM is played.
+    /// @notice Mint new WittyPixels token: one new token id per ERC721TokenEvent where WittyPixelsTM is played.
     function mint(
             uint256 tokenId,
-            WittyPixels.TokenEvent memory theEvent,
-            WittyPixels.TokenCanvas memory theCanvas,
-            WittyPixels.TokenStats memory theStats
+            WittyPixels.ERC721TokenEvent memory theEvent,
+            WittyPixels.ERC721TokenCanvas memory theCanvas,
+            WittyPixels.ERC721TokenStats memory theStats
         ) external;
 
     /// @notice Sets collection's base URI.
     function setBaseURI(string calldata baseURI) external;
 
-    /// @notice Sets token vault contract to be used as prototype.
+    /// @notice Update sponsors access-list by adding new members. 
+    /// @dev If already included in the list, texts could still be updated.
+    function setTokenSponsors(uint256 tokenId, address[] calldata addresses, string[] calldata texts) external;
+
+    /// @notice Sets token vault contract to be used as prototype in following mints.
     /// @dev Prototype ownership needs to have been previously transferred to this contract.
     function setTokenVaultPrototype(address prototype) external;    
-
-    // /// @notice Upgrade previously owned vault logic contract.
-    // function upgradeBasement(
-    //         IERC165 oldVaultLogic,
-    //         IERC165 newVaultLogic,
-    //         bytes calldata initArgs
-    //     ) external;
 }

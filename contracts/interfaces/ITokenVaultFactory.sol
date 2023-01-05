@@ -5,7 +5,7 @@ import "./ITokenVault.sol";
 
 interface ITokenVaultFactory {
 
-    /// @dev Possible status of a Token Vault, based on current ownership
+    /// @dev Possible status of a ERC721Token Vault, based on current ownership
     /// @dev of a previously fractionalized token. 
     enum TokenVaultStatus {
         Unknown,    // unknown token vault (index out of range)
@@ -23,33 +23,25 @@ interface ITokenVaultFactory {
         address tokenVault      // token vault contract just created
     );
 
-    /// @notice Fractionalize given token by transferring ownership to new instance of ERC-20 Token Vault. 
+    /// @notice Fractionalize given token by transferring ownership to new instance of ERC-20 ERC721Token Vault. 
     /// @dev Caller must be the owner of specified token.
     /// @param token Address of ERC-721 collection.
-    /// @param tokenId Token identifier within that collection.
-    /// @param tokenVaultName Name of the ERC-20 Token Vault to be created.
-    /// @param tokenVaultSymbol Symbol of the ERC-20 Token Vault to be created.
+    /// @param tokenId ERC721Token identifier within that collection.
     /// @param tokenVaultSettings Extra settings to be passed when initializing the token vault contract.
     function fractionalize(
             address token,
             uint256 tokenId,
-            string  memory tokenVaultName,
-            string  memory tokenVaultSymbol,
             bytes   memory tokenVaultSettings
         )
         external returns (ITokenVault);
 
-    /// @notice Fractionalize given token by transferring ownership to new instance of ERC-20 Token Vault. 
+    /// @notice Fractionalize given token by transferring ownership to new instance of ERC-20 ERC721Token Vault. 
     /// @dev Fails should the factory not be also a token minting contract.
     /// @dev Caller must be the owner of specified token.
-    /// @param tokenId Token identifier within that collection.
-    /// @param tokenVaultName Name of the ERC-20 Token Vault to be created.
-    /// @param tokenVaultSymbol Symbol of the ERC-20 Token Vault to be created.
+    /// @param tokenId ERC721Token identifier within that collection.
     /// @param tokenVaultSettings Extra settings to be passed when initializing the token vault contract.
     function fractionalize(
             uint256 tokenId,
-            string  memory tokenVaultName,
-            string  memory tokenVaultSymbol,
             bytes   memory tokenVaultSettings
         )
         external returns (ITokenVault);

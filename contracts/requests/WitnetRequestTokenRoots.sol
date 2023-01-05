@@ -19,14 +19,17 @@ contract WitnetRequestTokenRoots
             WitnetRequestBoard _witnet,
             IWitnetBytecodes _registry,
             bytes32[] memory _sources,
-            bytes32 _aggregator
+            bytes32 _aggregator,
+            bytes32 _tally
         )
         WitnetRequestTemplate(
             _witnet,
             _registry,
             _sources,
             _aggregator,
-            WitnetV2.RadonDataTypes.Array
+            _tally,
+            WitnetV2.RadonDataTypes.Any, // TODO
+            0
         )
     {}
 
@@ -37,7 +40,7 @@ contract WitnetRequestTokenRoots
     {
         WitnetCBOR.CBOR[] memory _items = _value.readArray();
         if (_items.length >= 3) {
-            _result = abi.encode(WittyPixels.TokenRoots({
+            _result = abi.encode(WittyPixels.ERC721TokenRoots({
                 data: _items[0].readBytes().toBytes32(),
                 names: _items[1].readBytes().toBytes32(),
                 scores: _items[2].readBytes().toBytes32()
