@@ -39,6 +39,7 @@ library WittyPixels {
         uint256 playerIndex;
         uint256 playerScore;
         bytes32[] playerScoreProof;
+        bytes signature;
     }
 
     struct TokenVaultInitParams {

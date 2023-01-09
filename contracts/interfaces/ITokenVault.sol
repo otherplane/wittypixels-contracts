@@ -18,7 +18,7 @@ abstract contract ITokenVault
     function curator() virtual external view returns (address);
 
     /// @notice Mint ERC-20 tokens, ergo token ownership, by providing ownership deeds.
-    function mint(bytes calldata deeds, bytes calldata signature) virtual external;
+    function redeem(bytes calldata deeds) virtual external;
 
     /// @notice Returns whether this NFT vault has already been sold out. 
     function soldOut() virtual external view returns (bool);

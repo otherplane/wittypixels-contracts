@@ -37,6 +37,14 @@ contract WittyPixelsTokenVault
         _;
     }
 
+    modifier onlyCurator {
+        require(
+            msg.sender == __storage.curator,
+            "WittyPixelsTokenVault: not the curator"
+        );
+        _;
+    }
+
     modifier randomized {
         require(
             isRandomized(),
@@ -113,7 +121,7 @@ contract WittyPixelsTokenVault
     }
 
     /// @notice Mint ERC-20 tokens, ergo token ownership, by providing ownership deeds.
-    function mint(bytes calldata _bytes, bytes calldata _signature)
+    function redeem(bytes calldata _deedsdata)
         virtual override
         public
         initialized
@@ -121,7 +129,7 @@ contract WittyPixelsTokenVault
         notSoldOut
     {
         WittyPixels.TokenVaultOwnershipDeeds memory _deeds = abi.decode(
-            _bytes,
+            _deedsdata,
             (WittyPixels.TokenVaultOwnershipDeeds)
         );
         // first: verify signature
@@ -134,7 +142,7 @@ contract WittyPixelsTokenVault
             _deeds.playerScoreProof
         ));
         require(
-            WittyPixels.recoverAddr(_deedshash, _signature) == __storage.curator,
+            WittyPixels.recoverAddr(_deedshash, _deeds.signature) == __storage.curator,
             "WittyPixelsTokenVault: bad signature"
         );
         // second: verify intrinsicals
@@ -162,7 +170,7 @@ contract WittyPixelsTokenVault
         __storage.totalScore += _deeds.playerScore;
         __storage.mints[_deeds.playerIndex] = true;
         __storage.members.push(_deeds.playerAddress);
-        // fifth: no actual mint, but transfer from soverign treasury
+        // fifth: no actual mint, but transfer from sovereign treasury
         _transfer(
             address(this),
             _deeds.playerAddress,
@@ -379,6 +387,15 @@ contract WittyPixelsTokenVault
             return _settings.startingBlock;
         }
     }
+
+    function setDutchAuction(bytes memory _settings)
+        override
+        external
+        onlyCurator
+        notSoldOut
+    {
+        _setSettings(_settings);
+    }
     
     function settings()
         override
@@ -573,7 +590,7 @@ contract WittyPixelsTokenVault
         public
         virtual override
         initializer // => ensure a clone can only be initialized once
-        onlyDelegateCalls // => we don't want the logic base contract to be ever initialized
+        onlyDelegateCalls // => we don't need the logic base contract to be ever initialized
     {   
         super.initialize(_initBytes);
 
@@ -587,12 +604,9 @@ contract WittyPixelsTokenVault
             "WittyPixelsTokenVault: no curator"
         );
         require(
-            msg.sender.supportsInterface(type(IWittyPixelsToken).interfaceId),
+            msg.sender.supportsInterface(type(IWittyPixelsToken).interfaceId)
+                && msg.sender.supportsInterface(type(IWittyPixelsTokenJackpots).interfaceId),
             "WittyPixelsTokenVault: uncompliant vault factory"
-        );
-        require(
-            IWittyPixelsToken(msg.sender).getTokenStatus(_params.tokenId) == WittyPixels.ERC721TokenStatus.Minted,
-            "WittyPixelsTokenVault: not in minted status"
         );
 
         // initialize openzeppelin's ERC20Upgradeable implementation

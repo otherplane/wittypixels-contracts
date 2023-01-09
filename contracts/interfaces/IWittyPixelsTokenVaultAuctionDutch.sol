@@ -18,4 +18,5 @@ interface IWittyPixelsTokenVaultAuctionDutch {
     function price() external view returns (uint256);
     function nextRoundBlock() external view returns (uint256);
     function settings() external view returns (Settings memory);
+    function setDutchAuction(bytes calldata) external;
 }
