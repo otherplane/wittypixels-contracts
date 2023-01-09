@@ -178,8 +178,8 @@ contract WittyPixelsToken
     }
 
     /// @notice Fractionalize given token by transferring ownership to new instance
-    /// @notice of ERC-20 ERC721Token Vault. 
-    /// @dev Caller must be the owner of specified token.
+    /// @notice of the ERC721 Token Vault prototype contract. 
+    /// @dev Token must be in 'Minting' status and involved Witnet requests successfully solved.
     /// @param _tokenId ERC721Token identifier within that collection.
     /// @param _tokenVaultSettings Extra settings to be passed when initializing the token vault contract.
     function fractionalize(
@@ -187,24 +187,44 @@ contract WittyPixelsToken
             bytes   memory _tokenVaultSettings
         )
         external
-        tokenExists(_tokenId)
+        tokenInStatus(_tokenId, WittyPixels.ERC721TokenStatus.Minting)
         returns (ITokenVault)
     {
-        // check required conditions
+        WittyPixels.ERC721Token storage __token = __storage.items[_tokenId];
+        WittyPixels.ERC721TokenWitnetRequests storage __requests = __storage.witnetRequests[_tokenId];
+        
+        // Check there's a token vault prototype set:
         require(
             address(__storage.tokenVaultPrototype) != address(0),
             "WittyPixelsToken: no token vault prototype"
         );
-        require(
-            ownerOf(_tokenId) == msg.sender,
-            "WittyPixelsToken: not the token owner"
-        );
-        require(
-            __storage.tokenVaultIndex[_tokenId] == 0,
-            "WittyPixelsToken: already fractionalized"
-        );
+
+        bool _resultOk; bytes memory _resultBytes;        
+        // Check the image URI actually exists, and store the image digest:
+        {
+            (_resultOk, _resultBytes) = __requests.imageDigest.read();
+            require(_resultOk, "WittyPixelsToken: image digest failed");
+            __token.theRoots.image = _resultBytes.toBytes32();
+        }
+
+        // Check the token roots reported by Witnet match the rest of token's
+        // metadata, including the image digest:
+        {
+            (_resultOk, _resultBytes) = __requests.tokenRoots.read();
+            require(_resultOk, "WittyPixelsToken: token roots failed");
+            WittyPixels.ERC721TokenRoots memory _roots = abi.decode(_resultBytes, (WittyPixels.ERC721TokenRoots));
+            require(
+                _roots.image == __token.theRoots.image
+                    && _roots.stats == keccak256(abi.encode(
+                        __token.theStats,
+                        _roots.scores
+                )), "WittyPixelsToken: tooken roots mismatch"
+            );
+            __token.theRoots.scores = _roots.scores;
+            __token.theRoots.stats = _roots.stats;
+        }
         
-        // clone token vault prototype and initialize cloned instance
+        // Clone the token vault prototype and initialize the cloned instance:
         IWittyPixelsTokenVault _tokenVault = IWittyPixelsTokenVault(address(
             __storage.tokenVaultPrototype.cloneAndInitialize(abi.encode(
                 WittyPixels.TokenVaultInitParams({
@@ -218,14 +238,17 @@ contract WittyPixelsToken
             ))
         ));
 
-        // store token vault contract
+        // Store token vault contract:
         uint _tokenVaultIndex = ++ __storage.totalTokenVaults;
         __storage.vaults[_tokenVaultIndex] = _tokenVault;
 
-        // update reference to token vault contract in token's metadata
+        // Update reference to token vault contract in token's metadata
         __storage.tokenVaultIndex[_tokenId] = _tokenVaultIndex;
 
-        // emits event
+        // Mint the actual ERC-721 token and set the just created vault contract as first owner ever:
+        _safeMint(address(_tokenVault), _tokenId);
+
+        // Emits event
         emit Fractionalized(
             msg.sender,
             address(this),
@@ -303,29 +326,41 @@ contract WittyPixelsToken
     }
 
     /// @notice Gets token's current status.
-    function getTokenStatus(uint256 tokenId)
+    function getTokenStatus(uint256 _tokenId)
         public view
         override
         returns (WittyPixels.ERC721TokenStatus)
     {
-        if (tokenId > __storage.totalSupply && tokenId > 0) {
-            WittyPixels.ERC721Token storage __metadata = __storage.items[tokenId];
-            if (__metadata.block > 0) {
-                uint _vaultIndex = __storage.tokenVaultIndex[tokenId];
-                if (_vaultIndex > 0) {
-                    if (ownerOf(tokenId) != address(__storage.vaults[_vaultIndex])) {
-                        return WittyPixels.ERC721TokenStatus.SoldOut;
-                    } else {
-                        return WittyPixels.ERC721TokenStatus.Fractionalized;
-                    }
+        if (_tokenId < __storage.totalSupply) {
+            uint _vaultIndex = __storage.tokenVaultIndex[_tokenId];
+            if (_vaultIndex > 0) {
+                if (ownerOf(_tokenId) != address(__storage.vaults[_vaultIndex])) {
+                    return WittyPixels.ERC721TokenStatus.SoldOut;
                 } else {
-                    return WittyPixels.ERC721TokenStatus.Minted;
+                    return WittyPixels.ERC721TokenStatus.Fractionalized;
                 }
-            } else {
+            } else if (address(__storage.witnetRequests[_tokenId].tokenRoots) != address(0)) {
                 return WittyPixels.ERC721TokenStatus.Minting;
+            } else {
+                return WittyPixels.ERC721TokenStatus.Launching;
             }
         } else {
             return WittyPixels.ERC721TokenStatus.Void;
+        }
+    }
+
+    function getTokenStatusString(uint256 _tokenId) override external view returns (string memory) {
+        WittyPixels.ERC721TokenStatus _status = getTokenStatus(_tokenId);
+        if (_status == WittyPixels.ERC721TokenStatus.SoldOut) {
+            return "SoldOut";
+        } else if (_status == WittyPixels.ERC721TokenStatus.Fractionalized) {
+            return "Fractionalized";
+        } else if (_status == WittyPixels.ERC721TokenStatus.Minting) {
+            return "Minting";
+        } else if (_status == WittyPixels.ERC721TokenStatus.Launching) {
+            return "Launching";
+        } else {
+            return "Void";
         }
     }
 
@@ -393,13 +428,13 @@ contract WittyPixelsToken
         tokenExists(_tokenId)
         returns (bool)
     {
-        WittyPixels.ERC721Token storage __metadata = __storage.items[_tokenId];
+        WittyPixels.ERC721Token storage __token = __storage.items[_tokenId];
         return (
-            _playerIndex < __metadata.theStats.totalPlayers
+            _playerIndex < __token.theStats.totalPlayers
                 && _proof.merkle(keccak256(abi.encode(
                     _playerIndex,
                     _playerScore
-                ))) == __metadata.theRoots.scores
+                ))) == __token.theRoots.scores
         );
     }
 
@@ -414,13 +449,13 @@ contract WittyPixelsToken
         tokenExists(_tokenId)
         returns (bool)
     {
-        WittyPixels.ERC721Token storage __metadata = __storage.items[_tokenId];
+        WittyPixels.ERC721Token storage __token = __storage.items[_tokenId];
         return (
-            _playerIndex < __metadata.theStats.totalPlayers
+            _playerIndex < __token.theStats.totalPlayers
                 && _proof.merkle(keccak256(abi.encode(
                     _playerIndex,
                     _playerName
-                ))) == __metadata.theRoots.scores
+                ))) == __token.theRoots.scores
         );
     }
 
@@ -428,16 +463,12 @@ contract WittyPixelsToken
     // ================================================================================================================
     // --- Implementation of 'IWittyPixelsTokenAdmin' -----------------------------------------------------------------
 
-    function premint(
-            uint256 _tokenId,
-            bytes32 _slaHash,
-            string calldata _imageURI
-        )
-        external payable
+    function launchNext(WittyPixels.ERC721TokenEvent calldata _theEvent)
         override
+        external
         onlyOwner
-        nonReentrant
-        initialized
+        tokenInStatus(__storage.totalSupply + 1, WittyPixels.ERC721TokenStatus.Void)
+        returns (uint256 _tokenId)
     {
         WittyPixels.ERC721TokenStatus _status = getTokenStatus(_tokenId);
         require(
@@ -445,19 +476,60 @@ contract WittyPixelsToken
                 || _status == WittyPixels.ERC721TokenStatus.Minting,
             "WittyPixelsToken: bad mood"
         );
+        // Check the event data:
+        require(
+            bytes(_theEvent.name).length > 0
+                && bytes(_theEvent.venue).length > 0,
+            "WittyPixelsToken: event empty strings"
+        );
+        require(
+            _theEvent.startTs <= _theEvent.endTs,
+            "WittyPixelsToken: event bad timestamps"
+        );
+        // Change token status:
+        _tokenId = ++ __storage.totalSupply;
+        __storage.items[_tokenId].theEvent = _theEvent;
+    }
+    
+    function premint(
+            uint256 _tokenId,
+            string calldata _imageURI,
+            WittyPixels.ERC721TokenStats memory _theStats,
+            bytes32 _witnetSlaHash
+        )
+        external payable
+        override
+        onlyOwner /* as long as imageURI ends up to be unrelated to baseURI */  
+        nonReentrant
+        initialized
+    {
+        WittyPixels.ERC721TokenStatus _status = getTokenStatus(_tokenId);
+        require(
+            _status == WittyPixels.ERC721TokenStatus.Launching
+                || _status == WittyPixels.ERC721TokenStatus.Minting,
+            "WittyPixelsToken: bad mood"
+        );
         require(
             bytes(_imageURI).length > 0,
             "WittyPixelsToken: no image URI"
-        );        
-        if (_status == WittyPixels.ERC721TokenStatus.Void) {
-            // increase total supply only upon first premint of this token id:
-            __storage.totalSupply ++;
+        );
+        
+        WittyPixels.ERC721Token storage __token = __storage.items[_tokenId];
+        require(
+            block.timestamp >= __token.theEvent.endTs,
+            "WittyPixelsToken: the event is not over yet"
+        );
+        
+        // Set the token's image uri and game stats (to be concurred with result to WitnetRequestTokenRoots):
+        {
+            __token.imageURI = _imageURI;
+            __token.theStats = _theStats;
         }
-        WittyPixels.ERC721Token storage __metadata = __storage.items[_tokenId];        
+
+        uint _usedFunds;
         WittyPixels.ERC721TokenWitnetRequests storage __requests = __storage.witnetRequests[_tokenId];
         
         // Ask Witnet to confirm the token's image URI actually exists:
-        uint _usedFunds;
         {
             string[][] memory _args = new string[][](1);
             _args[0] = new string[](1);
@@ -466,10 +538,9 @@ contract WittyPixelsToken
             __requests.imageDigest.initialize(abi.encode(
                 WitnetRequestTemplate.InitData({
                     args: _args,
-                    slaHash: _slaHash
+                    slaHash: _witnetSlaHash
                 })
             ));
-            __metadata.imageURI = _imageURI;
             _usedFunds += __requests.imageDigest.post{value: msg.value}();
         }
 
@@ -487,7 +558,7 @@ contract WittyPixelsToken
             __requests.tokenRoots = WitnetRequestTemplate(payable(address(witnetRequestTokenRoots.clone())));
             __requests.tokenRoots.initialize(abi.encode(WitnetRequestTemplate.InitData({
                 args: _args,
-                slaHash: _slaHash
+                slaHash: _witnetSlaHash
             })));
             _usedFunds += __requests.imageDigest.post{value: msg.value - _usedFunds}();
         }
@@ -496,76 +567,14 @@ contract WittyPixelsToken
         if (_usedFunds < msg.value) {
             payable(msg.sender).transfer(msg.value - _usedFunds);
         }
-
-        emit Minting(_tokenId, baseURI(), _imageURI, _slaHash);
-    }    
-
-    function mint(
-            uint256 _tokenId,
-            WittyPixels.ERC721TokenEvent memory _theEvent,
-            WittyPixels.ERC721TokenCanvas memory _theCanvas,
-            WittyPixels.ERC721TokenStats memory _theStats
-        )
-        external
-        onlyOwner
-        nonReentrant
-        tokenInStatus(_tokenId, WittyPixels.ERC721TokenStatus.Minting)
-    {
-        WittyPixels.ERC721Token storage __metadata = __storage.items[_tokenId];
-        WittyPixels.ERC721TokenWitnetRequests storage __requests = __storage.witnetRequests[_tokenId];
         
-        bool _resultOk; bytes memory _resultBytes;        
-        // Check the image URI actually exists, and store image digest hash, 
-        // as provided by the Witnet oracle:
-        {
-            (_resultOk, _resultBytes) = __requests.imageDigest.read();
-            require(_resultOk, "WittyPixelsToken: image digest failed");
-            __metadata.block = block.number;
-            __metadata.imageDigest = _resultBytes.toBytes32();
-        }
-
-        // Check the token data root reported by Witnet matches the rest of token's
-        // metadata, including the image digest:
-        {
-            (_resultOk, _resultBytes) = __requests.tokenRoots.read();
-            require(_resultOk, "WittyPixelsToken: token roots failed");
-            WittyPixels.ERC721TokenRoots memory _roots = abi.decode(_resultBytes, (WittyPixels.ERC721TokenRoots));
-            require(
-                keccak256(abi.encode(
-                    __metadata.imageDigest,
-                    _theEvent,
-                    _theCanvas,
-                    _theStats,
-                    _roots.names,
-                    _roots.scores
-                )) == _roots.data,
-                "WittyPixelsToken: token roots mistmatch"
-            );
-            __metadata.theRoots = _roots;
-        }
-        
-        // Check the event data:
-        {
-            require(
-                bytes(_theEvent.name).length > 0
-                    && bytes(_theEvent.venue).length > 0,
-                "WittyPixelsToken: event empty strings"
-            );
-            require(
-                _theEvent.startTs <= _theEvent.endTs,
-                "WittyPixelsToken: event bad timestamps"
-            );
-            __metadata.theEvent = _theEvent;
-        }
-        
-        // Set the token's canvas and game stats:
-        {
-            __metadata.theCanvas = _theCanvas;
-            __metadata.theStats = _theStats;
-        }
-
-        // Mint the actual ERC-721 token:
-        _safeMint(msg.sender, _tokenId);
+        // Emit event:
+        emit Minting(
+            _tokenId,
+            baseURI(),
+            _imageURI,
+            _witnetSlaHash
+        );
     }
 
     /// @notice Sets collection's base URI.

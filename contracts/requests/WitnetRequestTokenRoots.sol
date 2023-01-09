@@ -41,9 +41,9 @@ contract WitnetRequestTokenRoots
         WitnetCBOR.CBOR[] memory _items = _value.readArray();
         if (_items.length >= 3) {
             _result = abi.encode(WittyPixels.ERC721TokenRoots({
-                data: _items[0].readBytes().toBytes32(),
-                names: _items[1].readBytes().toBytes32(),
-                scores: _items[2].readBytes().toBytes32()
+                image: _items[0].readBytes().toBytes32(),
+                scores: _items[1].readBytes().toBytes32(),
+                stats: _items[2].readBytes().toBytes32()
             }));
         }
     }

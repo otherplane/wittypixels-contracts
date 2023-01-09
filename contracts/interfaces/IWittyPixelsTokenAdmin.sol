@@ -10,23 +10,20 @@ interface IWittyPixelsTokenAdmin {
     error PremintFailedResponse  (uint tokenId, string uri, string reason);
     error PremintValidationFailed(uint tokenId, string uri, string reason);
     
+    event Launched(uint256 tokenId, WittyPixels.ERC721TokenEvent theEvent);
     event Minting(uint256 tokenId, string baseURI, string imageURI, bytes32 slaHash);
 
     event NewTokenSponsor(uint256 tokenId, uint256 index, address indexed addr);
 
+    function launchNext(WittyPixels.ERC721TokenEvent calldata theEvent) external returns (uint256 tokenId);
+    // function premint(uint256 tokenId, string calldata imageURI, bytes32 witnetSlaHash) external payable;
+    /// @notice Mint new WittyPixels token: one new token id per ERC721TokenEvent where WittyPixelsTM is played.
     function premint(
             uint256 tokenId,
-            bytes32 slaHash,
-            string calldata imageURI
+            string calldata imageURI,
+            WittyPixels.ERC721TokenStats memory theStats,
+            bytes32 witnetSlaHash
         ) external payable;
-
-    /// @notice Mint new WittyPixels token: one new token id per ERC721TokenEvent where WittyPixelsTM is played.
-    function mint(
-            uint256 tokenId,
-            WittyPixels.ERC721TokenEvent memory theEvent,
-            WittyPixels.ERC721TokenCanvas memory theCanvas,
-            WittyPixels.ERC721TokenStats memory theStats
-        ) external;
 
     /// @notice Sets collection's base URI.
     function setBaseURI(string calldata baseURI) external;

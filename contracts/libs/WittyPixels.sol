@@ -77,18 +77,15 @@ library WittyPixels {
 
     enum ERC721TokenStatus {
         Void,
+        Launching,
         Minting,
-        Minted,
         Fractionalized,
         SoldOut
     }
 
     struct ERC721Token {
-        uint256 block;
         string  imageURI;
-        bytes32 imageDigest;
         ERC721TokenEvent theEvent;
-        ERC721TokenCanvas theCanvas;
         ERC721TokenStats theStats;
         ERC721TokenRoots theRoots;
     }
@@ -100,16 +97,10 @@ library WittyPixels {
         uint256 endTs;
     }
 
-    struct ERC721TokenCanvas {
-        uint256 colors;
-        uint256 height;
-        uint256 width;
-    }
-
     struct ERC721TokenRoots {
-        bytes32 data;
-        bytes32 names;
+        bytes32 image;
         bytes32 scores;
+        bytes32 stats;
     }
 
     struct ERC721TokenStats {
