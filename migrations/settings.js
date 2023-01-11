@@ -4,27 +4,26 @@ module.exports = {
     collection: {
       baseURI: "https://api.wittypixels.com/",
       name: "WittyPixels.art",
-      symbol: "ART",
+      symbol: "WPX",
       upgradable: true,
     },
     vaults: [
-      {},
+      {
+        type: "",
+        value: ""
+      },
     ],
   },  
   compilers: {
     default: {
       solc: {
         version: "0.8.17",
-        // viaIR: true,
         settings: {
           optimizer: {            
             enabled: true,
             runs: 200, 
-            details: {
-              yul: true
-            }
-          },
-          
+            
+          },          
         },
         outputSelection: {
           "*": {

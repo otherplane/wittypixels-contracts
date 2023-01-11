@@ -56,13 +56,13 @@ module.exports = async function (deployer, network, accounts) {
 
     var token = await WittyPixelsToken.at(addresses[ecosystem][network].WittyPixelsTokenProxy)
     var prototype = await token.tokenVaultPrototype()
-    if (protoype.toLowerCase() !== vault.address.toLowerCase()) {
+    if (prototype.toLowerCase() !== vault.address.toLowerCase()) {
       const header = `Setting WittyPixelsTokenProxy's prototype to v${await vault.version()}...`
       console.info()
       console.info("  ", header)
       console.info("  ", "-".repeat(header.length))
       console.info()
-      console.info("   > old vault prototype:", prototype.address)
+      console.info("   > old vault prototype:", prototype)
       console.info("   > new vault prototype:", vault.address)
       const tx = await token.setTokenVaultPrototype(vault.address)
       console.info("   => transaction hash :", tx.receipt.transactionHash)

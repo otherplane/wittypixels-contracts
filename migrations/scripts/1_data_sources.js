@@ -32,8 +32,6 @@ module.exports = async function (deployer, network) {
 
     const witnetRegistry = await WitnetBytecodes.deployed()
     const witnetHashes = require("../witnet/hashes")
-
-    console.log(witnetHashes)
     
     const witnetSources = require("../witnet/sources.js")
     for (const key in witnetSources) {

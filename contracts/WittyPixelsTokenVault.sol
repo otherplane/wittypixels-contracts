@@ -59,12 +59,7 @@ contract WittyPixelsTokenVault
         )
         IWittyPixelsTokenVault(_randomizer)
         WittyPixelsClonableBase(_version)
-    {
-        require(
-            _randomizer.supportsInterface(type(IWitnetRandomness).interfaceId),
-            "WittyPixelsVault: uncompliant randomizer"
-        );
-    }
+    {}
 
     receive() external payable {}
 
@@ -77,7 +72,8 @@ contract WittyPixelsTokenVault
       virtual override
       returns (bool)
     {
-        return _interfaceId == type(IWittyPixelsTokenVault).interfaceId
+        return _interfaceId == type(IERC165).interfaceId
+            || _interfaceId == type(IWittyPixelsTokenVault).interfaceId
             || _interfaceId == type(ITokenVault).interfaceId
             || _interfaceId == type(IERC1633).interfaceId
             || _interfaceId == type(IERC20Upgradeable).interfaceId
