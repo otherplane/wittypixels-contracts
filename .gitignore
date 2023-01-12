@@ -10,3 +10,6 @@ flattened/
 
 # Environmental configuration files
 .env
+
+# Tmp files
+*.tmp

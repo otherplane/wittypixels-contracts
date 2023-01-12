@@ -1,6 +1,3 @@
-const fs = require("fs")
-const { merge } = require("lodash")
-
 const addresses = require("../addresses")
 const package = require ("../../package")
 const utils = require("../../scripts/utils")
@@ -34,6 +31,7 @@ module.exports = async function (deployer, network, [, from]) {
       randomizer = await WitnetRandomnessMock.new(
         2,        // _mockRandomizeLatencyBlocks
         10 ** 15, // _mockRandomizeFee
+        { from }
       )
     }
 
@@ -55,7 +53,7 @@ module.exports = async function (deployer, network, [, from]) {
     }
 
     var token = await WittyPixelsToken.at(addresses[ecosystem][network].WittyPixelsTokenProxy)
-    var prototype = await token.tokenVaultPrototype()
+    var prototype = await token.tokenVaultPrototype.call({ from })
     if (prototype.toLowerCase() !== vault.address.toLowerCase()) {
       const header = `Setting WittyPixelsTokenProxy's prototype...`
       console.info()
@@ -63,7 +61,7 @@ module.exports = async function (deployer, network, [, from]) {
       console.info("  ", "-".repeat(header.length))
       console.info()
       console.info("   > old vault prototype:", prototype)
-      console.info("   > new vault prototype:", vault.address, `(v${await vault.version()})`)
+      console.info("   > new vault prototype:", vault.address, `(v${await vault.version.call({ from })})`)
       const tx = await token.setTokenVaultPrototype(vault.address, { from })
       console.info("   => transaction hash :", tx.receipt.transactionHash)
       console.info("   => transaction gas  :", tx.receipt.gasUsed)

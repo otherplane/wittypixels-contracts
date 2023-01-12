@@ -43,8 +43,9 @@ module.exports = {
       },
       polygon: {
         "polygon.goerli": {
-          gasPrice: 50 * 10 ** 9,
+          // gasPrice: 50 * 10 ** 9,
           confirmations: 2,
+          // gas: 1000000,
         },
       },
     }

@@ -91,7 +91,7 @@ module.exports = async function (deployer, network, [, from]) {
       token = await WittyPixelsToken.at(addresses[ecosystem][network].WittyPixelsToken)
     }
 
-    var implementation = await proxy.implementation()
+    var implementation = await proxy.implementation.call({ from })
     if (implementation.toLowerCase() !== token.address.toLowerCase()) {
       const header = `Upgrading WittyPixelsTokenProxy at ${proxy.address}...`
       console.info()
@@ -99,7 +99,7 @@ module.exports = async function (deployer, network, [, from]) {
       console.info("  ", "-".repeat(header.length))
       console.info()
       console.info("   > old implementation:", implementation)
-      console.info("   > new implementation:", token.address, `(v${await token.version()})`)
+      console.info("   > new implementation:", token.address, `(v${await token.version.call({ from })})`)
       if (implementation === "0x0000000000000000000000000000000000000000" ) {
         console.info("   > new token base uri:", settings.core.collection.baseURI)
       }      
