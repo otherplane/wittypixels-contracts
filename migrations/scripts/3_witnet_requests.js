@@ -9,7 +9,7 @@ const WitnetRequestTokenRoots = artifacts.require("WitnetRequestTokenRoots")
 const WitnetBytecodes = artifacts.require("WitnetBytecodes")
 const WitnetEncodingLib = artifacts.require("WitnetEncodingLib")
 
-module.exports = async function (deployer, network) {
+module.exports = async function (deployer, network, [, from]) {
   if (network !== "test") {
     const isDryRun = network.split("-")[1] === "fork" || network.split("-")[0] === "develop"
     const ecosystem = utils.getRealmNetworkFromArgs()[0]
@@ -40,13 +40,13 @@ module.exports = async function (deployer, network) {
         ],
         witnetHashes.reducers["mode-no-filters"],
         witnetHashes.reducers["mode-no-filters"],
-        { gas: 6721975 }
+        { from, gas: 6721975 }
       )
       var contract = await WitnetRequestImageDigest.deployed()
       addresses[ecosystem][network].WitnetRequestImageDigest = contract.address
-      // if (!isDryRun) {
-        utils.saveAddresses("./migrations/", addresses)
-      // }
+      if (!isDryRun) {
+        utils.saveAddresses(addresses)
+      }
     } else {
       WitnetRequestImageDigest.address = addresses[ecosystem][network].WitnetRequestImageDigest
     }
@@ -61,13 +61,13 @@ module.exports = async function (deployer, network) {
         ],
         witnetHashes.reducers["mode-no-filters"],
         witnetHashes.reducers["mode-no-filters"],
-        { gas: 6721975 }
+        { from, gas: 6721975 }
       )
       var contract = await WitnetRequestTokenRoots.deployed()
       addresses[ecosystem][network].WitnetRequestTokenRoots = contract.address
-      // if (!isDryRun) {
-        utils.saveAddresses("./migrations/", addresses)
-      // }
+      if (!isDryRun) {
+        utils.saveAddresses(addresses)
+      }
     } else {
       WitnetRequestTokenRoots.address = addresses[ecosystem][network].WitnetRequestTokenRoots
     }

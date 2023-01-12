@@ -1,6 +1,9 @@
 require("dotenv").config()
 const fs = require("fs")
 const readline = require("readline")
+const traceEvents = require("./traceEvents")
+const traceHeader = require("./traceHeader")
+const traceTx = require("./traceTx")
 const web3 = require("web3")
 
 module.exports = {
@@ -9,6 +12,9 @@ module.exports = {
   getRealmNetworkFromString,
   isNullAddress,
   prompt,
+  traceEvents,
+  traceHeader,
+  traceTx,
   saveAddresses
 }
 
@@ -95,9 +101,9 @@ async function prompt (text) {
   return answer
 }
 
-function saveAddresses(path, addrs) {
+function saveAddresses(addrs, path) {
   fs.writeFileSync(
-    `${path}/addresses.json`,
+    `${path || './migrations/'}/addresses.json`,
     JSON.stringify(addrs, null, 4),
     { flag: 'w+' }
   )
