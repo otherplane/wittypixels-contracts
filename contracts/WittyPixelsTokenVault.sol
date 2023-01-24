@@ -245,7 +245,11 @@ contract WittyPixelsTokenVault
             address(this).balance >= _withdrawn,
             "WittyPixelsTokenVault: insufficient funds"
         );
-        __storage.withdrawals[msg.sender] = _withdrawn;
+        
+        // burn erc20 tokens about to be cashed out:
+        _burn(msg.sender, _erc20balance);
+        
+        // cash out: 
         payable(msg.sender).transfer(_withdrawn);
         emit Withdrawal(msg.sender, _withdrawn);
 
