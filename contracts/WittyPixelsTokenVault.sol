@@ -334,7 +334,7 @@ contract WittyPixelsTokenVault
         return __storage.totalScore;
     }
 
-
+    
     // ================================================================================================================
     // --- Implements 'IWittyPixelsTokenVaultAuctionDutch' ------------------------------------------------------------
 
@@ -346,10 +346,10 @@ contract WittyPixelsTokenVault
         notSoldOut
     {
         // verify provided value is greater or equal to current price:
-        uint256 _currentPrice = price();
+        uint256 _finalPrice = price();
         require(
-            msg.value >= _currentPrice,
-            "WittyPixelsTokenVault: low value"
+            msg.value >= _finalPrice,
+            "WittyPixelsTokenVault: insufficient value"
         );
 
         // safely transfer parent token id ownership to the bidder:
@@ -358,10 +358,13 @@ contract WittyPixelsTokenVault
             msg.sender,
             __storage.parentTokenId
         );
+
+        // store final price:
+        __storage.finalPrice = _finalPrice;
         
         // transfer back unused funds if `msg.value` was higher than current price:
-        if (msg.value > _currentPrice) {
-            payable(msg.sender).transfer(msg.value - _currentPrice);
+        if (msg.value > _finalPrice) {
+            payable(msg.sender).transfer(msg.value - _finalPrice);
         }
     }
 
@@ -403,14 +406,16 @@ contract WittyPixelsTokenVault
         }
     }
 
-    function nextRoundBlock()
+    function nextPriceBlock()
         override
-        external view
+        public view
         initialized
         returns (uint256)
     {
         IWittyPixelsTokenVaultAuctionDutch.Settings memory _settings = __storage.settings;
-        if (block.number >= _settings.startingBlock) {
+        if (soldOut()) {
+            return 0;
+        } else if (block.number >= _settings.startingBlock) {
             uint _diffBlocks = block.number - _settings.startingBlock;
             uint _round = _diffBlocks / _settings.roundBlocks;
             return (
