@@ -343,14 +343,116 @@ contract WittyPixelsTokenVault
 
 
     // ================================================================================================================
-    // --- Implements 'IWittyPixelsTokenVaultAuctionDutch' ------------------------------------------------------------
-
-    function totalScore()
-        override
+    // --- Implements 'IWittyPixelsTokenVault' ------------------------------------------------------------------------
+    
+    /// @notice Returns number of legitimate players that have redeemed authorhsip of at least one pixel from the NFT token.
+    function getAuthorsCount()
+        virtual override
         external view
         returns (uint256)
     {
-        return __storage.totalScore;
+        return __storage.authors.length;
+    }
+
+    /// @notice Returns range of authors, as specified by `offset` and `count` params.
+    function getAuthorsRange(uint offset, uint count)
+        virtual override
+        external view
+        returns (address[] memory _authors)
+    {
+        uint _total = __storage.authors.length;
+        if (offset < _total) {
+            if (offset + count > _total) {
+                count = _total - offset;
+            }
+            _authors = new address[](count);
+            for (uint _i = 0; _i < count; _i ++) {
+                _authors[_i] = __storage.authors[_i + offset];
+            }
+        }
+    }
+
+    /// @notice Returns status data about the token vault contract, relevant from an UI/UX perspective
+    /// @return _status Enum value representing current contract status: Awaiting, Randomizing, Auctioning, Sold
+    /// @return _stats Set of meters reflecting number of pixels, players, ERC20 transfers and withdrawls, up to date. 
+    /// @return _currentPrice Price in ETH/wei at which the whole NFT ownership can be bought, or at which it was actually sold.
+    /// @return _nextPriceBlock A block number in the future at which the currentPrice may change. Zero, if it's not expected ever to change.    
+    function getInfo()
+        override
+        external view
+
+        returns (
+            Status _status,
+            Stats memory _stats,
+            uint256 _currentPrice,
+            uint256 _nextPriceBlock
+        )
+    {
+        if (soldOut()) {
+            _status = IWittyPixelsTokenVault.Status.Sold;
+        } else if (isRandomizing()) {
+            _status = IWittyPixelsTokenVault.Status.Randomizing;
+        } else if (auctioning()) {
+            _status = IWittyPixelsTokenVault.Status.Auctioning;
+        } else {
+            _status = IWittyPixelsTokenVault.Status.Awaiting;
+        }
+        _stats = __storage.stats;
+        _currentPrice = price();
+        _nextPriceBlock = nextPriceBlock();
+    }
+
+    /// @notice Gets info regarding a formerly verified player, given its index. 
+    /// @return Address from which the token's ownership was redeemed. Zero if this player has redeemed ownership yet.
+    /// @return Number of pixels formerly redemeed by given player. 
+    function getPlayerInfo(uint256 index)
+        virtual override
+        external view
+        initialized
+        returns (address, uint256)
+    {
+        WittyPixels.TokenVaultPlayerInfo storage __info = __storage.players[index];
+        return (
+            __info.addr,
+            __info.pixels
+        );
+    }
+
+    /// @notice Gets accounting info regarding given address.
+    /// @return NFT ownership percentage based on current ERC20 balance, multiplied by a 100.
+    /// @return ETH/wei amount that can be potentially withdrawn from this address.
+    function getWalletInfo(address _addr)
+        virtual override
+        external view
+        initialized
+        returns (uint16, uint256)
+    {
+        return (
+            uint16(10 ** 4 * balanceOf(_addr) / (__storage.stats.totalPixels / 10 ** 18)),
+            withdrawableFrom(_addr)
+        );
+    }
+
+    /// @notice Returns sum of legacy pixels ever redeemed from the given address.
+    /// The moral right over a player's finalized pixels is inalienable, so the value returned by this method
+    /// will be preserved even though the player transfers ERC20/WPX tokens to other accounts, or if she decides to cash out 
+    /// her share if the parent NFT token ever gets sold out. 
+    function pixelsOf(address _wallet)
+        virtual override
+        external view
+        initialized
+        returns (uint256)
+    {
+        return __storage.legacyPixels[_wallet];
+    }    
+
+    /// @notice Returns total number of finalized pixels within the WittyPixels canvas.
+    function totalPixels()
+        virtual override
+        external view
+        returns (uint256)
+    {
+        return __storage.stats.totalPixels;
     }
 
     
