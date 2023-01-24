@@ -108,10 +108,10 @@ library WittyPixels {
     }
 
     struct ERC721TokenStats {
+        uint256 totalDraws;
         uint256 totalPixels;
         uint256 totalPlayers;
-        uint256 totalPlays;
-        uint256 totalScore;
+        uint256 totalScans;
     }
 
     struct ERC721TokenSponsors {
