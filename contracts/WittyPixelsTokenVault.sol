@@ -578,7 +578,7 @@ contract WittyPixelsTokenVault
         external payable
         initialized
         nonReentrant
-        // TODO: onlyCurator?
+        onlyCurator
     {
         require(
             block.number >= __storage.settings.startingBlock,
@@ -593,7 +593,11 @@ contract WittyPixelsTokenVault
             "WittyPixelsTokenVault: already randomizing"
         );
         require(
-            __storage.members.length >= getJackpotsCount(),
+            getJackpotsCount() > 0,
+            "WittyPixelsTokenVault: no jackpots"
+        );
+        require(
+            __storage.authors.length >= getJackpotsCount(),
             "WittyPixelsTokenVault: not enough contestants"
         );
         __storage.witnetRandomnessBlock = block.number;
@@ -606,14 +610,13 @@ contract WittyPixelsTokenVault
     function settleWinners()
         override
         external
-        // TODO: onlyCurator?
     {
         require(
             isRandomizing(),
             "WittyPixelsTokenVault: not randomizing"
         );
         bytes32 _randomness = randomizer.getRandomnessAfter(__storage.witnetRandomnessBlock);
-        address[] storage __members = __storage.members;        
+        address[] storage __members = __storage.authors;        
         uint _jackpots = getJackpotsCount();        
         uint32 _contestants = uint32(__members.length);
         for (uint _jackpotIndex = 0; _jackpotIndex < _jackpots; _jackpotIndex ++) {
