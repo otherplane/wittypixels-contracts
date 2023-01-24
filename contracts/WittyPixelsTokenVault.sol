@@ -63,6 +63,34 @@ contract WittyPixelsTokenVault
 
     receive() external payable {}
 
+
+    // ================================================================================================================
+    // --- Overrides IERC20Upgradeable interface ----------------------------------------------------------------------
+
+    /// @notice Increment `__storage.stats.totalTransfers` every time an ERC20 transfer is confirmed.
+    /// @dev Hook that is called after any transfer of tokens. This includes minting and burning.
+    /// Calling conditions:
+    /// - when `from` and `to` are both non-zero, `amount` of ``from``'s tokens has been transferred to `to`.
+    /// - when `from` is zero, `amount` tokens have been minted for `to`.
+    /// - when `to` is zero, `amount` of ``from``'s tokens have been burned.
+    /// - `from` and `to` are never both zero.
+    function _afterTokenTransfer(
+            address _from,
+            address _to,
+            uint256
+        )
+        internal
+        virtual override
+    {
+        if (
+            _from != address(0)
+                && _to != address(0)
+        ) {
+            __storage.stats.totalTransfers ++;
+        }
+    }
+
+
     // ================================================================================================================
     // --- Overrides IERC165 interface --------------------------------------------------------------------------------
 
@@ -168,6 +196,10 @@ contract WittyPixelsTokenVault
             _deeds.playerPixels,
             _deeds.playerPixelsProof
         );
+        // update stats meters:
+        __storage.stats.redeemedPixels += _deeds.playerPixels;
+        __storage.stats.redeemedPlayers ++;
+
         // transfer sovereign tokens to player's verified address:
         _transfer(
             address(this),
@@ -216,6 +248,9 @@ contract WittyPixelsTokenVault
         __storage.withdrawals[msg.sender] = _withdrawn;
         payable(msg.sender).transfer(_withdrawn);
         emit Withdrawal(msg.sender, _withdrawn);
+
+        // update stats meters:
+        __storage.stats.totalWithdrawals ++;
     }
 
     /// @notice Tells withdrawable amount in weis from the given address.

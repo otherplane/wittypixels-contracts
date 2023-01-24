@@ -50,6 +50,12 @@ library WittyPixels {
         uint256 tokenId;
         uint256 totalPixels;
     }
+
+    enum TokenVaultStatus {
+        Awaiting,
+        Randomizing,
+        Auctioning,
+        Sold
     }
 
     struct TokenVaultStorage {
@@ -60,15 +66,11 @@ library WittyPixels {
         // --- IWittyPixelsTokenVault
         address curator;
         uint256 finalPrice;
-        uint256 totalScore;
-        uint256 totalSupply;
         bytes32 witnetRandomness;
         uint256 witnetRandomnessBlock;
-        address[] members;
-        mapping (uint256 => bool) mints;
-        mapping (address => uint256) withdrawals;
-        mapping (address => TokenVaultJackpotWinner) winners;        
+        
         IWittyPixelsTokenVaultAuctionDutch.Settings settings;
+        IWittyPixelsTokenVault.Stats stats;
     }
 
     struct TokenVaultJackpotWinner {
