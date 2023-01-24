@@ -182,10 +182,12 @@ contract WittyPixelsTokenVault
             _deeds.playerAddress != address(0),
             "WittyPixelsTokenVault: null address"
         );
+        require(
+            __storage.players[_deeds.playerIndex].addr == address(0),
             "WittyPixelsTokenVault: already minted"
         );
         require(
-            __storage.totalScore + _deeds.playerScore <= __storage.totalSupply,
+            __storage.stats.redeemedPixels + _deeds.playerPixels <= __storage.stats.totalPixels,
             "WittyPixelsTokenVault: overbooking :/"
         );
         
@@ -196,6 +198,19 @@ contract WittyPixelsTokenVault
             _deeds.playerPixels,
             _deeds.playerPixelsProof
         );
+        
+        // store player's info:
+        uint _currentPixels = __storage.legacyPixels[_deeds.playerAddress];
+        if (_currentPixels == 0) {
+            __storage.authors.push(_deeds.playerAddress);
+        } 
+        __storage.legacyPixels[_deeds.playerAddress] = _currentPixels + _deeds.playerPixels;
+        __storage.players[_deeds.playerIndex] = WittyPixels.TokenVaultPlayerInfo({
+            addr: _deeds.playerAddress,
+            pixels: _deeds.playerPixels
+        });
+        
+
         // update stats meters:
         __storage.stats.redeemedPixels += _deeds.playerPixels;
         __storage.stats.redeemedPlayers ++;
@@ -517,7 +532,7 @@ contract WittyPixelsTokenVault
         external view
         returns (uint256)
     {
-        return __storage.members.length;
+        return __storage.authors.length;
     }
 
     function getJackpotsContestantsAddresses(uint _offset, uint _size)
@@ -526,11 +541,11 @@ contract WittyPixelsTokenVault
         returns (address[] memory _addrs)
     {
         require(
-            _offset + _size <= __storage.members.length,
+            _offset + _size <= __storage.authors.length,
             "WittyPixelsTokenVault: out of range"
         );
         _addrs = new address[](_size);
-        address[] storage __members = __storage.members;
+        address[] storage __members = __storage.authors;
         for (uint _i = 0; _i < _size; _i ++) {
             _addrs[_i] = __members[_offset + _i];
         }

@@ -71,12 +71,22 @@ library WittyPixels {
         
         IWittyPixelsTokenVaultAuctionDutch.Settings settings;
         IWittyPixelsTokenVault.Stats stats;
+        
+        address[] authors;
+        mapping (address => uint256) legacyPixels;
+        mapping (uint256 => TokenVaultPlayerInfo) players;        
+        mapping (address => TokenVaultJackpotWinner) winners;
     }
 
     struct TokenVaultJackpotWinner {
         bool awarded;
         bool claimed;
         uint256 index;
+    }
+
+    struct TokenVaultPlayerInfo {
+        address addr;
+        uint256 pixels;
     }
 
     enum ERC721TokenStatus {
