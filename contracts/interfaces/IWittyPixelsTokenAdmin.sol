@@ -28,7 +28,7 @@ interface IWittyPixelsTokenAdmin {
     /// @notice Sets collection's base URI.
     function setBaseURI(string calldata baseURI) external;
 
-    /// @notice Update sponsors access-list by adding new members. 
+    /// @notice Update sponsors access-list by adding new players. 
     /// @dev If already included in the list, texts could still be updated.
     function setTokenSponsors(uint256 tokenId, address[] calldata addresses, string[] calldata texts) external;
 

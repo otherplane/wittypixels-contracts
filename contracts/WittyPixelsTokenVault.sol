@@ -124,53 +124,55 @@ contract WittyPixelsTokenVault
         nonReentrant
         notSoldOut
     {
+        // deserialize deeds data:
         WittyPixels.TokenVaultOwnershipDeeds memory _deeds = abi.decode(
             _deedsdata,
             (WittyPixels.TokenVaultOwnershipDeeds)
         );
-        // first: verify signature
+        
+        // verify curator's signature:
         bytes32 _deedshash = keccak256(abi.encode(
             _deeds.parentToken,
             _deeds.parentTokenId,
             _deeds.playerAddress,
             _deeds.playerIndex,
-            _deeds.playerScore,
-            _deeds.playerScoreProof
+            _deeds.playerPixels,
+            _deeds.playerPixelsProof
         ));
         require(
             WittyPixels.recoverAddr(_deedshash, _deeds.signature) == __storage.curator,
             "WittyPixelsTokenVault: bad signature"
         );
-        // second: verify intrinsicals
+        
+        // verify intrinsicals:
         require(
             _deeds.parentToken == __storage.parentToken
                 && _deeds.parentTokenId == __storage.parentTokenId
             , "WittyPixelsTokenVault: bad token"
         );
         require(
-            !__storage.mints[_deeds.playerIndex],
+            _deeds.playerAddress != address(0),
+            "WittyPixelsTokenVault: null address"
+        );
             "WittyPixelsTokenVault: already minted"
         );
         require(
             __storage.totalScore + _deeds.playerScore <= __storage.totalSupply,
             "WittyPixelsTokenVault: overbooking :/"
         );
-        // third: verify player score proof
+        
+        // verify player's score proof:
         IWittyPixelsToken(_deeds.parentToken).verifyTokenPlayerScore(
             _deeds.parentTokenId,
             _deeds.playerIndex,
-            _deeds.playerScore,
-            _deeds.playerScoreProof
+            _deeds.playerPixels,
+            _deeds.playerPixelsProof
         );
-        // fourth: update storage:
-        __storage.totalScore += _deeds.playerScore;
-        __storage.mints[_deeds.playerIndex] = true;
-        __storage.members.push(_deeds.playerAddress);
-        // fifth: no actual mint, but transfer from sovereign treasury
+        // transfer sovereign tokens to player's verified address:
         _transfer(
             address(this),
             _deeds.playerAddress,
-            _deeds.playerScore
+            _deeds.playerPixels * 10 ** 18
         );
     }
 
@@ -189,24 +191,27 @@ contract WittyPixelsTokenVault
         virtual override
         public
         initialized
+        nonReentrant
         returns (uint256 _withdrawn)
     {
+        // check the nft token has indeed been sold out:
         require(
             soldOut(),
             "WittyPixelsTokenVault: not sold out yet"
         );
+        
+        // check caller's erc20 balance is greater than zero:
+        uint _erc20balance = balanceOf(msg.sender);
         require(
-            balanceOf(msg.sender) > 0,
-            "WittyPixelsTokenVault: not a member"
+            _erc20balance > 0,
+            "WittyPixelsTokenVault: no balance"
         );
-        require(
-            __storage.withdrawals[msg.sender] == 0,
-            "WittyPixelsTokenVault: already withdrawn"
-        );
-        _withdrawn = (__storage.finalPrice * balanceOf(msg.sender)) / __storage.totalSupply;
+        
+        // check vault contract has enough funds for the cash out:
+        _withdrawn = (__storage.finalPrice * _erc20balance) / (__storage.stats.totalPixels * 10 ** 18);
         require(
             address(this).balance >= _withdrawn,
-            "WittyPixelsTokenVault: not enough balance"
+            "WittyPixelsTokenVault: insufficient funds"
         );
         __storage.withdrawals[msg.sender] = _withdrawn;
         payable(msg.sender).transfer(_withdrawn);
@@ -221,9 +226,7 @@ contract WittyPixelsTokenVault
         returns (uint256)
     {
         if (soldOut()) {
-            if (__storage.withdrawals[_from] == 0) {
-                return (__storage.finalPrice * balanceOf(_from)) / __storage.totalSupply;
-            }
+            return (__storage.finalPrice * balanceOf(_from)) / (__storage.stats.totalPixels * 10 ** 18);
         }
         return 0;
     }
@@ -604,17 +607,22 @@ contract WittyPixelsTokenVault
                 && msg.sender.supportsInterface(type(IWittyPixelsTokenJackpots).interfaceId),
             "WittyPixelsTokenVault: uncompliant vault factory"
         );
+        require(
+            _params.totalPixels > 0,
+            "WittyPixelsTokenVault: no pixels"
+        );
 
         // initialize openzeppelin's ERC20Upgradeable implementation
         __ERC20_init(_params.name, _params.symbol);
 
         // mint initial supply that will be owned by the contract itself
-        _mint(address(this), _params.supply);
+        _mint(address(this), _params.totalPixels * 10 ** 18);
             
         // initialize clone storage:
         __storage.curator = _params.curator;
         __storage.parentToken = msg.sender;
         __storage.parentTokenId = _params.tokenId;
+        __storage.stats.totalPixels = _params.totalPixels;
         _setSettings(_params.settings);
     }
 

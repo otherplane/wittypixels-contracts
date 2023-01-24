@@ -231,9 +231,9 @@ contract WittyPixelsToken
                     curator: msg.sender,
                     name: string(abi.encode(name(), " #", _tokenId.toString())),
                     symbol: symbol(),
-                    supply: 10 ** 18,
                     settings: _tokenVaultSettings,
-                    tokenId: _tokenId
+                    tokenId: _tokenId,
+                    totalPixels: __token.theStats.totalPixels
                 })
             ))
         ));
@@ -587,7 +587,7 @@ contract WittyPixelsToken
         __storage.baseURI = WittyPixels.checkBaseURI(_uri);
     }
 
-    /// @notice Update sponsors access-list by adding new members. 
+    /// @notice Update sponsors access-list by adding new players. 
     /// @dev If already included in the list, names could still be updated.
     function setTokenSponsors(
             uint256 _tokenId,

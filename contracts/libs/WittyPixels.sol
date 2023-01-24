@@ -37,8 +37,8 @@ library WittyPixels {
         uint256 parentTokenId;
         address playerAddress;
         uint256 playerIndex;
-        uint256 playerScore;
-        bytes32[] playerScoreProof;
+        uint256 playerPixels;
+        bytes32[] playerPixelsProof;
         bytes signature;
     }
 
@@ -46,9 +46,10 @@ library WittyPixels {
         address curator;
         string  name;
         bytes   settings;
-        uint256 supply;
         string  symbol;
-        uint256 tokenId;      
+        uint256 tokenId;
+        uint256 totalPixels;
+    }
     }
 
     struct TokenVaultStorage {
