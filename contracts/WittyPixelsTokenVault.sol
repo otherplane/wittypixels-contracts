@@ -376,7 +376,7 @@ contract WittyPixelsTokenVault
     /// @return _status Enum value representing current contract status: Awaiting, Randomizing, Auctioning, Sold
     /// @return _stats Set of meters reflecting number of pixels, players, ERC20 transfers and withdrawls, up to date. 
     /// @return _currentPrice Price in ETH/wei at which the whole NFT ownership can be bought, or at which it was actually sold.
-    /// @return _nextPriceBlock A block number in the future at which the currentPrice may change. Zero, if it's not expected ever to change.    
+    /// @return _nextPriceTs The approximate timestamp at which the currentPrice may change. Zero, if it's not expected to ever change again.
     function getInfo()
         override
         external view
@@ -385,7 +385,7 @@ contract WittyPixelsTokenVault
             Status _status,
             Stats memory _stats,
             uint256 _currentPrice,
-            uint256 _nextPriceBlock
+            uint256 _nextPriceTs
         )
     {
         if (soldOut()) {
@@ -399,7 +399,7 @@ contract WittyPixelsTokenVault
         }
         _stats = __storage.stats;
         _currentPrice = price();
-        _nextPriceBlock = nextPriceBlock();
+        _nextPriceTs = nextPriceTimestamp();
     }
 
     /// @notice Gets info regarding a formerly verified player, given its index. 
@@ -494,10 +494,10 @@ contract WittyPixelsTokenVault
         public view
         returns (bool)
     {
-        uint _startingBlock = __storage.settings.startingBlock;
+        uint _startingTs = __storage.settings.startingTs;
         return (
-            _startingBlock != 0
-                && block.number >= __storage.settings.startingBlock
+            _startingTs != 0
+                && block.timestamp >= _startingTs
                 && !soldOut()
         );
     }
@@ -509,11 +509,11 @@ contract WittyPixelsTokenVault
         returns (uint256)
     {
         IWittyPixelsTokenVaultAuctionDutch.Settings memory _settings = __storage.settings;
-        if (block.number >= _settings.startingBlock) {
+        if (block.timestamp >= _settings.startingTs) {
             if (__storage.finalPrice == 0) {
-                uint _diffBlocks = block.number - _settings.startingBlock;
+                uint _tsDiff = block.timestamp - _settings.startingTs;
                 uint _priceRange = _settings.startingPrice - _settings.reservePrice;
-                uint _round = _diffBlocks / _settings.roundBlocks;
+                uint _round = _tsDiff / _settings.deltaSeconds;
                 if (_round * _settings.deltaPrice <= _priceRange) {
                     return _settings.startingPrice - _round * _settings.deltaPrice;
                 } else {
@@ -527,24 +527,29 @@ contract WittyPixelsTokenVault
         }
     }
 
-    function nextPriceBlock()
+    function nextPriceTimestamp()
         override
         public view
         initialized
         returns (uint256)
     {
         IWittyPixelsTokenVaultAuctionDutch.Settings memory _settings = __storage.settings;
-        if (soldOut()) {
+        if (
+            soldOut()
+                || price() == _settings.reservePrice    
+        ) {
             return 0;
-        } else if (block.number >= _settings.startingBlock) {
-            uint _diffBlocks = block.number - _settings.startingBlock;
-            uint _round = _diffBlocks / _settings.roundBlocks;
+        }
+        else if (block.timestamp >= _settings.startingTs) {
+            uint _tsDiff = block.timestamp - _settings.startingTs;
+            uint _round = _tsDiff / _settings.deltaSeconds;
             return (
-                _settings.startingBlock
-                    + _settings.roundBlocks * (_round + 1)
+                _settings.startingTs
+                    + _settings.deltaSeconds * (_round + 1)
             );
-        } else {
-            return _settings.startingBlock;
+        }
+        else {
+            return _settings.startingTs;
         }
     }
 
@@ -683,7 +688,7 @@ contract WittyPixelsTokenVault
         onlyCurator
     {
         require(
-            block.number >= __storage.settings.startingBlock,
+            block.timestamp >= __storage.settings.startingTs,
             "WittyPixelsTokenVault: not yet possible"
         );
         require(
@@ -804,8 +809,8 @@ contract WittyPixelsTokenVault
         require(
             _settings.startingPrice >= _settings.reservePrice
                 && _settings.deltaPrice <= (_settings.startingPrice - _settings.reservePrice)
-                && _settings.roundBlocks > 0
-                && _settings.startingBlock > block.number
+                && _settings.deltaSeconds > 0
+                && _settings.startingTs > block.timestamp
                 && _settings.startingPrice > 0
             , "WittyPixelsTokenVault: bad settings"
         );

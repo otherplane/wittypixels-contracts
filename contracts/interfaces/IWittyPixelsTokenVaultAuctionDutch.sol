@@ -7,16 +7,16 @@ interface IWittyPixelsTokenVaultAuctionDutch {
     
     struct Settings {
         uint256 deltaPrice;
+        uint256 deltaSeconds;
         uint256 reservePrice;
-        uint256 roundBlocks;
-        uint256 startingBlock;
         uint256 startingPrice;
+        uint256 startingTs;
     }
     
     function afmijnen() external payable;
     function auctioning() external view returns (bool);
     function price() external view returns (uint256);
-    function nextPriceBlock() external view returns (uint256);
+    function nextPriceTimestamp() external view returns (uint256);
     function settings() external view returns (Settings memory);
     function setDutchAuction(bytes calldata) external;
 }

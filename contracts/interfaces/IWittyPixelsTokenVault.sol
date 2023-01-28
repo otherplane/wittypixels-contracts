@@ -40,12 +40,12 @@ abstract contract IWittyPixelsTokenVault
     /// @return status Enum value representing current contract status: Awaiting, Randomizing, Auctioning, Sold
     /// @return stats Set of meters reflecting number of pixels, players, ERC20 transfers and withdrawls, up to date. 
     /// @return currentPrice Price in ETH/wei at which the whole NFT ownership can be bought, or at which it was actually sold.
-    /// @return nextPriceBlock A block number in the future at which the currentPrice may change. Zero, if it's not expected ever to change.    
+    /// @return nextPriceTimestamp The approximate timestamp at which the currentPrice may change. Zero, if it's not expected to ever change again.
     function getInfo() virtual external view returns (
             Status  status,
             Stats memory stats,
             uint256 currentPrice,
-            uint256 nextPriceBlock
+            uint256 nextPriceTimestamp
         );
 
     /// @notice Gets info regarding a formerly verified player, given its index. 
