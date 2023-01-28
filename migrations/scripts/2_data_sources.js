@@ -41,8 +41,6 @@ module.exports = async function (deployer, network, [, from]) {
   if (!witnetHashes.sources) witnetHashes.sources = {}    
   const witnetSources = require("../witnet/sources.js")
   for (const key in witnetSources) {      
-    for (const key in witnetSources) {      
-  for (const key in witnetSources) {      
     if (
       !witnetHashes.sources[key]
         || witnetHashes.sources[key] === ""
@@ -90,74 +88,71 @@ module.exports = async function (deployer, network, [, from]) {
     }
   }
 
-    const witnetSLAs = require("../witnet/slas")
-    await Promise.all(Object.keys(witnetSLAs).map(async key => {
-      if (!witnetHashes.slas) witnetHashes.slas = {}
-      if (
-        !witnetHashes.slas[key]
-          || witnetHashes.slas[key] === ""
-          || witnetHashes.slas[key] === "0x"
-          || slaNotRegistered(witnetRegistry, witnetHashes.slas[key]) === true
-      ) {
-        const sla = witnetSLAs[key]
-        const header = `Verifying Witnet radon SLA '${key}'...`
-        console.info("  ", header)
-        console.info("  ", "-".repeat(header.length))
-        console.info()
-        console.info(`   > Number of witnesses:   ${sla.numWitnesses}`)
-        console.info(`   > Consensus quorum:      ${sla.minConsensusPercentage}%`)
-        console.info(`   > Commit/Reveal fee:     ${sla.commitRevealFee} nanoWits`)
-        console.info(`   > Witnessing reward:     ${sla.witnessReward} nanoWits`)
-        console.info(`   > Witnessing collateral: ${sla.collateral} nanoWits`)
-        const tx = await witnetRegistry.verifyRadonSLA([
-            sla.witnessReward,
-            sla.numWitnesses,
-            sla.commitRevealFee,
-            sla.minConsensusPercentage,
-            sla.collateral,
-          ], 
-          { from }
-        )
-        console.info(`   > transaction hash:    ${tx.receipt.transactionHash}`)
-        console.info(`   > gas used:            ${tx.receipt.gasUsed}`)
-        witnetHashes.slas[key] = tx.logs[0].args.hash
-        console.info(`   > radon SLA hash:      ${witnetHashes.slas[key]}`)
-        console.info()
-        saveHashes(witnetHashes)
-      }
-    }))
+  if (!witnetHashes.slas) witnetHashes.slas = {}
+  const witnetSLAs = require("../witnet/slas")
+  for (const key in witnetSLAs) {    
+    if (
+      !witnetHashes.slas[key]
+        || witnetHashes.slas[key] === ""
+        || witnetHashes.slas[key] === "0x"
+        || await slaNotRegistered(witnetRegistry, witnetHashes.slas[key]) === true
+    ) {
+      const sla = witnetSLAs[key]
+      const header = `Verifying Witnet radon SLA '${key}'...`
+      console.info()
+      console.info("  ", header)
+      console.info("  ", "-".repeat(header.length))
+      console.info(`   > Number of witnesses:   ${sla.numWitnesses}`)
+      console.info(`   > Consensus quorum:      ${sla.minConsensusPercentage}%`)
+      console.info(`   > Commit/Reveal fee:     ${sla.commitRevealFee} nanoWits`)
+      console.info(`   > Witnessing reward:     ${sla.witnessReward} nanoWits`)
+      console.info(`   > Witnessing collateral: ${sla.collateral} nanoWits`)
+      const tx = await witnetRegistry.verifyRadonSLA([
+          sla.witnessReward,
+          sla.numWitnesses,
+          sla.commitRevealFee,
+          sla.minConsensusPercentage,
+          sla.collateral,
+        ], 
+        { from }
+      )
+      console.info(`   > transaction hash:    ${tx.receipt.transactionHash}`)
+      console.info(`   > gas used:            ${tx.receipt.gasUsed}`)
+      witnetHashes.slas[key] = tx.logs[0].args.hash
+      console.info(`   < radon SLA hash:      ${witnetHashes.slas[key]}`)
+      saveHashes(witnetHashes)
+    }
+  }
 
-    const witnetReducers = require("../witnet/reducers.js")
-    await Promise.all(Object.keys(witnetReducers).map(async key => {
-      if (!witnetHashes.reducers) witnetHashes.reducers = {}
-      if (
-        !witnetHashes.reducers[key]
-          || witnetHashes.reducers[key] === ""
-          || witnetHashes.reducers[key] === "0x"
-          || reducerNotRegistered(witnetRegistry, witnetHashes.reducers[key]) === true
-      ) {
-        const reducer = witnetReducers[key]
-        const header = `Verifying Witnet radon reducer '${key}'...`
-        console.info("  ", header)
-        console.info("  ", "-".repeat(header.length))
-        console.info()
-        console.info(`   > Reducer opcode:      ${reducer.opcode}`)
-        console.info(`   > Reducer filters:     ${reducer.filters || '(no filters)'}`)
-        const tx = await witnetRegistry.verifyRadonReducer([
-            reducer.opcode,
-            reducer.filters,
-            reducer.script,
-          ],
-          { from }
-        )
-        console.info(`   > transaction hash:    ${tx.receipt.transactionHash}`)
-        console.info(`   > gas used:            ${tx.receipt.gasUsed}`)
-        witnetHashes.reducers[key] = tx.logs[0].args.hash
-        console.info(`   > radon reducer hash:  ${witnetHashes.reducers[key]}`)
-        console.info()
-        saveHashes(witnetHashes)
-      }
-    }))
+  if (!witnetHashes.reducers) witnetHashes.reducers = {}
+  const witnetReducers = require("../witnet/reducers.js")
+  for (const key in witnetReducers) {    
+    if (
+      !witnetHashes.reducers[key]
+        || witnetHashes.reducers[key] === ""
+        || witnetHashes.reducers[key] === "0x"
+        || await reducerNotRegistered(witnetRegistry, witnetHashes.reducers[key]) === true
+    ) {
+      const reducer = witnetReducers[key]
+      const header = `Verifying Witnet radon reducer '${key}'...`
+      console.info()
+      console.info("  ", header)
+      console.info("  ", "-".repeat(header.length))
+      console.info(`   > Reducer opcode:      ${reducer.opcode}`)
+      console.info(`   > Reducer filters:     ${reducer.filters || '(no filters)'}`)
+      const tx = await witnetRegistry.verifyRadonReducer([
+          reducer.opcode,
+          reducer.filters,
+          reducer.script,
+        ],
+        { from }
+      )
+      console.info(`   > transaction hash:    ${tx.receipt.transactionHash}`)
+      console.info(`   > gas used:            ${tx.receipt.gasUsed}`)
+      witnetHashes.reducers[key] = tx.logs[0].args.hash
+      console.info(`   < radon reducer hash:  ${witnetHashes.reducers[key]}`)
+      saveHashes(witnetHashes)
+    }
   }
 }
 
