@@ -2,15 +2,24 @@ const { merge } = require("lodash")
 module.exports = {
   core: {
     collection: {
-      baseURI: "https://api.wittypixels.com/",
+      baseURI: "https://api.wittypixels.art/",
       name: "WittyPixels.art",
       symbol: "WPX",
       upgradable: true,
     },
-    vaults: [
+    events: [
       {
-        type: "",
-        value: ""
+        name: "<b>ETHDenver 2023</b>",
+        venue: "National Western $SPORK Castle\n4655 Humboldt St\n80216, Denver CO",
+        startTs: 1677193200 + 7 * 3600,          // Thu, 24 February 2023 0:00 GMT-7
+        endTs: 1677866400 + 7 * 3600,            // Fri, 3 March 2023 18:00 GMT-7,
+        auction: {
+          deltaPrice:    "50000000000000000",    //  0.05 ETH
+          deltaSeconds:  3600,                   //     1 hour
+          reservePrice:  "1000000000000000000",  //  1.00 ETH          
+          startingPrice: "10000000000000000000", // 32.00 ETH
+          startingTs:    1677974400 + 7 * 3600,  // Sun, 5 March 2023 0:00 GMT-7
+        }
       },
     ],
   },  
