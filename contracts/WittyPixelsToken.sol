@@ -187,6 +187,7 @@ contract WittyPixelsToken
         )
         external
         tokenInStatus(_tokenId, WittyPixels.ERC721TokenStatus.Minting)
+        onlyOwner
         returns (ITokenVault)
     {
         WittyPixels.ERC721Token storage __token = __storage.items[_tokenId];
