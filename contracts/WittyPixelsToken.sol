@@ -259,6 +259,9 @@ contract WittyPixelsToken
 
         // Mint the actual ERC-721 token and set the just created vault contract as first owner ever:
         _mint(address(_tokenVault), _tokenId);
+        
+        // Increment total supply:
+        __storage.totalSupply ++;
 
         // Emits event
         emit Fractionalized(
