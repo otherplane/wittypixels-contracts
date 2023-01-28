@@ -11,6 +11,7 @@ interface IWittyPixelsToken {
     function getTokenStatusString(uint256 tokenId) external view returns (string memory);
     function getTokenVault(uint256 tokenId) external view returns (ITokenVaultWitnet);    
     function getTokenWitnetRequests(uint256 tokenId) external view returns (WittyPixels.ERC721TokenWitnetRequests memory);
+    function imageURI(uint256 tokenId) external view returns (string memory);
     function metadata(uint256 tokenId) external view returns (string memory);
     function totalSupply() external view returns (uint256);
     function verifyTokenPlayerScore(

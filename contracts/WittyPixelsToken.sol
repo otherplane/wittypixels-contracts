@@ -398,6 +398,16 @@ contract WittyPixelsToken
         return __storage.witnetRequests[_tokenId];
     }
 
+    /// @notice Returns image URI of given token.
+    function imageURI(uint256 _tokenId)
+        override
+        external view 
+        initialized// tokenExists(_tokenId)
+        returns (string memory)
+    {
+        return __storage.items[_tokenId].imageURI;
+    }
+
     /// @notice Serialize token ERC721Token to JSON string.
     function metadata(uint256 _tokenId)
         external view 
