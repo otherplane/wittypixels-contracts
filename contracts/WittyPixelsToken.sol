@@ -425,7 +425,7 @@ contract WittyPixelsToken
     function imageURI(uint256 _tokenId)
         override
         external view 
-        initialized// tokenExists(_tokenId)
+        initialized
         returns (string memory)
     {
         return __storage.items[_tokenId].imageURI;
@@ -501,15 +501,13 @@ contract WittyPixelsToken
         __storage.items[_tokenId].theEvent = _theEvent;
     }
     
-    function premint(
+    function mint(
             uint256 _tokenId,
             bytes32 _witnetSlaHash
         )
-        external payable
-        override
-        onlyOwner /* as long as imageURI ends up to be unrelated to baseURI */  
+        override external payable
+        onlyOwner 
         nonReentrant
-        initialized
     {
         WittyPixels.ERC721TokenStatus _status = getTokenStatus(_tokenId);
         require(
