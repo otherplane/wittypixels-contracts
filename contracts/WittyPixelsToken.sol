@@ -343,7 +343,7 @@ contract WittyPixelsToken
         initialized
         returns (WittyPixels.ERC721TokenStatus)
     {
-        if (_tokenId < __storage.totalSupply) {
+        if (_tokenId <= __storage.totalSupply) {
             uint _vaultIndex = __storage.tokenVaultIndex[_tokenId];
             if (
                 _vaultIndex > 0
@@ -472,17 +472,16 @@ contract WittyPixelsToken
     // ================================================================================================================
     // --- Implementation of 'IWittyPixelsTokenAdmin' -----------------------------------------------------------------
 
-    function launchNext(WittyPixels.ERC721TokenEvent calldata _theEvent)
-        override
-        external
+    function launch(WittyPixels.ERC721TokenEvent calldata _theEvent)
+        override external
         onlyOwner
-        tokenInStatus(__storage.totalSupply + 1, WittyPixels.ERC721TokenStatus.Void)
         returns (uint256 _tokenId)
     {
+        _tokenId = __storage.totalSupply + 1;
         WittyPixels.ERC721TokenStatus _status = getTokenStatus(_tokenId);
         require(
-            _status == WittyPixels.ERC721TokenStatus.Void && _tokenId == __storage.totalSupply + 1
-                || _status == WittyPixels.ERC721TokenStatus.Minting,
+            _status == WittyPixels.ERC721TokenStatus.Void
+                || _status == WittyPixels.ERC721TokenStatus.Launching,
             "WittyPixelsToken: bad mood"
         );
         // Check the event data:
@@ -496,7 +495,6 @@ contract WittyPixelsToken
             "WittyPixelsToken: event bad timestamps"
         );
         // Change token status:
-        _tokenId = ++ __storage.totalSupply;
         __storage.items[_tokenId].theEvent = _theEvent;
     }
     
