@@ -330,8 +330,8 @@ contract WittyPixelsToken
 
     /// @notice Returns base URI for all tokens of this collection.
     function baseURI()
-        public view
-        override
+        override public view
+        initialized
         returns (string memory)
     {
         return __storage.baseURI;
@@ -339,8 +339,8 @@ contract WittyPixelsToken
 
     /// @notice Gets token's current status.
     function getTokenStatus(uint256 _tokenId)
-        public view
-        override
+        override public view
+        initialized
         returns (WittyPixels.ERC721TokenStatus)
     {
         if (_tokenId < __storage.totalSupply) {
@@ -365,7 +365,11 @@ contract WittyPixelsToken
         }
     }
 
-    function getTokenStatusString(uint256 _tokenId) override external view returns (string memory) {
+    function getTokenStatusString(uint256 _tokenId)
+        override external view
+        initialized
+        returns (string memory)
+    {
         WittyPixels.ERC721TokenStatus _status = getTokenStatus(_tokenId);
         if (_status == WittyPixels.ERC721TokenStatus.SoldOut) {
             return "SoldOut";
@@ -384,7 +388,7 @@ contract WittyPixelsToken
     function getTokenMetadata(uint256 _tokenId)
         external view
         override
-        tokenExists(_tokenId)
+        initialized
         returns (WittyPixels.ERC721Token memory)
     {
         return __storage.items[_tokenId];
@@ -408,7 +412,7 @@ contract WittyPixelsToken
     function getTokenWitnetRequests(uint256 _tokenId)
         external view
         override
-        tokenExists(_tokenId)
+        initialized
         returns (WittyPixels.ERC721TokenWitnetRequests memory)
     {
         return __storage.witnetRequests[_tokenId];
@@ -611,7 +615,6 @@ contract WittyPixelsToken
         external
         override
         onlyOwner
-        initialized
     {
         assert(_addresses.length == _texts.length);
         // tokenId can only be current totalSupply + 1: not minted, and not in the process of being minted
@@ -643,7 +646,6 @@ contract WittyPixelsToken
         external
         override
         onlyOwner
-        initialized
     {
         _verifyPrototypeCompliance(_prototype);
         __storage.tokenVaultPrototype = IWittyPixelsTokenVault(_prototype);
