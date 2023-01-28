@@ -1,10 +1,11 @@
 {
     "slas": {
-        "high-16": "0x738a610e267ba49e7d22c96a5f59740e88a10ba8a942047052e57dc3e69c0a64"
+        "high-16": "0x738a610e267ba49e7d22c96a5f59740e88a10ba8a942047052e57dc3e69c0a64",
+        "high-1": "0x328994135a4fcc2d14ae55f1d9ba1a2f0661e4cb9507714c7a39486ba0e56103"
     },
     "sources": {
-        "image-digest": "0x1dc7ce48434e5192aba47c60bf9aafc81c602f849e6384e54ce8cd9b87c0f0d8",
-        "token-roots": "0xc7c0c982244e1a4285533def056aa57d925c0057ef1e399930b1405449c446b0"
+        "image-digest": "0xf251c3fe08c6c32f87575a5b26124793173e6e42600363bab8ebd0ca163b18b8",
+        "token-stats": "0x5cafac251592c5c74eb0c68b5c5909afc0fd7b0b270ceec5f0e0ca5a2cebc3a6"
     },
     "reducers": {
         "mode-no-filters": "0x5c6037e17112ad2502ced33a32a65e1df780e7996de2b65aff08f47c4c58a3d0"

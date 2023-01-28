@@ -4,7 +4,7 @@ const Create2Factory = artifacts.require("Create2Factory")
 
 module.exports = async function (deployer, network, [, from]) {
   if (network !== "test") {
-    const isDryRun = network.split("-")[1] === "fork" || network.split("-")[0] === "develop"
+    const isDryRun = network === "test" || network.split("-")[1] === "fork" || network.split("-")[0] === "develop"
     const ecosystem = utils.getRealmNetworkFromArgs()[0]
     network = network.split("-")[0]
 

@@ -5,13 +5,19 @@ module.exports = {
         requestSchema: "https://",        
         requestAuthority: "\\0\\",
         requestScript: 
-            "0x8218778218676445746167", 
+            "0x811874",
             // new Witnet.Script([ Witnet.TYPES.STRING ])
-            //     .parseJSONMap()
-            //     .getString("Etag")
+            //      .length()
     },
-    "token-roots": {
-        requestAuthority: "https://api.witty-pixels.art/roots/\\0\\",
-        requestScript: "0x80", // TODO
+    "token-stats": {
+        requestMethod: Witnet.Types.RETRIEVAL_METHODS.HttpGet,
+        requestSchema: "https://",
+        requestAuthority: "\\0\\",
+        requestScript:
+            "0x8218771869", 
+            //"0x821877811869",
+            // new WitnetScript([ Witnet.TYPES.STRING ])
+            //      .parseJSONMap()
+            //      .valuesAsArray()
     }
 }

@@ -12,17 +12,36 @@ const WitnetProxy = artifacts.require("WitnetProxy")
 const WittyPixelsToken = artifacts.require("WittyPixelsToken")
 
 const WitnetRequestImageDigest = artifacts.require("WitnetRequestImageDigest")
-const WitnetRequestTokenRoots = artifacts.require("WitnetRequestTokenRoots")
+const WitnetRequestTokenStats = artifacts.require("WitnetRequestTokenStats")
 
 module.exports = async function (deployer, network, [, from]) {
+  const isDryRun = network === "test" || network.split("-")[1] === "fork" || network.split("-")[0] === "develop"
+  const ecosystem = utils.getRealmNetworkFromArgs()[0]
+  network = network.split("-")[0]
+
+  if (!addresses[ecosystem]) addresses[ecosystem] = {}
+  if (!addresses[ecosystem][network]) addresses[ecosystem][network] = {}
+
+  var token
+  if (utils.isNullAddress(addresses[ecosystem][network]?.WittyPixelsToken)) {
+    await deployer.deploy(
+      WittyPixelsToken,
+      WitnetRequestImageDigest.address,
+      WitnetRequestTokenStats.address,
+      settings.core.collection.upgradable,
+      utils.fromAscii(package.version),
+      { from }
+    )
+    token = await WittyPixelsToken.deployed()
+    addresses[ecosystem][network].WittyPixelsToken = token.address
+    if (!isDryRun) {
+      utils.saveAddresses(addresses)
+    }
+  } else {
+    token = await WittyPixelsToken.at(addresses[ecosystem][network].WittyPixelsToken)
+  }
+
   if (network !== "test") {
-    const isDryRun = network.split("-")[1] === "fork" || network.split("-")[0] === "develop"
-    const ecosystem = utils.getRealmNetworkFromArgs()[0]
-    network = network.split("-")[0]
-
-    if (!addresses[ecosystem]) addresses[ecosystem] = {}
-    if (!addresses[ecosystem][network]) addresses[ecosystem][network] = {}
-
     const factory = await Create2Factory.deployed()    
     var proxy
     if (utils.isNullAddress(addresses[ecosystem][network]?.WittyPixelsTokenProxy)) {
@@ -70,25 +89,6 @@ module.exports = async function (deployer, network, [, from]) {
       }
     } else {
       proxy = await WitnetProxy.at(addresses[ecosystem][network].WittyPixelsTokenProxy)
-    }
-
-    var token
-    if (utils.isNullAddress(addresses[ecosystem][network]?.WittyPixelsToken)) {
-      await deployer.deploy(
-        WittyPixelsToken,
-        WitnetRequestImageDigest.address,
-        WitnetRequestTokenRoots.address,
-        settings.core.collection.upgradable,
-        utils.fromAscii(package.version),
-        { from }
-      )
-      token = await WittyPixelsToken.deployed()
-      addresses[ecosystem][network].WittyPixelsToken = token.address
-      if (!isDryRun) {
-        utils.saveAddresses(addresses)
-      }
-    } else {
-      token = await WittyPixelsToken.at(addresses[ecosystem][network].WittyPixelsToken)
     }
 
     var implementation = await proxy.implementation.call({ from })

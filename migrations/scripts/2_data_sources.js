@@ -5,84 +5,90 @@ const utils = require("../../scripts/utils")
 
 const WitnetBytecodes = artifacts.require("WitnetBytecodes")
 const WitnetEncodingLib = artifacts.require("WitnetEncodingLib")
+const WitnetLib = artifacts.require("WitnetLib")
+const WitnetRequestBoard = artifacts.require("WitnetRequestBoardTrustableDefault")
 
 module.exports = async function (deployer, network, [, from]) {
-  if (network !== "test") {
-    const isDryRun = network.split("-")[1] === "fork" || network.split("-")[0] === "develop"
-    const ecosystem = utils.getRealmNetworkFromArgs()[0]
-    network = network.split("-")[0]
+  const isDryRun = network === "test" || network.split("-")[1] === "fork" || network.split("-")[0] === "develop"
+  const ecosystem = utils.getRealmNetworkFromArgs()[0]
+  network = network.split("-")[0]
 
-    if (!addresses[ecosystem]) addresses[ecosystem] = {}
-    if (!addresses[ecosystem][network]) addresses[ecosystem][network] = {}
+  if (!addresses[ecosystem]) addresses[ecosystem] = {}
+  if (!addresses[ecosystem][network]) addresses[ecosystem][network] = {}
 
-    var witnetAddresses
-    if (!isDryRun) {
-      try {
-        witnetAddresses = require("witnet-solidity-bridge/migrations/witnet.addresses")[ecosystem][network]
-        WitnetBytecodes.address = witnetAddresses.WitnetBytecodes
-      } catch (e) {
-        console.error("Fatal: Witnet Foundation addresses were not provided!", e)
-        process.exit(1)
-      }
-    } else {
-      await deployer.deploy(WitnetEncodingLib, { from })
-      await deployer.link(WitnetEncodingLib, WitnetBytecodes)
-      await deployer.deploy(WitnetBytecodes, true, utils.fromAscii(network), { from, gas: 6721975 })
+  var witnetAddresses
+  if (!isDryRun) {
+    try {
+      witnetAddresses = require("witnet-solidity-bridge/migrations/witnet.addresses")[ecosystem][network]
+      WitnetBytecodes.address = witnetAddresses.WitnetBytecodes
+      WitnetRequestBoard.address = witnetAddresses.WitnetRequestBoard
+    } catch (e) {
+      console.error("Fatal: Witnet Foundation addresses were not provided!", e)
+      process.exit(1)
     }
+  } else {
+    await deployer.deploy(WitnetEncodingLib, { from })
+    await deployer.link(WitnetEncodingLib, WitnetBytecodes)
+    await deployer.deploy(WitnetBytecodes, true, utils.fromAscii(network), { from, gas: 6721975 })
+    await deployer.deploy(WitnetLib, { from })
+    await deployer.link(WitnetLib, WitnetRequestBoard)
+    await deployer.deploy(WitnetRequestBoard, true, utils.fromAscii(network), 135000, { from, gas: 6721975 })
+  }
 
-    const witnetRegistry = await WitnetBytecodes.deployed()
-    const witnetHashes = require("../witnet/hashes")
-    if (!witnetHashes.sources) witnetHashes.sources = {}    
-    const witnetSources = require("../witnet/sources.js")
+  const witnetRegistry = await WitnetBytecodes.deployed()
+  const witnetHashes = require("../witnet/hashes")
+  
+  if (!witnetHashes.sources) witnetHashes.sources = {}    
+  const witnetSources = require("../witnet/sources.js")
+  for (const key in witnetSources) {      
     for (const key in witnetSources) {      
-      if (
-        !witnetHashes.sources[key]
-          || witnetHashes.sources[key] === ""
-          || witnetHashes.sources[key] === "0x"
-          || dataSourceNotRegistered(witnetRegistry, witnetHashes.sources[key]) === true
-      ) {
-        const source = witnetSources[key]
-        const header = `Verifying Witnet data source '${key}'...`
-        console.info("  ", header)
-        console.info("  ", "-".repeat(header.length))
-        console.info()
-        console.info(`   > Request schema:      ${source.requestSchema || "https://"}`)
-        console.info(`   > Request method:      ${await source.requestMethod || 1}`)
-        console.info(`   > Request authority:   ${source.requestAuthority}`)
-        if (source.requestPath)  {
-          console.info(`   > Request path:        ${source.requestPath}`)
-        }
-        if (source.requestQuery) {
-          console.info(`   > Request query:       ${source.requestQuery}`)
-        }
-        if (source.requestBody) {
-          console.info(`   > Request body:        ${source.requestBody}`)
-        }
-        if (source.requestHeaders) {
-          console.info(`   > Request headers:     ${source.requestHeaders}`)
-        }
-        console.info(`   > Request script:      ${source.requestScript || "0x80"}`)
-        const tx = await witnetRegistry.verifyDataSource(
-          await source.requestMethod || 1,
-          0, 0,
-          source.requestSchema || "https://",
-          source.requestAuthority,
-          source.requestPath || "",
-          source.requestQuery || "",
-          source.requestBody || "",
-          source.requestHeaders || [],
-          source.requestScript || "0x80",
-          { from }
-        )
-        console.info(`   > transaction hash:    ${tx.receipt.transactionHash}`)
-        console.info(`   > gas used:            ${tx.receipt.gasUsed}`)
-        console.log(tx.logs)
-        witnetHashes.sources[key] = tx.logs[tx.logs.length - 1].args.hash
-        console.info(`   > data source hash:    ${witnetHashes.sources[key]}`)
-        console.info()
-        saveHashes(witnetHashes)
+  for (const key in witnetSources) {      
+    if (
+      !witnetHashes.sources[key]
+        || witnetHashes.sources[key] === ""
+        || witnetHashes.sources[key] === "0x"
+        || await dataSourceNotRegistered(witnetRegistry, witnetHashes.sources[key]) === true
+    ) {
+      const source = witnetSources[key]
+      const header = `Verifying Witnet data source '${key}'...`
+      console.info()
+      console.info("  ", header)
+      console.info("  ", "-".repeat(header.length))
+      console.info(`   > Request schema:      ${source.requestSchema || "https://"}`)
+      console.info(`   > Request method:      ${await source.requestMethod || 1}`)
+      console.info(`   > Request authority:   ${source.requestAuthority}`)
+      if (source.requestPath)  {
+        console.info(`   > Request path:        ${source.requestPath}`)
       }
+      if (source.requestQuery) {
+        console.info(`   > Request query:       ${source.requestQuery}`)
+      }
+      if (source.requestBody) {
+        console.info(`   > Request body:        ${source.requestBody}`)
+      }
+      if (source.requestHeaders) {
+        console.info(`   > Request headers:     ${source.requestHeaders}`)
+      }
+      console.info(`   > Request script:      ${source.requestScript || "0x80"}`)
+      const tx = await witnetRegistry.verifyDataSource(
+        await source.requestMethod || 1,
+        0, 0,
+        source.requestSchema || "https://",
+        source.requestAuthority,
+        source.requestPath || "",
+        source.requestQuery || "",
+        source.requestBody || "",
+        source.requestHeaders || [],
+        source.requestScript || "0x80",
+        { from }
+      )
+      console.info(`   > transaction hash:    ${tx.receipt.transactionHash}`)
+      console.info(`   > gas used:            ${tx.receipt.gasUsed}`)
+      witnetHashes.sources[key] = tx.logs[tx.logs.length - 1].args.hash
+      console.info(`   < data source hash:    ${witnetHashes.sources[key]}`)
+      saveHashes(witnetHashes)
     }
+  }
 
     const witnetSLAs = require("../witnet/slas")
     await Promise.all(Object.keys(witnetSLAs).map(async key => {
@@ -183,8 +189,7 @@ async function reducerNotRegistered(bytecodes, hash) {
 
 async function slaNotRegistered(bytecodes, hash) {
   try {
-    var sla = await bytecodes.lookupRadonSLA.call(hash)
-    return sla[0] != 0
+    await bytecodes.lookupRadonSLA.call(hash)
   } catch {
     return true
   }
