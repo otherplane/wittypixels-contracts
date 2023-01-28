@@ -15,8 +15,8 @@ interface IWittyPixelsTokenAdmin {
 
     event NewTokenSponsor(uint256 tokenId, uint256 index, address indexed addr);
 
-    function launchNext(WittyPixels.ERC721TokenEvent calldata theEvent) external returns (uint256 tokenId);
-    // function premint(uint256 tokenId, string calldata imageURI, bytes32 witnetSlaHash) external payable;
+    function launch(WittyPixels.ERC721TokenEvent calldata theEvent) external returns (uint256 tokenId);
+    
     /// @notice Mint new WittyPixels token: one new token id per ERC721TokenEvent where WittyPixelsTM is played.
     function mint(uint256 tokenId, bytes32 witnetSlaHash) external payable;
 

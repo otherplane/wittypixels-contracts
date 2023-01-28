@@ -468,27 +468,6 @@ contract WittyPixelsToken
         );
     }
 
-    function verifyTokenPlayerName(
-            uint256 _tokenId,
-            uint256 _playerIndex,
-            string calldata _playerName,
-            bytes32[] calldata _proof
-        )
-        external view
-        override
-        tokenExists(_tokenId)
-        returns (bool)
-    {
-        WittyPixels.ERC721Token storage __token = __storage.items[_tokenId];
-        return (
-            _playerIndex < __token.theStats.totalPlayers
-                && _proof.merkle(keccak256(abi.encode(
-                    _playerIndex,
-                    _playerName
-                ))) == __token.theStats.playersRoot
-        );
-    }
-
 
     // ================================================================================================================
     // --- Implementation of 'IWittyPixelsTokenAdmin' -----------------------------------------------------------------
