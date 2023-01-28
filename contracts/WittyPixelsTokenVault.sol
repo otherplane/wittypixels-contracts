@@ -106,7 +106,6 @@ contract WittyPixelsTokenVault
             || _interfaceId == type(IERC1633).interfaceId
             || _interfaceId == type(IERC20Upgradeable).interfaceId
             || _interfaceId == type(IERC20MetadataUpgradeable).interfaceId
-            || _interfaceId == type(OwnableUpgradeable).interfaceId
             || _interfaceId == type(Clonable).interfaceId
         ;
     }
@@ -818,5 +817,4 @@ contract WittyPixelsTokenVault
         __storage.settings = _settings;
         emit SettingsChanged(msg.sender, _settings);
     }
-
 }

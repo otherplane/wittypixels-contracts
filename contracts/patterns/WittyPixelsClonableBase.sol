@@ -3,7 +3,6 @@
 
 pragma solidity >=0.8.0 <0.9.0;
 
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 
 import "witnet-solidity-bridge/contracts/patterns/Clonable.sol";
@@ -13,23 +12,12 @@ import "witnet-solidity-bridge/contracts/patterns/Clonable.sol";
 abstract contract WittyPixelsClonableBase
     is
         Clonable,
-        OwnableUpgradeable,
         ReentrancyGuardUpgradeable
 {
     bytes32 immutable internal _VERSION;
 
-    modifier onlyDelegateCalls {
-        require(
-            address(this) != self(),
-            "WittyPixelsClonableBase: not a delegate call"
-        );
-        _;
-    }
-
     constructor(bytes32 _version) {
         _VERSION = _version;
-        // make sure the (uninitialized) base implementation is owned by the deployer
-        _transferOwnership(msg.sender);
     }
     
     /// @dev Reverts w/ specific message if a delegatecalls falls back into unexistent method.
@@ -47,7 +35,6 @@ abstract contract WittyPixelsClonableBase
 
     function initialize(bytes memory) public virtual override {
         // initialize openzeppelin's underlying patterns
-        __Ownable_init();
         __ReentrancyGuard_init();
     }
 
