@@ -98,10 +98,12 @@ library WittyPixels {
     }
 
     struct ERC721Token {
+        uint256 birthTs;
         string  imageURI;
+        bytes32 imageWitnetTxHash;         
+        bytes32 statsWitnetTxHash;
         ERC721TokenEvent theEvent;
         ERC721TokenStats theStats;
-        ERC721TokenRoots theRoots;
     }
     
     struct ERC721TokenEvent {
@@ -111,14 +113,8 @@ library WittyPixels {
         uint256 endTs;
     }
 
-    struct ERC721TokenRoots {
-        bytes32 image;
-        bytes32 scores;
-        bytes32 stats;
-    }
-
     struct ERC721TokenStats {
-        uint256 totalDraws;
+        bytes32 playersRoot;
         uint256 totalPixels;
         uint256 totalPlayers;
         uint256 totalScans;
@@ -139,9 +135,8 @@ library WittyPixels {
     
     struct ERC721TokenWitnetRequests {
         WitnetRequestTemplate imageDigest;
-        WitnetRequestTemplate tokenRoots;
+        WitnetRequestTemplate tokenStats;
     }
-
 
     function checkBaseURI(string memory uri)
         internal pure
@@ -155,6 +150,48 @@ library WittyPixels {
             ), "WittyPixels: bad uri"
         );
         return uri;
+    }
+
+    function fromHex(string memory s)
+        internal pure
+        returns (bytes memory)
+    {
+        bytes memory ss = bytes(s);
+        assert(ss.length % 2 == 0);
+        bytes memory r = new bytes(ss.length / 2);
+        unchecked {
+            for (uint i = 0; i < ss.length / 2; i ++) {
+                r[i] = bytes1(
+                    fromHexChar(uint8(ss[2 * i])) * 16
+                        + fromHexChar(uint8(ss[2 * i + 1]))
+                );
+            }
+        }
+        return r;
+    }
+
+    function fromHexChar(uint8 c)
+        internal pure
+        returns (uint8)
+    {
+        if (
+            bytes1(c) >= bytes1("0")
+                && bytes1(c) <= bytes1("9")
+        ) {
+            return c - uint8(bytes1("0"));
+        } else if (
+            bytes1(c) >= bytes1("a")
+                && bytes1(c) <= bytes1("f")
+        ) {
+            return 10 + c - uint8(bytes1("a"));
+        } else if (
+            bytes1(c) >= bytes1("A")
+                && bytes1(c) <= bytes1("F")
+        ) {
+            return 10 + c - uint8(bytes1("A"));
+        } else {
+            revert("WittyPixels: invalid hex");
+        }
     }
 
     function hash(bytes32 a, bytes32 b)

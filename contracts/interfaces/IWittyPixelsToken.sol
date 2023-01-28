@@ -20,10 +20,4 @@ interface IWittyPixelsToken {
             uint256 score,
             bytes32[] calldata proof
         ) external view returns (bool);
-    function verifyTokenPlayerName(
-            uint256 tokenId,
-            uint256 index,
-            string calldata name,
-            bytes32[] calldata proof
-        ) external view returns (bool);
 }

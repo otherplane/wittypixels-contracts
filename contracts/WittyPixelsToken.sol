@@ -35,7 +35,8 @@ contract WittyPixelsToken
     using WittyPixels for WittyPixels.ERC721Token;
 
     WitnetRequestTemplate immutable public witnetRequestImageDigest;
-    WitnetRequestTemplate immutable public witnetRequestTokenRoots;
+    WitnetRequestTemplate immutable public witnetRequestTokenStats;
+
     WittyPixels.TokenStorage internal __storage;
 
     modifier initialized {
@@ -69,7 +70,7 @@ contract WittyPixelsToken
 
     constructor(
             WitnetRequestTemplate _requestImageDigest,
-            WitnetRequestTemplate _requestTokenRoots,
+            WitnetRequestTemplate _requestTokenStats,
             bool _upgradable,
             bytes32 _version
         )
@@ -80,9 +81,9 @@ contract WittyPixelsToken
         )
     {
         assert(address(_requestImageDigest) != address(0));
-        assert(address(_requestTokenRoots) != address(0));
+        assert(address(_requestTokenStats) != address(0));
         witnetRequestImageDigest = _requestImageDigest;
-        witnetRequestTokenRoots = _requestTokenRoots;
+        witnetRequestTokenStats = _requestTokenStats;
     }
 
 
@@ -119,7 +120,7 @@ contract WittyPixelsToken
     {
         address _implementation = __storage.implementation;
         if (_implementation == address(0)) {
-            // a proxy is beining initilized for the first time ...
+            // a proxy is being initilized for the first time ...
             _initializeProxy(_initdata);
         }
         else {
@@ -142,7 +143,7 @@ contract WittyPixelsToken
             );
         }
         __storage.implementation = base();    
-    }    
+    }
 
     
     // ================================================================================================================
@@ -199,29 +200,40 @@ contract WittyPixelsToken
             "WittyPixelsToken: no token vault prototype"
         );
 
-        bool _resultOk; bytes memory _resultBytes;        
         // Check the image URI actually exists, and store the image digest:
+        try __requests.imageDigest.lastValue()
+            returns (bytes memory, bytes32 _txhash, uint256 _txts)
         {
-            (_resultOk, _resultBytes) = __requests.imageDigest.read();
-            require(_resultOk, "WittyPixelsToken: image digest failed");
-            __token.theRoots.image = _resultBytes.toBytes32();
+            require(
+                _txts >= __token.birthTs,
+                "WittyPixelsToken: anachronic image proof"
+            );
+            __token.imageWitnetTxHash = _txhash;
+        }
+        catch Error(string memory _reason) {
+            revert(_reason);
+        }
+        catch (bytes memory) {
+            revert("WittyPixelsToken: cannot deserialize image proof");
         }
 
         // Check the token roots reported by Witnet match the rest of token's
         // metadata, including the image digest:
+        try __requests.tokenStats.lastValue()
+            returns (bytes memory _stats, bytes32 _txhash, uint256 _txts)
         {
-            (_resultOk, _resultBytes) = __requests.tokenRoots.read();
-            require(_resultOk, "WittyPixelsToken: token roots failed");
-            WittyPixels.ERC721TokenRoots memory _roots = abi.decode(_resultBytes, (WittyPixels.ERC721TokenRoots));
             require(
-                _roots.image == __token.theRoots.image
-                    && _roots.stats == keccak256(abi.encode(
-                        __token.theStats,
-                        _roots.scores
-                )), "WittyPixelsToken: tooken roots mismatch"
+                _txts >= __token.birthTs,
+                "WittyPixelsToken: anachronic stats proof"
             );
-            __token.theRoots.scores = _roots.scores;
-            __token.theRoots.stats = _roots.stats;
+            __token.statsWitnetTxHash = _txhash;
+            __token.theStats = abi.decode(_stats, (WittyPixels.ERC721TokenStats));
+        }
+        catch Error(string memory _reason) {
+            revert(_reason);
+        }
+        catch (bytes memory) {
+            revert("WittyPixelsToken: cannot deserialize stats proof");
         }
         
         // Clone the token vault prototype and initialize the cloned instance:
@@ -333,19 +345,23 @@ contract WittyPixelsToken
     {
         if (_tokenId < __storage.totalSupply) {
             uint _vaultIndex = __storage.tokenVaultIndex[_tokenId];
-            if (_vaultIndex > 0) {
-                if (ownerOf(_tokenId) != address(__storage.vaults[_vaultIndex])) {
-                    return WittyPixels.ERC721TokenStatus.SoldOut;
-                } else {
-                    return WittyPixels.ERC721TokenStatus.Fractionalized;
-                }
-            } else if (address(__storage.witnetRequests[_tokenId].tokenRoots) != address(0)) {
-                return WittyPixels.ERC721TokenStatus.Minting;
+            if (
+                _vaultIndex > 0
+                    && ownerOf(_tokenId) != address(__storage.vaults[_vaultIndex])
+            ) {
+                return WittyPixels.ERC721TokenStatus.SoldOut;
             } else {
-                return WittyPixels.ERC721TokenStatus.Launching;
+                return WittyPixels.ERC721TokenStatus.Fractionalized;
             }
         } else {
-            return WittyPixels.ERC721TokenStatus.Void;
+            WittyPixels.ERC721Token storage __token = __storage.items[_tokenId];
+            if (__token.birthTs > 0) {
+                return WittyPixels.ERC721TokenStatus.Minting;
+            } else if (bytes(__token.theEvent.name).length > 0) {
+                return WittyPixels.ERC721TokenStatus.Launching;
+            } else {
+                return WittyPixels.ERC721TokenStatus.Void;
+            }
         }
     }
 
@@ -444,7 +460,7 @@ contract WittyPixelsToken
                 && _proof.merkle(keccak256(abi.encode(
                     _playerIndex,
                     _playerScore
-                ))) == __token.theRoots.scores
+                ))) == __token.theStats.playersRoot
         );
     }
 
@@ -465,7 +481,7 @@ contract WittyPixelsToken
                 && _proof.merkle(keccak256(abi.encode(
                     _playerIndex,
                     _playerName
-                ))) == __token.theRoots.scores
+                ))) == __token.theStats.playersRoot
         );
     }
 
@@ -503,8 +519,6 @@ contract WittyPixelsToken
     
     function premint(
             uint256 _tokenId,
-            string calldata _imageURI,
-            WittyPixels.ERC721TokenStats memory _theStats,
             bytes32 _witnetSlaHash
         )
         external payable
@@ -518,59 +532,54 @@ contract WittyPixelsToken
             _status == WittyPixels.ERC721TokenStatus.Launching
                 || _status == WittyPixels.ERC721TokenStatus.Minting,
             "WittyPixelsToken: bad mood"
-        );
-        require(
-            bytes(_imageURI).length > 0,
-            "WittyPixelsToken: no image URI"
-        );
-        
+        );        
         WittyPixels.ERC721Token storage __token = __storage.items[_tokenId];
         require(
             block.timestamp >= __token.theEvent.endTs,
             "WittyPixelsToken: the event is not over yet"
         );
         
-        // Set the token's image uri and game stats (to be concurred with result to WitnetRequestTokenRoots):
+        // Set the token's image uri and inception timestamp
+        string memory _imageuri = _imageURI(_tokenId);
         {
-            __token.imageURI = _imageURI;
-            __token.theStats = _theStats;
+            __token.birthTs = block.timestamp;
+            __token.imageURI = _imageuri;
         }
 
-        uint _usedFunds;
-        WittyPixels.ERC721TokenWitnetRequests storage __requests = __storage.witnetRequests[_tokenId];
-        
+        uint _usedFunds; WitnetRequestTemplate _request;
+        WittyPixels.ERC721TokenWitnetRequests storage __requests = __storage.witnetRequests[_tokenId];        
         // Ask Witnet to confirm the token's image URI actually exists:
         {
             string[][] memory _args = new string[][](1);
             _args[0] = new string[](1);
-            _args[0][0] = _imageURI;
-            __requests.imageDigest = WitnetRequestTemplate(payable(address(witnetRequestImageDigest.clone())));
-            __requests.imageDigest.initialize(abi.encode(
-                WitnetRequestTemplate.InitData({
+            _args[0][0] = _imageuri;
+            _request = witnetRequestImageDigest.clone(
+                abi.encode(WitnetRequestTemplate.InitData({
                     args: _args,
                     slaHash: _witnetSlaHash
-                })
-            ));
-            _usedFunds += __requests.imageDigest.post{value: msg.value}();
+                }))
+            );
+            _usedFunds += _request.update{value: msg.value / 2}();
+            __requests.imageDigest = _request;
         }
 
-        // Ask Witnet to retrieve token's metadata roots from the token base uri provider:
+        // Ask Witnet to retrieve token's metadata stats from the token base uri provider:
         {
             string[][] memory _args = new string[][](1);
             _args[0] = new string[](1);
             _args[0][0] = string(abi.encodePacked(
                 bytes(baseURI()),
-                "roots/",
-                block.chainid.toString(),
-                "/",
+                "stats/",
                 _tokenId.toString()                
             ));
-            __requests.tokenRoots = WitnetRequestTemplate(payable(address(witnetRequestTokenRoots.clone())));
-            __requests.tokenRoots.initialize(abi.encode(WitnetRequestTemplate.InitData({
-                args: _args,
-                slaHash: _witnetSlaHash
-            })));
-            _usedFunds += __requests.imageDigest.post{value: msg.value - _usedFunds}();
+            _request = witnetRequestTokenStats.clone(
+                abi.encode(WitnetRequestTemplate.InitData({
+                    args: _args,
+                    slaHash: _witnetSlaHash
+                }))
+            );
+            _usedFunds += _request.update{value: msg.value / 2}();
+            __requests.tokenStats = _request;
         }
 
         // Transfer back unused funds, if any:
@@ -579,12 +588,7 @@ contract WittyPixelsToken
         }
         
         // Emit event:
-        emit Minting(
-            _tokenId,
-            baseURI(),
-            _imageURI,
-            _witnetSlaHash
-        );
+        emit Minting(_tokenId, _imageuri, _witnetSlaHash);
     }
 
     /// @notice Sets collection's base URI.
@@ -744,6 +748,18 @@ contract WittyPixelsToken
 
     // ================================================================================================================
     // --- Internal virtual methods -----------------------------------------------------------------------------------
+
+    function _imageURI(uint256 _tokenId)
+        virtual internal view
+        initialized
+        returns (string memory)
+    {
+        return string(abi.encodePacked(
+            __storage.baseURI,
+            "image/",
+            _tokenId.toString()
+        ));
+    }
 
     function _initializeProxy(bytes memory _initdata)
         virtual internal

@@ -8,12 +8,13 @@ import "witnet-solidity-bridge/contracts/libs/WitnetCBOR.sol";
 
 import "../libs/WittyPixels.sol";
 
-contract WitnetRequestTokenRoots
+contract WitnetRequestTokenStats
     is
         WitnetRequestTemplate
 {
     using WitnetCBOR for WitnetCBOR.CBOR;
     using WittyPixels for bytes;
+    using WittyPixels for string;
 
     constructor (
             WitnetRequestBoard _witnet,
@@ -28,23 +29,26 @@ contract WitnetRequestTokenRoots
             _sources,
             _aggregator,
             _tally,
-            WitnetV2.RadonDataTypes.Any, // TODO
+            WitnetV2.RadonDataTypes.Array, 
             0
         )
     {}
 
-    function _read(WitnetCBOR.CBOR memory _value)
+    function _parseWitnetResult(WitnetCBOR.CBOR memory _value)
         internal pure
         override
         returns (bytes memory _result)
     {
         WitnetCBOR.CBOR[] memory _items = _value.readArray();
-        if (_items.length >= 3) {
-            _result = abi.encode(WittyPixels.ERC721TokenRoots({
-                image: _items[0].readBytes().toBytes32(),
-                scores: _items[1].readBytes().toBytes32(),
-                stats: _items[2].readBytes().toBytes32()
+        if (_items.length >= 4) {           
+            _result = abi.encode(WittyPixels.ERC721TokenStats({
+                playersRoot: _items[0].readString().fromHex().toBytes32(),
+                totalPixels: _items[1].readUint(),
+                totalPlayers: _items[2].readUint(),
+                totalScans: _items[3].readUint()
             }));
         }
     }
+
+    // web3.eth.abi.encodeParameter({"InitData": {"slaHash":'bytes32',"args":'string[][]'}}, { args: [["api.wittypixels.art/stats/1"]], slaHash: "0x738a610e267ba49e7d22c96a5f59740e88a10ba8a942047052e57dc3e69c0a64" })
 }
