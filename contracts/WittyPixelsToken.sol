@@ -158,8 +158,6 @@ contract WittyPixelsToken
         return string(abi.encodePacked(
             baseURI(),
             "metadata/",
-            block.chainid.toString(),
-            "/",
             _tokenId.toString()
         ));
     }
@@ -576,8 +574,7 @@ contract WittyPixelsToken
     function setBaseURI(string calldata _uri)
         external 
         override
-        onlyOwner
-        initialized
+        onlyOwner 
     {
         __storage.baseURI = WittyPixels.checkBaseURI(_uri);
     }
