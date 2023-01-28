@@ -21,14 +21,6 @@ contract WittyPixelsTokenVault
 
     WittyPixels.TokenVaultStorage internal __storage;
 
-    modifier initialized {
-        require(
-            __storage.curator != address(0),
-            "WittyPixelsTokenVault: not yet initialized"
-        );
-        _;
-    }
-
     modifier notSoldOut {
         require(
             !soldOut(),
@@ -147,7 +139,7 @@ contract WittyPixelsTokenVault
     function redeem(bytes calldata _deedsdata)
         virtual override
         public
-        initialized
+        wasInitialized
         nonReentrant
         notSoldOut
     {
@@ -236,7 +228,7 @@ contract WittyPixelsTokenVault
     function withdraw()
         virtual override
         public
-        initialized
+        wasInitialized
         nonReentrant
         returns (uint256 _withdrawn)
     {
@@ -293,10 +285,7 @@ contract WittyPixelsTokenVault
         external
         returns (ITokenVaultWitnet)
     {
-        Clonable _instance = super.clone();
-        _instance.initialize(_initdata);
-        OwnableUpgradeable(address(_instance)).transferOwnership(msg.sender);
-        return ITokenVaultWitnet(address(_instance));
+        return _afterCloning(_clone(), _initdata);
     }
 
     function cloneDeterministicAndInitialize(bytes32 _salt, bytes memory _initdata)
@@ -304,10 +293,7 @@ contract WittyPixelsTokenVault
         external
         returns (ITokenVaultWitnet)
     {
-        Clonable _instance = super.cloneDeterministic(_salt);
-        _instance.initialize(_initdata);
-        OwnableUpgradeable(address(_instance)).transferOwnership(msg.sender);
-        return ITokenVaultWitnet(address(_instance));
+        return _afterCloning(_cloneDeterministic(_salt), _initdata);
     }
 
     function getRandomizeBlock()
@@ -407,7 +393,7 @@ contract WittyPixelsTokenVault
     function getPlayerInfo(uint256 index)
         virtual override
         external view
-        initialized
+        wasInitialized
         returns (address, uint256)
     {
         WittyPixels.TokenVaultPlayerInfo storage __info = __storage.players[index];
@@ -423,7 +409,7 @@ contract WittyPixelsTokenVault
     function getWalletInfo(address _addr)
         virtual override
         external view
-        initialized
+        wasInitialized
         returns (uint16, uint256)
     {
         return (
@@ -439,7 +425,7 @@ contract WittyPixelsTokenVault
     function pixelsOf(address _wallet)
         virtual override
         external view
-        initialized
+        wasInitialized
         returns (uint256)
     {
         return __storage.legacyPixels[_wallet];
@@ -461,7 +447,7 @@ contract WittyPixelsTokenVault
     function afmijnen()
         override
         external payable
-        initialized
+        wasInitialized
         nonReentrant
         notSoldOut
     {
@@ -504,7 +490,7 @@ contract WittyPixelsTokenVault
     function price()
         virtual override
         public view
-        initialized
+        wasInitialized
         returns (uint256)
     {
         IWittyPixelsTokenVaultAuctionDutch.Settings memory _settings = __storage.settings;
@@ -529,7 +515,7 @@ contract WittyPixelsTokenVault
     function nextPriceTimestamp()
         override
         public view
-        initialized
+        wasInitialized
         returns (uint256)
     {
         IWittyPixelsTokenVaultAuctionDutch.Settings memory _settings = __storage.settings;
@@ -564,7 +550,7 @@ contract WittyPixelsTokenVault
     function settings()
         override
         external view
-        initialized
+        wasInitialized
         returns (IWittyPixelsTokenVaultAuctionDutch.Settings memory)
     {
         return __storage.settings;
@@ -601,7 +587,7 @@ contract WittyPixelsTokenVault
     function getJackpotByIndex(uint256 _index)
         override
         external view
-        initialized
+        wasInitialized
         returns (address, address, uint256, string memory)
     {
         return IWittyPixelsTokenJackpots(__storage.parentToken).getTokenJackpotByIndex(
@@ -613,7 +599,7 @@ contract WittyPixelsTokenVault
     function getJackpotByWinner(address _winner)
         override
         external view
-        initialized
+        wasInitialized
         returns (
             uint256 _index,
             address _sponsor,
@@ -660,7 +646,7 @@ contract WittyPixelsTokenVault
     function getJackpotsCount()
         override
         public view
-        initialized
+        wasInitialized
         returns (uint256)
     {
         return IWittyPixelsTokenJackpots(__storage.parentToken).getTokenJackpotsCount(
@@ -671,7 +657,7 @@ contract WittyPixelsTokenVault
     function getJackpotsTotalValue()
         override
         external view
-        initialized
+        wasInitialized
         returns (uint256)
     {
         return IWittyPixelsTokenJackpots(__storage.parentToken).getTokenJackpotsTotalValue(
@@ -682,7 +668,7 @@ contract WittyPixelsTokenVault
     function randomizeWinners()
         override 
         external payable
-        initialized
+        wasInitialized
         nonReentrant
         onlyCurator
     {
@@ -751,15 +737,21 @@ contract WittyPixelsTokenVault
     // ================================================================================================================
     // --- Overrides 'Clonable' ---------------------------------------------------------------------------------------
 
+    function initialized()
+        override
+        public view
+        returns (bool)
+    {
+        return __storage.curator != address(0);
+    }
+
     /// Initialize storage-context when invoked as delegatecall. 
     /// @dev Must fail when trying to initialize same instance more than once.
-    function initialize(bytes memory _initBytes) 
-        public
+    function _initialize(bytes memory _initBytes) 
         virtual override
-        initializer // => ensure a clone can only be initialized once
-        onlyDelegateCalls // => we don't need the logic base contract to be ever initialized
+        internal
     {   
-        super.initialize(_initBytes);
+        super._initialize(_initBytes);
 
         // decode and validate initialization parameters:
         WittyPixels.TokenVaultInitParams memory _params = abi.decode(

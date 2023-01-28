@@ -21,7 +21,7 @@ abstract contract WittyPixelsClonableBase
     }
     
     /// @dev Reverts w/ specific message if a delegatecalls falls back into unexistent method.
-    fallback() external { // solhint-disable 
+    fallback() external { // solhint-disable
         revert("WittyPixelsClonableBase: not implemented");
     }
 
@@ -31,9 +31,12 @@ abstract contract WittyPixelsClonableBase
 
 
     // ================================================================================================================
-    // --- Overrides Clonable -----------------------------------------------------------------------------------------
+    // --- 'Clonable' extension ---------------------------------------------------------------------------------------
 
-    function initialize(bytes memory) public virtual override {
+    function _initialize(bytes memory) 
+        virtual override
+        internal
+    {
         // initialize openzeppelin's underlying patterns
         __ReentrancyGuard_init();
     }
