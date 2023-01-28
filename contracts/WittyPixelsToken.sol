@@ -258,7 +258,7 @@ contract WittyPixelsToken
         __storage.tokenVaultIndex[_tokenId] = _tokenVaultIndex;
 
         // Mint the actual ERC-721 token and set the just created vault contract as first owner ever:
-        _safeMint(address(_tokenVault), _tokenId);
+        _mint(address(_tokenVault), _tokenId);
 
         // Emits event
         emit Fractionalized(
