@@ -763,8 +763,8 @@ contract WittyPixelsTokenVault
             "WittyPixelsTokenVault: no curator"
         );
         require(
-            msg.sender.supportsInterface(type(IWittyPixelsToken).interfaceId)
-                && msg.sender.supportsInterface(type(IWittyPixelsTokenJackpots).interfaceId),
+            _params.token.supportsInterface(type(IWittyPixelsToken).interfaceId)
+                && _params.token.supportsInterface(type(IWittyPixelsTokenJackpots).interfaceId),
             "WittyPixelsTokenVault: uncompliant vault factory"
         );
         require(
@@ -780,7 +780,7 @@ contract WittyPixelsTokenVault
             
         // initialize clone storage:
         __storage.curator = _params.curator;
-        __storage.parentToken = msg.sender;
+        __storage.parentToken = _params.token;
         __storage.parentTokenId = _params.tokenId;
         __storage.stats.totalPixels = _params.totalPixels;
         _setSettings(_params.settings);
@@ -789,6 +789,14 @@ contract WittyPixelsTokenVault
 
     // ================================================================================================================
     // --- Internal virtual methods -----------------------------------------------------------------------------------
+
+    function _afterCloning(address _newInstance, bytes memory _initdata)
+        virtual internal
+        returns (ITokenVaultWitnet)
+    {
+        Clonable(_newInstance).initializeClone(_initdata);
+        return ITokenVaultWitnet(_newInstance);
+    }
 
     function _setSettings(bytes memory _bytes) virtual internal {
         // decode dutch auction settings:

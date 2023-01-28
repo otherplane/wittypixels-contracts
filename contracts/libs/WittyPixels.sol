@@ -47,6 +47,7 @@ library WittyPixels {
         string  name;
         bytes   settings;
         string  symbol;
+        address token;
         uint256 tokenId;
         uint256 totalPixels;
     }

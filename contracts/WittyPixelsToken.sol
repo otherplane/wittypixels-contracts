@@ -242,6 +242,7 @@ contract WittyPixelsToken
                     name: string(abi.encode(name(), " #", _tokenId.toString())),
                     symbol: symbol(),
                     settings: _tokenVaultSettings,
+                    token: address(this),
                     tokenId: _tokenId,
                     totalPixels: __token.theStats.totalPixels
                 })
