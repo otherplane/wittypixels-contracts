@@ -33,8 +33,7 @@ abstract contract WittyPixelsUpgradeableBase
     {
         _UPGRADABLE_VERSION_TAG = _versionTag;
         proxiableUUID = keccak256(bytes(_proxiableUUID));        
-        // make sure the (uninitilized) base implementation is owned by the deployer:
-        _transferOwnership(msg.sender);
+        // Logic-only instance will have no owner.
     }
     
     /// @dev Reverts if proxy delegatecalls to unexistent method.
