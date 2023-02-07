@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "../libs/WittyPixels.sol";
+import "../libs/WittyPixelsLib.sol";
 
 interface IWittyPixelsTokenJackpots {
     event Jackpot(uint256 tokenId, uint256 index, address winner, uint256 jackpot);

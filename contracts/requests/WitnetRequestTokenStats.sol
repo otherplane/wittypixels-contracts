@@ -6,15 +6,15 @@ pragma experimental ABIEncoderV2;
 import "witnet-solidity-bridge/contracts/requests/WitnetRequestTemplate.sol";
 import "witnet-solidity-bridge/contracts/libs/WitnetCBOR.sol";
 
-import "../libs/WittyPixels.sol";
+import "../libs/WittyPixelsLib.sol";
 
 contract WitnetRequestTokenStats
     is
         WitnetRequestTemplate
 {
     using WitnetCBOR for WitnetCBOR.CBOR;
-    using WittyPixels for bytes;
-    using WittyPixels for string;
+    using WittyPixelsLib for bytes;
+    using WittyPixelsLib for string;
 
     constructor (
             WitnetRequestBoard _witnet,
@@ -41,7 +41,7 @@ contract WitnetRequestTokenStats
     {
         WitnetCBOR.CBOR[] memory _items = _value.readArray();
         if (_items.length >= 4) {           
-            _result = abi.encode(WittyPixels.ERC721TokenStats({
+            _result = abi.encode(WittyPixelsLib.ERC721TokenStats({
                 playersRoot: _items[0].readString().fromHex().toBytes32(),
                 totalPixels: _items[1].readUint(),
                 totalPlayers: _items[2].readUint(),

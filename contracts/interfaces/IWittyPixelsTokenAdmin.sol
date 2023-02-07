@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "./IERC165.sol";
-import "../libs/WittyPixels.sol";
+import "../libs/WittyPixelsLib.sol";
 
 interface IWittyPixelsTokenAdmin {
 
@@ -10,14 +10,14 @@ interface IWittyPixelsTokenAdmin {
     error PremintFailedResponse  (uint tokenId, string uri, string reason);
     error PremintValidationFailed(uint tokenId, string uri, string reason);
     
-    event Launched(uint256 tokenId, WittyPixels.ERC721TokenEvent theEvent);
+    event Launched(uint256 tokenId, WittyPixelsLib.ERC721TokenEvent theEvent);
     event Minting(uint256 tokenId, string imageURI, bytes32 slaHash);
 
     event NewTokenSponsor(uint256 tokenId, uint256 index, address indexed addr);
 
-    function launch(WittyPixels.ERC721TokenEvent calldata theEvent) external returns (uint256 tokenId);
+    function launch(WittyPixelsLib.ERC721TokenEvent calldata theEvent) external returns (uint256 tokenId);
     
-    /// @notice Mint new WittyPixels token: one new token id per ERC721TokenEvent where WittyPixelsTM is played.
+    /// @notice Mint new WittyPixelsLib token: one new token id per ERC721TokenEvent where WittyPixelsTM is played.
     function mint(uint256 tokenId, bytes32 witnetSlaHash) external payable;
 
     /// @notice Sets collection's base URI.

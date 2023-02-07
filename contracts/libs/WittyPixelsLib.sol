@@ -5,6 +5,8 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "witnet-solidity-bridge/contracts/requests/WitnetRequestTemplate.sol";
 import "../interfaces/IWittyPixelsTokenVault.sol";
 
+library WittyPixelsLib {
+
     bytes16 private constant _HEX_SYMBOLS_ = "0123456789abcdef";
 
     struct TokenInitParams {
@@ -289,7 +291,7 @@ import "../interfaces/IWittyPixelsTokenVault.sol";
                 && bytes(uri)[
                     bytes(uri).length - 1
                 ] == bytes1("/")
-            ), "WittyPixels: bad uri"
+            ), "WittyPixelsLib: bad uri"
         );
         return uri;
     }
@@ -356,7 +358,7 @@ import "../interfaces/IWittyPixelsTokenVault.sol";
         ) {
             return 10 + c - uint8(bytes1("A"));
         } else {
-            revert("WittyPixels: invalid hex");
+            revert("WittyPixelsLib: invalid hex");
         }
     }
 

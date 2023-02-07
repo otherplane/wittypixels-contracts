@@ -19,7 +19,7 @@ contract WittyPixelsTokenVault
 {
     using ERC165Checker for address;
 
-    WittyPixels.TokenVaultStorage internal __storage;
+    WittyPixelsLib.TokenVaultStorage internal __storage;
 
     modifier notSoldOut {
         require(
@@ -144,9 +144,9 @@ contract WittyPixelsTokenVault
         notSoldOut
     {
         // deserialize deeds data:
-        WittyPixels.TokenVaultOwnershipDeeds memory _deeds = abi.decode(
+        WittyPixelsLib.TokenVaultOwnershipDeeds memory _deeds = abi.decode(
             _deedsdata,
-            (WittyPixels.TokenVaultOwnershipDeeds)
+            (WittyPixelsLib.TokenVaultOwnershipDeeds)
         );
         
         // verify curator's signature:
@@ -159,7 +159,7 @@ contract WittyPixelsTokenVault
             _deeds.playerPixelsProof
         ));
         require(
-            WittyPixels.recoverAddr(_deedshash, _deeds.signature) == __storage.curator,
+            WittyPixelsLib.recoverAddr(_deedshash, _deeds.signature) == __storage.curator,
             "WittyPixelsTokenVault: bad signature"
         );
         
@@ -196,7 +196,7 @@ contract WittyPixelsTokenVault
             __storage.authors.push(_deeds.playerAddress);
         } 
         __storage.legacyPixels[_deeds.playerAddress] = _currentPixels + _deeds.playerPixels;
-        __storage.players[_deeds.playerIndex] = WittyPixels.TokenVaultPlayerInfo({
+        __storage.players[_deeds.playerIndex] = WittyPixelsLib.TokenVaultPlayerInfo({
             addr: _deeds.playerAddress,
             pixels: _deeds.playerPixels
         });
@@ -396,7 +396,7 @@ contract WittyPixelsTokenVault
         wasInitialized
         returns (address, uint256)
     {
-        WittyPixels.TokenVaultPlayerInfo storage __info = __storage.players[index];
+        WittyPixelsLib.TokenVaultPlayerInfo storage __info = __storage.players[index];
         return (
             __info.addr,
             __info.pixels
@@ -431,7 +431,7 @@ contract WittyPixelsTokenVault
         return __storage.legacyPixels[_wallet];
     }    
 
-    /// @notice Returns total number of finalized pixels within the WittyPixels canvas.
+    /// @notice Returns total number of finalized pixels within the WittyPixelsLib canvas.
     function totalPixels()
         virtual override
         external view
@@ -567,7 +567,7 @@ contract WittyPixelsTokenVault
         nonReentrant
         returns (uint256)
     {
-        WittyPixels.TokenVaultJackpotWinner storage __winner = __storage.winners[msg.sender];
+        WittyPixelsLib.TokenVaultJackpotWinner storage __winner = __storage.winners[msg.sender];
         require(
             __winner.awarded,
             "WittyPixelsTokenVault: not awarded"
@@ -607,7 +607,7 @@ contract WittyPixelsTokenVault
             string memory _text
         )
     {
-        WittyPixels.TokenVaultJackpotWinner storage __winner = __storage.winners[_winner];
+        WittyPixelsLib.TokenVaultJackpotWinner storage __winner = __storage.winners[_winner];
         require(
             __winner.awarded,
             "WittyPixelsTokenVault: not a winner"
@@ -722,7 +722,7 @@ contract WittyPixelsTokenVault
                 __members[_winnerIndex] = __members[_contestants - 1];
                 __members[_contestants - 1] = _winnerAddr;
             }
-            __storage.winners[_winnerAddr] = WittyPixels.TokenVaultJackpotWinner({
+            __storage.winners[_winnerAddr] = WittyPixelsLib.TokenVaultJackpotWinner({
                 awarded: true,
                 claimed: false,
                 index  : _jackpotIndex
@@ -754,9 +754,9 @@ contract WittyPixelsTokenVault
         super._initialize(_initBytes);
 
         // decode and validate initialization parameters:
-        WittyPixels.TokenVaultInitParams memory _params = abi.decode(
+        WittyPixelsLib.TokenVaultInitParams memory _params = abi.decode(
             _initBytes,
-            (WittyPixels.TokenVaultInitParams)
+            (WittyPixelsLib.TokenVaultInitParams)
         );
         require(
             _params.curator != address(0),

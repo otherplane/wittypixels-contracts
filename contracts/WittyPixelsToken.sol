@@ -29,14 +29,14 @@ contract WittyPixelsToken
 {
     using ERC165Checker for address;
     using WittyPixelsLib for bytes;
-    using WittyPixels for bytes;
-    using WittyPixels for bytes32[];
-    using WittyPixels for WittyPixels.ERC721Token;
+    using WittyPixelsLib for bytes32[];
+    using WittyPixelsLib for uint256;
+    using WittyPixelsLib for WittyPixelsLib.ERC721Token;
 
     WitnetRequestTemplate immutable public witnetRequestImageDigest;
     WitnetRequestTemplate immutable public witnetRequestTokenStats;
 
-    WittyPixels.TokenStorage internal __storage;
+    WittyPixelsLib.TokenStorage internal __storage;
 
     modifier initialized {
         require(
@@ -62,7 +62,7 @@ contract WittyPixelsToken
         _;
     }
 
-    modifier tokenInStatus(uint256 _tokenId, WittyPixels.ERC721TokenStatus _status) {
+    modifier tokenInStatus(uint256 _tokenId, WittyPixelsLib.ERC721TokenStatus _status) {
         require(getTokenStatus(_tokenId) == _status, "WittyPixelsToken: bad mood");
         _;
     }
@@ -181,12 +181,12 @@ contract WittyPixelsToken
             bytes   memory _tokenVaultSettings
         )
         external
-        tokenInStatus(_tokenId, WittyPixels.ERC721TokenStatus.Minting)
+        tokenInStatus(_tokenId, WittyPixelsLib.ERC721TokenStatus.Minting)
         onlyOwner
         returns (ITokenVault)
     {
-        WittyPixels.ERC721Token storage __token = __storage.items[_tokenId];
-        WittyPixels.ERC721TokenWitnetRequests storage __requests = __storage.witnetRequests[_tokenId];
+        WittyPixelsLib.ERC721Token storage __token = __storage.items[_tokenId];
+        WittyPixelsLib.ERC721TokenWitnetRequests storage __requests = __storage.witnetRequests[_tokenId];
         
         // Check there's a token vault prototype set:
         require(
@@ -221,7 +221,7 @@ contract WittyPixelsToken
                 "WittyPixelsToken: anachronic stats proof"
             );
             __token.statsWitnetTxHash = _txhash;
-            __token.theStats = abi.decode(_stats, (WittyPixels.ERC721TokenStats));
+            __token.theStats = abi.decode(_stats, (WittyPixelsLib.ERC721TokenStats));
         }
         catch Error(string memory _reason) {
             revert(_reason);
@@ -233,7 +233,7 @@ contract WittyPixelsToken
         // Clone the token vault prototype and initialize the cloned instance:
         IWittyPixelsTokenVault _tokenVault = IWittyPixelsTokenVault(address(
             __storage.tokenVaultPrototype.cloneAndInitialize(abi.encode(
-                WittyPixels.TokenVaultInitParams({
+                WittyPixelsLib.TokenVaultInitParams({
                     curator: msg.sender,
                     name: string(abi.encode(name(), " #", _tokenId.toString())),
                     symbol: symbol(),
@@ -339,7 +339,7 @@ contract WittyPixelsToken
     function getTokenStatus(uint256 _tokenId)
         override public view
         initialized
-        returns (WittyPixels.ERC721TokenStatus)
+        returns (WittyPixelsLib.ERC721TokenStatus)
     {
         if (_tokenId <= __storage.totalSupply) {
             uint _vaultIndex = __storage.tokenVaultIndex[_tokenId];
@@ -347,18 +347,18 @@ contract WittyPixelsToken
                 _vaultIndex > 0
                     && ownerOf(_tokenId) != address(__storage.vaults[_vaultIndex])
             ) {
-                return WittyPixels.ERC721TokenStatus.SoldOut;
+                return WittyPixelsLib.ERC721TokenStatus.SoldOut;
             } else {
-                return WittyPixels.ERC721TokenStatus.Fractionalized;
+                return WittyPixelsLib.ERC721TokenStatus.Fractionalized;
             }
         } else {
-            WittyPixels.ERC721Token storage __token = __storage.items[_tokenId];
+            WittyPixelsLib.ERC721Token storage __token = __storage.items[_tokenId];
             if (__token.birthTs > 0) {
-                return WittyPixels.ERC721TokenStatus.Minting;
+                return WittyPixelsLib.ERC721TokenStatus.Minting;
             } else if (bytes(__token.theEvent.name).length > 0) {
-                return WittyPixels.ERC721TokenStatus.Launching;
+                return WittyPixelsLib.ERC721TokenStatus.Launching;
             } else {
-                return WittyPixels.ERC721TokenStatus.Void;
+                return WittyPixelsLib.ERC721TokenStatus.Void;
             }
         }
     }
@@ -368,14 +368,14 @@ contract WittyPixelsToken
         initialized
         returns (string memory)
     {
-        WittyPixels.ERC721TokenStatus _status = getTokenStatus(_tokenId);
-        if (_status == WittyPixels.ERC721TokenStatus.SoldOut) {
+        WittyPixelsLib.ERC721TokenStatus _status = getTokenStatus(_tokenId);
+        if (_status == WittyPixelsLib.ERC721TokenStatus.SoldOut) {
             return "SoldOut";
-        } else if (_status == WittyPixels.ERC721TokenStatus.Fractionalized) {
+        } else if (_status == WittyPixelsLib.ERC721TokenStatus.Fractionalized) {
             return "Fractionalized";
-        } else if (_status == WittyPixels.ERC721TokenStatus.Minting) {
+        } else if (_status == WittyPixelsLib.ERC721TokenStatus.Minting) {
             return "Minting";
-        } else if (_status == WittyPixels.ERC721TokenStatus.Launching) {
+        } else if (_status == WittyPixelsLib.ERC721TokenStatus.Launching) {
             return "Launching";
         } else {
             return "Void";
@@ -387,7 +387,7 @@ contract WittyPixelsToken
         external view
         override
         initialized
-        returns (WittyPixels.ERC721Token memory)
+        returns (WittyPixelsLib.ERC721Token memory)
     {
         return __storage.items[_tokenId];
     }
@@ -411,7 +411,7 @@ contract WittyPixelsToken
         external view
         override
         initialized
-        returns (WittyPixels.ERC721TokenWitnetRequests memory)
+        returns (WittyPixelsLib.ERC721TokenWitnetRequests memory)
     {
         return __storage.witnetRequests[_tokenId];
     }
@@ -459,7 +459,7 @@ contract WittyPixelsToken
         tokenExists(_tokenId)
         returns (bool)
     {
-        WittyPixels.ERC721Token storage __token = __storage.items[_tokenId];
+        WittyPixelsLib.ERC721Token storage __token = __storage.items[_tokenId];
         return (
             _playerIndex < __token.theStats.totalPlayers
                 && _proof.merkle(keccak256(abi.encode(
@@ -473,16 +473,16 @@ contract WittyPixelsToken
     // ================================================================================================================
     // --- Implementation of 'IWittyPixelsTokenAdmin' -----------------------------------------------------------------
 
-    function launch(WittyPixels.ERC721TokenEvent calldata _theEvent)
+    function launch(WittyPixelsLib.ERC721TokenEvent calldata _theEvent)
         override external
         onlyOwner
         returns (uint256 _tokenId)
     {
         _tokenId = __storage.totalSupply + 1;
-        WittyPixels.ERC721TokenStatus _status = getTokenStatus(_tokenId);
+        WittyPixelsLib.ERC721TokenStatus _status = getTokenStatus(_tokenId);
         require(
-            _status == WittyPixels.ERC721TokenStatus.Void
-                || _status == WittyPixels.ERC721TokenStatus.Launching,
+            _status == WittyPixelsLib.ERC721TokenStatus.Void
+                || _status == WittyPixelsLib.ERC721TokenStatus.Launching,
             "WittyPixelsToken: bad mood"
         );
         // Check the event data:
@@ -507,13 +507,13 @@ contract WittyPixelsToken
         onlyOwner 
         nonReentrant
     {
-        WittyPixels.ERC721TokenStatus _status = getTokenStatus(_tokenId);
+        WittyPixelsLib.ERC721TokenStatus _status = getTokenStatus(_tokenId);
         require(
-            _status == WittyPixels.ERC721TokenStatus.Launching
-                || _status == WittyPixels.ERC721TokenStatus.Minting,
+            _status == WittyPixelsLib.ERC721TokenStatus.Launching
+                || _status == WittyPixelsLib.ERC721TokenStatus.Minting,
             "WittyPixelsToken: bad mood"
         );        
-        WittyPixels.ERC721Token storage __token = __storage.items[_tokenId];
+        WittyPixelsLib.ERC721Token storage __token = __storage.items[_tokenId];
         require(
             block.timestamp >= __token.theEvent.endTs,
             "WittyPixelsToken: the event is not over yet"
@@ -528,7 +528,7 @@ contract WittyPixelsToken
         }
 
         uint _usedFunds; WitnetRequestTemplate _request;
-        WittyPixels.ERC721TokenWitnetRequests storage __requests = __storage.witnetRequests[_tokenId];        
+        WittyPixelsLib.ERC721TokenWitnetRequests storage __requests = __storage.witnetRequests[_tokenId];        
         // Ask Witnet to confirm the token's image URI actually exists:
         {
             string[][] memory _args = new string[][](1);
@@ -574,7 +574,7 @@ contract WittyPixelsToken
         override
         onlyOwner 
     {
-        __storage.baseURI = WittyPixels.checkBaseURI(_uri);
+        __storage.baseURI = WittyPixelsLib.checkBaseURI(_uri);
     }
 
     /// @notice Update sponsors access-list by adding new players. 
@@ -595,7 +595,7 @@ contract WittyPixelsToken
             "WittyPixelsToken: invalid token"
         );
         // add new sponsor addresses to the access list if not yet there:
-        WittyPixels.ERC721TokenSponsors storage __sponsors = __storage.sponsors[_tokenId];
+        WittyPixelsLib.ERC721TokenSponsors storage __sponsors = __storage.sponsors[_tokenId];
         for (uint _i = 0; _i < _addresses.length; _i ++) {
             address _addr = _addresses[_i];
             if (!__sponsors.jackpots[_addr].authorized) {
@@ -640,10 +640,10 @@ contract WittyPixelsToken
             string memory _text
         )
     {
-        WittyPixels.ERC721TokenSponsors storage __sponsors = __storage.sponsors[_tokenId];
+        WittyPixelsLib.ERC721TokenSponsors storage __sponsors = __storage.sponsors[_tokenId];
         if (_index < __sponsors.addresses.length) {
             _sponsor = __sponsors.addresses[_index];
-            WittyPixels.ERC721TokenJackpot storage __jackpot = __sponsors.jackpots[_sponsor];
+            WittyPixelsLib.ERC721TokenJackpot storage __jackpot = __sponsors.jackpots[_sponsor];
             _text = __jackpot.text;
             _value = __jackpot.value;
             _winner = __jackpot.winner;
@@ -670,9 +670,9 @@ contract WittyPixelsToken
         external payable
         override
         onlyTokenSponsors(_tokenId)
-        tokenInStatus(_tokenId, WittyPixels.ERC721TokenStatus.Void)
+        tokenInStatus(_tokenId, WittyPixelsLib.ERC721TokenStatus.Void)
     {
-        WittyPixels.ERC721TokenSponsors storage __sponsors = __storage.sponsors[_tokenId];
+        WittyPixelsLib.ERC721TokenSponsors storage __sponsors = __storage.sponsors[_tokenId];
         __sponsors.jackpots[msg.sender].value += msg.value;
         __sponsors.totalJackpots += msg.value;
     }
@@ -692,10 +692,10 @@ contract WittyPixelsToken
             "WittyPixelsToken: unauthorized"
         );
         assert(_winner != address(0));
-        WittyPixels.ERC721TokenSponsors storage __sponsors = __storage.sponsors[_tokenId];
+        WittyPixelsLib.ERC721TokenSponsors storage __sponsors = __storage.sponsors[_tokenId];
         assert(_index < __sponsors.addresses.length);
         address _sponsor = __sponsors.addresses[_index];
-        WittyPixels.ERC721TokenJackpot storage __jackpot = __sponsors.jackpots[_sponsor];
+        WittyPixelsLib.ERC721TokenJackpot storage __jackpot = __sponsors.jackpots[_sponsor];
         require(
             __jackpot.winner == address(0), "WittyPixelsToken: already claimed"
         );
@@ -736,11 +736,11 @@ contract WittyPixelsToken
         // a proxy contract is upgraded.
 
         // read and set ERC721 initialization parameters
-        WittyPixels.TokenInitParams memory _params = abi.decode(
+        WittyPixelsLib.TokenInitParams memory _params = abi.decode(
             _initdata,
-            (WittyPixels.TokenInitParams)
+            (WittyPixelsLib.TokenInitParams)
         );
-        __storage.baseURI = WittyPixels.checkBaseURI(_params.baseURI);
+        __storage.baseURI = WittyPixelsLib.checkBaseURI(_params.baseURI);
         __ERC721_init(
             _params.name,
             _params.symbol
