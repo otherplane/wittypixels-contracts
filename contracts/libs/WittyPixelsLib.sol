@@ -187,7 +187,7 @@ library WittyPixelsLib {
         ));
         string memory _eventVenue = string(abi.encodePacked(
             "{",
-                "\"trait_type\": \"Event Name\",",
+                "\"trait_type\": \"Event Venue\",",
                 "\"value\": \"", self.theEvent.venue, "\"",
             "},"
         ));
