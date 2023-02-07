@@ -433,10 +433,13 @@ contract WittyPixelsToken
         tokenExists(_tokenId)
         returns (string memory)
     {
-        return __storage.items[_tokenId].toJSON();
+        return __storage.items[_tokenId].toJSON(
+            _tokenId,
+            __storage.witnetRequests[_tokenId].tokenStats.retrievalHash()
+        );
     }
 
-    /// @notice Returns total number of WittyPixels tokens that have been minted so far.
+    /// @notice Returns total number of WittyPixelsLib tokens that have been minted so far.
     function totalSupply()
         external view
         override

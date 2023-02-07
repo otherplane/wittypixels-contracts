@@ -140,6 +140,146 @@ import "../interfaces/IWittyPixelsTokenVault.sol";
         WitnetRequestTemplate tokenStats;
     }
 
+    function toJSON(
+            ERC721Token memory self,
+            uint256 tokenId,
+            bytes32 tokenStatsRadHash
+        )
+        public pure
+        returns (string memory)
+    {
+        string memory _tokenIdString = toString(tokenId);
+        string memory _name = string(abi.encodePacked(
+            "\"name\": \"WittyPixelsLib.art #", _tokenIdString, "\","
+        ));
+        string memory _description = string(abi.encodePacked(
+            "\"description\": \"",
+            _loadJsonDescription(self, tokenStatsRadHash),
+            "\","
+        ));
+        string memory _externalUrl = string(abi.encodePacked(
+            "\"external_url\": \"", tokenMetadataURI(tokenId, self.baseURI), "\","
+        ));
+        string memory _image = string(abi.encodePacked(
+            "\"image\": \"", tokenImageURI(tokenId, self.baseURI), "\","
+        ));
+        string memory _attributes = string(abi.encodePacked(
+            "\"attributes\": [",
+            _loadJsonAttributes(self),
+            "]"
+        ));
+        return string(abi.encodePacked(
+            "{", _name, _description, _externalUrl, _image, _attributes, "}"
+        ));
+    }
+
+    function _loadJsonAttributes(ERC721Token memory self)
+        private pure
+        returns (string memory)
+    {
+        string memory _eventName = string(abi.encodePacked(
+            "{",
+                "\"trait_type\": \"Event Name\",",
+                "\"value\": \"", self.theEvent.name, "\"",
+            "},"
+        ));
+        string memory _eventVenue = string(abi.encodePacked(
+            "{",
+                "\"trait_type\": \"Event Name\",",
+                "\"value\": \"", self.theEvent.venue, "\"",
+            "},"
+        ));
+        string memory _eventStartDate = string(abi.encodePacked(
+             "{",
+                "\"display_type\": \"date\",",
+                "\"trait_type\": \"Event Start Date\",",
+                "\"value\": ", toString(self.theEvent.startTs),
+            "},"
+        ));
+        string memory _eventEndDate = string(abi.encodePacked(
+             "{",
+                "\"display_type\": \"date\",",
+                "\"trait_type\": \"Event End Date\",",
+                "\"value\": ", toString(self.theEvent.endTs),
+            "},"
+        ));
+        string memory _canvasDate = string(abi.encodePacked(
+             "{",
+                "\"display_type\": \"date\",",
+                "\"trait_type\": \"Canvas Date\",",
+                "\"value\": ", toString(self.birthTs),
+            "},"
+        ));
+        // string memory _canvasHeight = string(abi.encodePacked(
+        //      "{",
+        //         "\"display_type\": \"number\",",
+        //         "\"trait_type\": \"Canvas Width\",",
+        //         "\"value\": ", toString(self.theCanvas.height),
+        //     "},"
+        // ));    
+        // string memory _canvasWidth = string(abi.encodePacked(
+        //      "{",
+        //         "\"display_type\": \"number\",",
+        //         "\"trait_type\": \"Canvas Width\",",
+        //         "\"value\": ", toString(self.theCanvas.width),
+        //     "},"
+        // ));
+        string memory _canvasPixels = string(abi.encodePacked(
+            "{", 
+                "\"trait_type\": \"Canvas Pixels\",",
+                "\"value\": ", toString(self.theStats.totalPixels),
+            "},"
+        ));
+        string memory _totalPlayers = string(abi.encodePacked(
+            "{", 
+                "\"trait_type\": \"Total Players\",",
+                "\"value\": ", toString(self.theStats.totalPlayers),
+            "},"
+        ));
+        string memory _totalScans = string(abi.encodePacked(
+            "{", 
+                "\"trait_type\": \"Total Scans\",",
+                "\"value\": ", toString(self.theStats.totalScans),
+            "},"
+        ));
+        string memory _playersRoot = string(abi.encodePacked(
+            "{",
+                "\"trait_type\": \"Fractionalizing Root\",",
+                "\"value\": \"", toHexString(self.theStats.playersRoot), "\"",
+            "}"
+        ));
+        return string(abi.encodePacked(
+            _eventName,
+            _eventVenue,
+            _eventStartDate,
+            _eventEndDate,
+            _canvasDate,
+            //_canvasHeight,
+            //_canvasWidth,
+            _canvasPixels,
+            _totalPlayers,
+            _totalScans,
+            _playersRoot
+        ));
+    }
+
+    function _loadJsonDescription(ERC721Token memory self, bytes32 tokenStatsRadHash)
+        private pure
+        returns (string memory)
+    {
+        string memory _totalPlayersString = toString(self.theStats.totalPlayers);
+        string memory _radHashHexString = toHexString(tokenStatsRadHash);
+        return string(abi.encodePacked(
+            "WittyPixelsTM collaborative art canvas drawn by ", _totalPlayersString,
+            " attendees during '", self.theEvent.name, "' in ", self.theEvent.venue, 
+            ". This token was fractionalized and secured by the [Witnet multichain",
+            " oracle](https://witnet.io). Historical WittyPixelsLib game info and",
+            " ownership distribution root during the '", self.theEvent.name, "'",
+            " can be audited on [Witnet's block explorer](https://witnet.network/",
+            _radHashHexString, ")."
+        ));
+    }
+
     function checkBaseURI(string memory uri)
         internal pure
         returns (string memory)
@@ -326,6 +466,15 @@ import "../interfaces/IWittyPixelsTokenVault.sol";
             return buffer;
         }
     }
+
+    /// @dev Converts a `bytes32` to its hex `string` representation with no "0x" prefix.
+    function toHexString(bytes32 value) internal pure returns (string memory) {
+        bytes memory buffer = new bytes(64);
+        for (uint256 i = 63; i > 1; -- i) {
+            buffer[i] = _HEX_SYMBOLS_[uint(value) & 0xf];
+            value >>= 4;
+        }
+        return string(buffer);
     }
 
     function _hash(bytes32 a, bytes32 b)
