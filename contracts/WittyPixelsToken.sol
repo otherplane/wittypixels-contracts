@@ -423,7 +423,17 @@ contract WittyPixelsToken
         initialized
         returns (string memory)
     {
-        return WittyPixelsLib.tokenImageURI(_tokenId, __storage.items[_tokenId].baseURI);
+        WittyPixelsLib.ERC721TokenStatus _tokenStatus = getTokenStatus(_tokenId);
+        if (_tokenStatus == WittyPixelsLib.ERC721TokenStatus.Void) {
+            return string(hex"");
+        } else {
+            return WittyPixelsLib.tokenImageURI(
+                _tokenId,
+                _tokenStatus == WittyPixelsLib.ERC721TokenStatus.Launching
+                    ? baseURI()
+                    : __storage.items[_tokenId].baseURI
+            );
+        }
     }
 
     /// @notice Serialize token ERC721Token to JSON string.
