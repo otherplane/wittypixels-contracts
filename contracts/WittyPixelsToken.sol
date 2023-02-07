@@ -2,7 +2,6 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
-import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
 
 import "witnet-solidity-bridge/contracts/impls/WitnetProxy.sol";
@@ -29,7 +28,7 @@ contract WittyPixelsToken
         WittyPixelsUpgradeableBase
 {
     using ERC165Checker for address;
-    using Strings for uint256;
+    using WittyPixelsLib for bytes;
     using WittyPixels for bytes;
     using WittyPixels for bytes32[];
     using WittyPixels for WittyPixels.ERC721Token;
@@ -155,11 +154,7 @@ contract WittyPixelsToken
         tokenExists(_tokenId)
         returns (string memory)
     {
-        return string(abi.encodePacked(
-            baseURI(),
-            "metadata/",
-            _tokenId.toString()
-        ));
+        return WittyPixelsLib.tokenMetadataURI(_tokenId, __storage.items[_tokenId].baseURI);
     }
 
 
@@ -428,7 +423,7 @@ contract WittyPixelsToken
         initialized
         returns (string memory)
     {
-        return __storage.items[_tokenId].imageURI;
+        return WittyPixelsLib.tokenImageURI(_tokenId, __storage.items[_tokenId].baseURI);
     }
 
     /// @notice Serialize token ERC721Token to JSON string.
@@ -521,11 +516,12 @@ contract WittyPixelsToken
             "WittyPixelsToken: the event is not over yet"
         );
         
-        // Set the token's image uri and inception timestamp
-        string memory _imageuri = _imageURI(_tokenId);
+        // Set the token's base uri and inception timestamp
+        string memory _currentBaseURI = __storage.baseURI;
+        string memory _imageuri = WittyPixelsLib.tokenImageURI(_tokenId, _currentBaseURI);
         {
-            __token.birthTs = block.timestamp;
-            __token.imageURI = _imageuri;
+            __token.baseURI = _currentBaseURI;
+            __token.birthTs = block.timestamp;            
         }
 
         uint _usedFunds; WitnetRequestTemplate _request;
@@ -549,11 +545,7 @@ contract WittyPixelsToken
         {
             string[][] memory _args = new string[][](1);
             _args[0] = new string[](1);
-            _args[0][0] = string(abi.encodePacked(
-                bytes(baseURI()),
-                "stats/",
-                _tokenId.toString()                
-            ));
+            _args[0][0] = WittyPixelsLib.tokenStatsURI(_tokenId, _currentBaseURI);
             _request = witnetRequestTokenStats.clone(
                 abi.encode(WitnetRequestTemplate.InitData({
                     args: _args,
@@ -727,18 +719,6 @@ contract WittyPixelsToken
 
     // ================================================================================================================
     // --- Internal virtual methods -----------------------------------------------------------------------------------
-
-    function _imageURI(uint256 _tokenId)
-        virtual internal view
-        initialized
-        returns (string memory)
-    {
-        return string(abi.encodePacked(
-            __storage.baseURI,
-            "image/",
-            _tokenId.toString()
-        ));
-    }
 
     function _initializeProxy(bytes memory _initdata)
         virtual internal

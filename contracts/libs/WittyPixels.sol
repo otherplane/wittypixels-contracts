@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import "@openzeppelin/contracts/utils/math/Math.sol";
 import "witnet-solidity-bridge/contracts/requests/WitnetRequestTemplate.sol";
 import "../interfaces/IWittyPixelsTokenVault.sol";
 
-library WittyPixels {
+    bytes16 private constant _HEX_SYMBOLS_ = "0123456789abcdef";
 
     struct TokenInitParams {
         string baseURI;
@@ -99,8 +100,8 @@ library WittyPixels {
     }
 
     struct ERC721Token {
-        uint256 birthTs;
-        string  imageURI;
+        string  baseURI;
+        uint256 birthTs;        
         bytes32 imageWitnetTxHash;         
         bytes32 statsWitnetTxHash;
         ERC721TokenEvent theEvent;
@@ -151,6 +152,30 @@ library WittyPixels {
             ), "WittyPixels: bad uri"
         );
         return uri;
+    }
+
+    function tokenImageURI(uint256 tokenId, string memory baseURI) internal pure returns (string memory) {
+        return string(abi.encodePacked(
+            baseURI,
+            "image/",
+            toString(tokenId)
+        ));
+    }
+
+    function tokenMetadataURI(uint256 tokenId, string memory baseURI) internal pure returns (string memory) {
+        return string(abi.encodePacked(
+            baseURI,
+            "metadata/",
+            toString(tokenId)
+        ));
+    }
+
+    function tokenStatsURI(uint256 tokenId, string memory baseURI) internal pure returns (string memory) {
+        return string(abi.encodePacked(
+            baseURI,
+            "stats/",
+            toString(tokenId)
+        ));
     }
 
     function fromHex(string memory s)
@@ -279,11 +304,28 @@ library WittyPixels {
         }
     }
 
-    function toJSON(ERC721Token memory self)
-        internal pure
-        returns (string memory)
-    {
-        // TODO
+    /// @dev Converts a `uint256` to its ASCII `string` decimal representation.
+    function toString(uint256 value) internal pure returns (string memory) {
+        unchecked {
+            uint256 length = Math.log10(value) + 1;
+            string memory buffer = new string(length);
+            uint256 ptr;
+            /// @solidity memory-safe-assembly
+            assembly {
+                ptr := add(buffer, add(32, length))
+            }
+            while (true) {
+                ptr--;
+                /// @solidity memory-safe-assembly
+                assembly {
+                    mstore8(ptr, byte(mod(value, 10), _HEX_SYMBOLS_))
+                }
+                value /= 10;
+                if (value == 0) break;
+            }
+            return buffer;
+        }
+    }
     }
 
     function _hash(bytes32 a, bytes32 b)
