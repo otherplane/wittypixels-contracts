@@ -9,6 +9,7 @@ const utils = require("../../scripts/utils")
 const Create2Factory = artifacts.require("Create2Factory")
 
 const WitnetProxy = artifacts.require("WitnetProxy")
+const WittyPixelsLib = artifacts.require("WittyPixelsLib")
 const WittyPixelsToken = artifacts.require("WittyPixelsToken")
 
 const WitnetRequestImageDigest = artifacts.require("WitnetRequestImageDigest")
@@ -22,8 +23,22 @@ module.exports = async function (deployer, network, [, from]) {
   if (!addresses[ecosystem]) addresses[ecosystem] = {}
   if (!addresses[ecosystem][network]) addresses[ecosystem][network] = {}
 
+  var lib
+  if (utils.isNullAddress(addresses[ecosystem][network]?.WittyPixelsLib)) {
+    await deployer.deploy(WittyPixelsLib)
+    lib = await WittyPixelsLib.deployed()
+    addresses[ecosystem][network].WittyPixelsLib = lib.address
+    if (!isDryRun) {
+      utils.saveAddresses(addresses)
+    }
+  } else {
+    lib = await WittyPixelsLib.at(addresses[ecosystem][network]?.WittyPixelsLib)
+    WittyPixelsLib.address = lib.address
+  }
+
   var token
   if (utils.isNullAddress(addresses[ecosystem][network]?.WittyPixelsToken)) {
+    await deployer.link(WittyPixelsLib, WittyPixelsToken);
     await deployer.deploy(
       WittyPixelsToken,
       WitnetRequestImageDigest.address,

@@ -4,7 +4,8 @@
             "Create2Factory": "0x1B99e3b8d5981D829E1C9a7f520B33515E7133d1",
             "WitnetRequestImageDigest": "0x4c9eA5Fa4F8470956f0Be92aEB6a52ABD85a643E",
             "WitnetRequestTokenStats": "0x0b75886DeB58F80A75E5cAF10702C5d15FA54437",
-            "WittyPixelsToken": "0x35A320906C426eE9C23ffdDD09111B1A3cE1539f",
+            "WittyPixelsLib": "",
+            "WittyPixelsToken": "",
             "WittyPixelsTokenProxy": "0xc0ffee3c6F66dE5a0adcCEc65Dc6bB20C8C6A454",
             "WittyPixelsTokenVaultPrototype": "0xF58115533e681295CC1F07A135539E72c5116855"
         }

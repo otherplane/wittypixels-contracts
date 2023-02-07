@@ -18,7 +18,7 @@ Targetting "${realm.toUpperCase()}" realm
 ===================${"=".repeat(realm.length)}`)
 
 module.exports = {
-  build_directory: `./build/${realm}/`,
+  build_directory: `./build/`,
   contracts_directory: "./contracts/",
   migrations_directory: "./migrations/scripts/",
   networks: settings.networks[realm],
