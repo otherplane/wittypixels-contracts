@@ -17,7 +17,7 @@ abstract contract ITokenVault
     /// @notice Address of the previous owner, the one that decided to fractionalized the NFT.
     function curator() virtual external view returns (address);
 
-    /// @notice Mint ERC-20 tokens, ergo token ownership, by providing ownership deeds.
+    /// @notice Redeems partial ownership of `parentTokenId` by providing valid ownership deeds.
     function redeem(bytes calldata deeds) virtual external;
 
     /// @notice Returns whether this NFT vault has already been sold out. 

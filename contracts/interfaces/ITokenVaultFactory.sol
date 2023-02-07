@@ -5,7 +5,7 @@ import "./ITokenVault.sol";
 
 interface ITokenVaultFactory {
 
-    /// @dev Possible status of a ERC721Token Vault, based on current ownership
+    /// @dev Possible status of an ERC721Token Vault, based on current ownership
     /// @dev of a previously fractionalized token. 
     enum TokenVaultStatus {
         Unknown,    // unknown token vault (index out of range)

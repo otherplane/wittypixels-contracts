@@ -623,7 +623,7 @@ contract WittyPixelsToken
         }
     }
 
-    /// @notice Vault logic contract to be used in next fractions.
+    /// @notice Vault logic contract to be used in next calls to `fractionalize(..)`. 
     /// @dev Prototype ownership needs to have been previously transferred to this contract.
     function setTokenVaultPrototype(address _prototype)
         external
