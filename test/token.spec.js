@@ -712,6 +712,7 @@ contract("WittyPixelsToken", ([ curator, master, stranger, player ]) => {
                 })
             })
             context("After being fractionalized:", async () => {
+                var metadata
                 it("owner cannot fractionalize the same token again", async () => {
                     await expectRevert(
                         token.fractionalize(
@@ -749,7 +750,10 @@ contract("WittyPixelsToken", ([ curator, master, stranger, player ]) => {
                     )
                 })
                 it("metadata(1) should not revert anymore", async () => {
-                    await token.metadata.call(1)
+                    metadata = await token.metadata.call(1)
+                })
+                it("JSON string returned by metadata(1) is well formed", async () => {
+                    JSON.parse(metadata)
                 })
             })
         })
