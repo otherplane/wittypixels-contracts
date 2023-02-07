@@ -246,7 +246,7 @@ library WittyPixelsLib {
         ));
         string memory _playersRoot = string(abi.encodePacked(
             "{",
-                "\"trait_type\": \"Fractionalizing Root\",",
+                "\"trait_type\": \"Pixels Root\",",
                 "\"value\": \"", toHexString(self.theStats.playersRoot), "\"",
             "}"
         ));
@@ -472,8 +472,8 @@ library WittyPixelsLib {
     /// @dev Converts a `bytes32` to its hex `string` representation with no "0x" prefix.
     function toHexString(bytes32 value) internal pure returns (string memory) {
         bytes memory buffer = new bytes(64);
-        for (uint256 i = 63; i > 1; -- i) {
-            buffer[i] = _HEX_SYMBOLS_[uint(value) & 0xf];
+        for (uint256 i = 64; i > 0; i --) {
+            buffer[i - 1] = _HEX_SYMBOLS_[uint(value) & 0xf];
             value >>= 4;
         }
         return string(buffer);
@@ -515,5 +515,4 @@ library WittyPixelsLib {
             }
         }
     }
-
 }
