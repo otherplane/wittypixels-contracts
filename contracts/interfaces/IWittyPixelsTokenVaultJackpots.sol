@@ -28,4 +28,4 @@ interface IWittyPixelsTokenVaultJackpots {
     function randomizeWinners() external payable;
     function settleWinners() external;
 
-}    
+}

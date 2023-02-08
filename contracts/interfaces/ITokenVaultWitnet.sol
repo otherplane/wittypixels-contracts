@@ -22,7 +22,6 @@ abstract contract ITokenVaultWitnet
     function getRandomizeFee(uint256 gasPrice) virtual external view returns (uint256) {
         return randomizer.estimateRandomizeFee(gasPrice);
     }
-    function isRandomized() virtual external view returns (bool);
-    function isRandomizing() virtual external view returns (bool);
-    
+    function randomized() virtual external view returns (bool);
+    function randomizing() virtual external view returns (bool);
 }

@@ -37,9 +37,9 @@ contract WittyPixelsTokenVault
         _;
     }
 
-    modifier randomized {
+    modifier wasRandomized {
         require(
-            isRandomized(),
+            randomized(),
             "WittyPixelsTokenVault: not yet randomized"
         );
         _;
@@ -304,7 +304,7 @@ contract WittyPixelsTokenVault
         return __storage.witnetRandomnessBlock;
     }
 
-    function isRandomized()
+    function randomized()
         override
         public view
         returns (bool)
@@ -315,7 +315,7 @@ contract WittyPixelsTokenVault
         );
     }
 
-    function isRandomizing()
+    function randomizing()
         override
         public view
         returns (bool)
@@ -375,7 +375,7 @@ contract WittyPixelsTokenVault
     {
         if (acquired()) {
             _status = IWittyPixelsTokenVault.Status.Acquired;
-        } else if (isRandomizing()) {
+        } else if (randomizing()) {
             _status = IWittyPixelsTokenVault.Status.Randomizing;
         } else if (auctioning()) {
             _status = IWittyPixelsTokenVault.Status.Auctioning;
@@ -563,7 +563,7 @@ contract WittyPixelsTokenVault
     function claimJackpot()
         override
         external
-        randomized
+        wasRandomized
         nonReentrant
         returns (uint256)
     {
@@ -704,7 +704,7 @@ contract WittyPixelsTokenVault
         external
     {
         require(
-            isRandomizing(),
+            randomizing(),
             "WittyPixelsTokenVault: not randomizing"
         );
         bytes32 _randomness = randomizer.getRandomnessAfter(__storage.witnetRandomnessBlock);
