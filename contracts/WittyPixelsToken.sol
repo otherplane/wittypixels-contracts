@@ -290,9 +290,9 @@ contract WittyPixelsToken
     {
         ITokenVault _vault = getTokenVaultByIndex(index);
         if (address(_vault) != address(0)) {
-            try _vault.soldOut() returns (bool _soldOut) {
-                return (_soldOut
-                    ? ITokenVaultFactory.TokenVaultStatus.SoldOut
+            try _vault.acquired() returns (bool _acquired) {
+                return (_acquired
+                    ? ITokenVaultFactory.TokenVaultStatus.Acquired
                     : ITokenVaultFactory.TokenVaultStatus.Active
                 );
             } catch {
@@ -347,7 +347,7 @@ contract WittyPixelsToken
                 _vaultIndex > 0
                     && ownerOf(_tokenId) != address(__storage.vaults[_vaultIndex])
             ) {
-                return WittyPixelsLib.ERC721TokenStatus.SoldOut;
+                return WittyPixelsLib.ERC721TokenStatus.Acquired;
             } else {
                 return WittyPixelsLib.ERC721TokenStatus.Fractionalized;
             }
@@ -369,8 +369,8 @@ contract WittyPixelsToken
         returns (string memory)
     {
         WittyPixelsLib.ERC721TokenStatus _status = getTokenStatus(_tokenId);
-        if (_status == WittyPixelsLib.ERC721TokenStatus.SoldOut) {
-            return "SoldOut";
+        if (_status == WittyPixelsLib.ERC721TokenStatus.Acquired) {
+            return "Acquired";
         } else if (_status == WittyPixelsLib.ERC721TokenStatus.Fractionalized) {
             return "Fractionalized";
         } else if (_status == WittyPixelsLib.ERC721TokenStatus.Minting) {

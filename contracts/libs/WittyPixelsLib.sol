@@ -55,13 +55,6 @@ library WittyPixelsLib {
         uint256 totalPixels;
     }
 
-    enum TokenVaultStatus {
-        Awaiting,
-        Randomizing,
-        Auctioning,
-        Sold
-    }
-
     struct TokenVaultStorage {
         // --- IERC1633
         address parentToken;
@@ -98,7 +91,7 @@ library WittyPixelsLib {
         Launching,
         Minting,
         Fractionalized,
-        SoldOut
+        Acquired
     }
 
     struct ERC721Token {

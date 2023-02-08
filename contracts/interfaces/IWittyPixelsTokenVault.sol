@@ -27,7 +27,7 @@ abstract contract IWittyPixelsTokenVault
         /* 0 */ Awaiting,
         /* 1 */ Randomizing,
         /* 2 */ Auctioning,
-        /* 3 */ Sold
+        /* 3 */ Acquired
     }
 
     /// @notice Returns number of legitimate players that have redeemed authorhsip of at least one pixel from the NFT token.
@@ -37,7 +37,7 @@ abstract contract IWittyPixelsTokenVault
     function getAuthorsRange(uint offset, uint count) virtual external view returns (address[] memory);
 
     /// @notice Returns status data about the token vault contract, relevant from an UI/UX perspective
-    /// @return status Enum value representing current contract status: Awaiting, Randomizing, Auctioning, Sold
+    /// @return status Enum value representing current contract status: Awaiting, Randomizing, Auctioning, Acquired
     /// @return stats Set of meters reflecting number of pixels, players, ERC20 transfers and withdrawls, up to date. 
     /// @return currentPrice Price in ETH/wei at which the whole NFT ownership can be bought, or at which it was actually sold.
     /// @return nextPriceTimestamp The approximate timestamp at which the currentPrice may change. Zero, if it's not expected to ever change again.
@@ -67,7 +67,7 @@ abstract contract IWittyPixelsTokenVault
     /// @notice Returns sum of legacy pixels ever redeemed from the given address.
     /// The moral right over a player's finalized pixels is inalienable, so the value returned by this method
     /// will be preserved even though the player transfers ERC20/WPX tokens to other accounts, or if she decides to cash out 
-    /// her share if the parent NFT token ever gets sold out. 
+    /// her share if the parent NFT token ever gets acquired. 
     function pixelsOf(address) virtual external view returns (uint256);
 
     /// @notice Returns total number of finalized pixels within the WittyPixelsLib canvas.

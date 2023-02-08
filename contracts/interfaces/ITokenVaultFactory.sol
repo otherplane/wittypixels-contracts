@@ -10,8 +10,8 @@ interface ITokenVaultFactory {
     enum TokenVaultStatus {
         Unknown,    // unknown token vault (index out of range)
         Active,     // vault still owns fractionalized token
-        SoldOut,    // vault has been sold out, but was not yet deleted
-        Deleted     // vault was sold out and deleted
+        Acquired,   // vault has been acquired, but was not yet deleted
+        Deleted     // vault was acquired and deleted
     }
     
     /// @notice A new token has been fractionalized from this factory.

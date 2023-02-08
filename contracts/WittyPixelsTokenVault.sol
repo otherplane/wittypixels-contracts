@@ -23,8 +23,8 @@ contract WittyPixelsTokenVault
 
     modifier notSoldOut {
         require(
-            !soldOut(),
-            "WittyPixelsTokenVault: sold out"
+            !acquired(),
+            "WittyPixelsTokenVault: already acquired"
         );
         _;
     }
@@ -214,8 +214,8 @@ contract WittyPixelsTokenVault
         );
     }
 
-    /// @notice Returns whether this NFT vault has already been sold out. 
-    function soldOut()
+    /// @notice Returns whether this NFT vault has already been acquired. 
+    function acquired()
         override
         public view
         returns (bool)
@@ -224,7 +224,7 @@ contract WittyPixelsTokenVault
     }
 
     /// @notice Withdraw paid value in proportion to number of shares.
-    /// @dev Fails if not yet sold out. 
+    /// @dev Fails if not yet acquired. 
     function withdraw()
         virtual override
         public
@@ -232,10 +232,10 @@ contract WittyPixelsTokenVault
         nonReentrant
         returns (uint256 _withdrawn)
     {
-        // check the nft token has indeed been sold out:
+        // check the nft token has indeed been acquired:
         require(
-            soldOut(),
-            "WittyPixelsTokenVault: not sold out yet"
+            acquired(),
+            "WittyPixelsTokenVault: not acquired yet"
         );
         
         // check caller's erc20 balance is greater than zero:
@@ -264,13 +264,13 @@ contract WittyPixelsTokenVault
     }
 
     /// @notice Tells withdrawable amount in weis from the given address.
-    /// @dev Returns 0 in all cases while not yet sold out. 
+    /// @dev Returns 0 in all cases while not yet acquired. 
     function withdrawableFrom(address _from)
         virtual override
         public view
         returns (uint256)
     {
-        if (soldOut()) {
+        if (acquired()) {
             return (__storage.finalPrice * balanceOf(_from)) / (__storage.stats.totalPixels * 10 ** 18);
         }
         return 0;
@@ -358,7 +358,7 @@ contract WittyPixelsTokenVault
     }
 
     /// @notice Returns status data about the token vault contract, relevant from an UI/UX perspective
-    /// @return _status Enum value representing current contract status: Awaiting, Randomizing, Auctioning, Sold
+    /// @return _status Enum value representing current contract status: Awaiting, Randomizing, Auctioning, Acquired
     /// @return _stats Set of meters reflecting number of pixels, players, ERC20 transfers and withdrawls, up to date. 
     /// @return _currentPrice Price in ETH/wei at which the whole NFT ownership can be bought, or at which it was actually sold.
     /// @return _nextPriceTs The approximate timestamp at which the currentPrice may change. Zero, if it's not expected to ever change again.
@@ -373,8 +373,8 @@ contract WittyPixelsTokenVault
             uint256 _nextPriceTs
         )
     {
-        if (soldOut()) {
-            _status = IWittyPixelsTokenVault.Status.Sold;
+        if (acquired()) {
+            _status = IWittyPixelsTokenVault.Status.Acquired;
         } else if (isRandomizing()) {
             _status = IWittyPixelsTokenVault.Status.Randomizing;
         } else if (auctioning()) {
@@ -421,7 +421,7 @@ contract WittyPixelsTokenVault
     /// @notice Returns sum of legacy pixels ever redeemed from the given address.
     /// The moral right over a player's finalized pixels is inalienable, so the value returned by this method
     /// will be preserved even though the player transfers ERC20/WPX tokens to other accounts, or if she decides to cash out 
-    /// her share if the parent NFT token ever gets sold out. 
+    /// her share if the parent NFT token ever gets acquired. 
     function pixelsOf(address _wallet)
         virtual override
         external view
@@ -444,7 +444,7 @@ contract WittyPixelsTokenVault
     // ================================================================================================================
     // --- Implements 'IWittyPixelsTokenVaultAuctionDutch' ------------------------------------------------------------
 
-    function afmijnen()
+    function acquire()
         override
         external payable
         wasInitialized
@@ -483,7 +483,7 @@ contract WittyPixelsTokenVault
         return (
             _startingTs != 0
                 && block.timestamp >= _startingTs
-                && !soldOut()
+                && !acquired()
         );
     }
 
@@ -520,7 +520,7 @@ contract WittyPixelsTokenVault
     {
         IWittyPixelsTokenVaultAuctionDutch.Settings memory _settings = __storage.settings;
         if (
-            soldOut()
+            acquired()
                 || price() == _settings.reservePrice    
         ) {
             return 0;

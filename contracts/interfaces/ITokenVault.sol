@@ -11,23 +11,23 @@ abstract contract ITokenVault
         IERC165,
         IERC1633
 {
-    event SoldOut(address buyer, uint256 value);
-    event Withdrawal(address member, uint256 dividend);
+    event Acquired(address buyer, uint256 value);
+    event Withdrawal(address member, uint256 value);
 
-    /// @notice Address of the previous owner, the one that decided to fractionalized the NFT.
+    /// @notice Returns whether this NFT vault has already been acquired. 
+    function acquired() virtual external view returns (bool);
+
+    /// @notice Address of the previous owner, the one that decided to fractionalize the NFT.
     function curator() virtual external view returns (address);
 
     /// @notice Redeems partial ownership of `parentTokenId` by providing valid ownership deeds.
     function redeem(bytes calldata deeds) virtual external;
 
-    /// @notice Returns whether this NFT vault has already been sold out. 
-    function soldOut() virtual external view returns (bool);
-
-    /// @notice Withdraw paid value in proportion to number of shares.
-    /// @dev Fails if not yet sold out. 
+    /// @notice Withdraw the proportional part of the acquisition value, according to caller's current balance.
+    /// @dev Fails if not yet acquired. 
     function withdraw() virtual external returns (uint256);
 
     /// @notice Tells withdrawable amount in weis from given address.
-    /// @dev Returns 0 in all cases while not yet sold out. 
+    /// @dev Returns 0 in all cases while not yet acquired. 
     function withdrawableFrom(address from) virtual external view returns (uint256);
 }
