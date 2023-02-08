@@ -266,7 +266,7 @@ library WittyPixelsLib {
         string memory _radHashHexString = toHexString(tokenStatsRadHash);
         return string(abi.encodePacked(
             "WittyPixelsTM collaborative art canvas drawn by ", _totalPlayersString,
-            " attendees during '", self.theEvent.name, "' in ", self.theEvent.venue, 
+            " attendees during '<b>", self.theEvent.name, "</b>' in ", self.theEvent.venue, 
             ". This token was fractionalized and secured by the [Witnet multichain",
             " oracle](https://witnet.io). Historical WittyPixelsLib game info and",
             " ownership distribution root during the '", self.theEvent.name, "'",
