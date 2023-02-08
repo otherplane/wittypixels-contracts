@@ -21,6 +21,7 @@ contract("WittyPixelsToken", ([ curator, master, stranger, player ]) => {
     var prototype
     var proxy    
     var token
+    var tokenVault
     var witnet
 
     before(async () => {
@@ -410,7 +411,6 @@ contract("WittyPixelsToken", ([ curator, master, stranger, player ]) => {
                 })
             })
             context("Upon minting:", async () => {
-                var beforeBalance
                 it("stranger cannot start minting", async () => {
                     await expectRevert(
                         token.mint(
@@ -708,6 +708,9 @@ contract("WittyPixelsToken", ([ curator, master, stranger, player ]) => {
                             ),
                             { from: curator }
                         )
+                        var logs = tx.logs.filter(log => log.event === "Fractionalized")
+                        assert.equal(logs.length, 1, "'Fractionalized' was not emitted")
+                        tokenVault = await WittyPixelsTokenVault.at(logs[0].args.tokenVault)
                     })
                 })
             })
@@ -755,9 +758,44 @@ contract("WittyPixelsToken", ([ curator, master, stranger, player ]) => {
                 it("JSON string returned by metadata(1) is well formed", async () => {
                     JSON.parse(metadata)
                 })
+                it("token vault contract was properly initialized", async () => {
+                    var cloned = await tokenVault.cloned.call()
+                    var initialized = await tokenVault.initialized.call()
+                    var self = await tokenVault.self.call()
+                    await tokenVault.version.call()
+                    await tokenVault.name.call()
+                    var symbol = await tokenVault.symbol.call()
+                    var tokenCurator = await tokenVault.curator.call()
+                    var totalPixels = await tokenVault.totalPixels.call()
+                    var totalSupply = await tokenVault.totalSupply.call()
+                    var price = await tokenVault.price.call()                    
+                    var nextPriceTimestamp = await tokenVault.nextPriceTimestamp.call()
+                    var info = await tokenVault.getInfo.call()
+                    var authorsCount = await tokenVault.getAuthorsCount.call()
+                    var jackpotsCount = await tokenVault.getJackpotsCount.call()
+                    var randomized = await tokenVault.randomized.call()
+                    var auctioning = await tokenVault.auctioning.call()
+                    await tokenVault.settings.call()                    
+                    assert.equal(cloned, true, "not cloned")
+                    assert.equal(initialized, true, "not initialized")
+                    assert.equal(self, prototype.address, "unexpected self")
+                    assert.equal(symbol, settings.core.collection.symbol, "bad symbol")
+                    assert.equal(tokenCurator, curator, "bad curator")
+                    assert.equal(totalPixels.toString(), "1234", "bad total pixels")
+                    assert.equal(totalSupply.toString(), "1234000000000000000000", "bad total supply")
+                    assert.equal(price, "32000000000000000000", "unexpected initial price")
+                    assert.equal(nextPriceTimestamp.toString(), settings.core.events[0].auction.startingTs, "bad auction start timestamp")
+                    assert.equal(info.status.toString(), "0", "vault not in 'Awaiting status")
+                    assert.equal(info.stats.totalPixels, totalPixels, "bad vault info.stats.totalPixels")
+                    assert.equal(info.currentPrice.toString(), price.toString(), "bad vault info.currentPrice")
+                    assert.equal(info.nextPriceTs.toString(), nextPriceTimestamp.toString(), "bad vault info.nextPriceTs")
+                    assert.equal(authorsCount.toString(), "0", "bad authors count")
+                    assert.equal(jackpotsCount.toString(), "0", "bad jackpots count")
+                    assert.equal(randomized, false)
+                    assert.equal(auctioning, false)
+                })
             })
         })
-        
     })
 
 })
