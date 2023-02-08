@@ -358,33 +358,33 @@ contract WittyPixelsTokenVault
     }
 
     /// @notice Returns status data about the token vault contract, relevant from an UI/UX perspective
-    /// @return _status Enum value representing current contract status: Awaiting, Randomizing, Auctioning, Acquired
-    /// @return _stats Set of meters reflecting number of pixels, players, ERC20 transfers and withdrawls, up to date. 
-    /// @return _currentPrice Price in ETH/wei at which the whole NFT ownership can be bought, or at which it was actually sold.
-    /// @return _nextPriceTs The approximate timestamp at which the currentPrice may change. Zero, if it's not expected to ever change again.
+    /// @return status Enum value representing current contract status: Awaiting, Randomizing, Auctioning, Sold
+    /// @return stats Set of meters reflecting number of pixels, players, ERC20 transfers and withdrawls, up to date. 
+    /// @return currentPrice Price in ETH/wei at which the whole NFT ownership can be bought, or at which it was actually sold.
+    /// @return nextPriceTs The approximate timestamp at which the currentPrice may change. Zero, if it's not expected to ever change again.
     function getInfo()
         override
         external view
 
         returns (
-            Status _status,
-            Stats memory _stats,
-            uint256 _currentPrice,
-            uint256 _nextPriceTs
+            Status status,
+            Stats memory stats,
+            uint256 currentPrice,
+            uint256 nextPriceTs
         )
     {
         if (acquired()) {
-            _status = IWittyPixelsTokenVault.Status.Acquired;
+            status = IWittyPixelsTokenVault.Status.Acquired;
         } else if (randomizing()) {
-            _status = IWittyPixelsTokenVault.Status.Randomizing;
+            status = IWittyPixelsTokenVault.Status.Randomizing;
         } else if (auctioning()) {
-            _status = IWittyPixelsTokenVault.Status.Auctioning;
+            status = IWittyPixelsTokenVault.Status.Auctioning;
         } else {
-            _status = IWittyPixelsTokenVault.Status.Awaiting;
+            status = IWittyPixelsTokenVault.Status.Awaiting;
         }
-        _stats = __storage.stats;
-        _currentPrice = price();
-        _nextPriceTs = nextPriceTimestamp();
+        stats = __storage.stats;
+        currentPrice = price();
+        nextPriceTs = nextPriceTimestamp();
     }
 
     /// @notice Gets info regarding a formerly verified player, given its index. 
