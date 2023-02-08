@@ -240,7 +240,7 @@ contract WittyPixelsToken
                     settings: _tokenVaultSettings,
                     token: address(this),
                     tokenId: _tokenId,
-                    totalPixels: __token.theStats.totalPixels
+                    tokenPixels: __token.theStats.canvasPixels
                 })
             ))
         ));
@@ -475,7 +475,7 @@ contract WittyPixelsToken
                 && _proof.merkle(keccak256(abi.encode(
                     _playerIndex,
                     _playerScore
-                ))) == __token.theStats.playersRoot
+                ))) == __token.theStats.authorshipsRoot
         );
     }
 
