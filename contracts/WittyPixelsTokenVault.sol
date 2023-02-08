@@ -781,7 +781,7 @@ contract WittyPixelsTokenVault
             "WittyPixelsTokenVault: uncompliant vault factory"
         );
         require(
-            _params.totalPixels > 0,
+            _params.tokenPixels > 0,
             "WittyPixelsTokenVault: no pixels"
         );
 
@@ -789,13 +789,14 @@ contract WittyPixelsTokenVault
         __ERC20_init(_params.name, _params.symbol);
 
         // mint initial supply that will be owned by the contract itself
-        _mint(address(this), _params.totalPixels * 10 ** 18);
+        _mint(address(this), _params.tokenPixels * 10 ** 18);
             
         // initialize clone storage:
         __storage.curator = _params.curator;
         __storage.parentToken = _params.token;
         __storage.parentTokenId = _params.tokenId;
         __storage.stats.totalPixels = _params.totalPixels;
+        __storage.stats.totalPixels = _params.tokenPixels;
         _setAuctionSettings(_params.settings);
     }
 

@@ -40,12 +40,16 @@ contract WitnetRequestTokenStats
         returns (bytes memory _result)
     {
         WitnetCBOR.CBOR[] memory _items = _value.readArray();
-        if (_items.length >= 4) {           
+        if (_items.length >= 8) {
             _result = abi.encode(WittyPixelsLib.ERC721TokenStats({
-                playersRoot: _items[0].readString().fromHex().toBytes32(),
-                totalPixels: _items[1].readUint(),
-                totalPlayers: _items[2].readUint(),
-                totalScans: _items[3].readUint()
+                authorshipsRoot: _items[0].readString().fromHex().toBytes32(),
+                canvasDigest: _items[1].readString(),
+                canvasHeight: _items[2].readUint(),
+                canvasPixels: _items[3].readUint(),
+                canvasWidth: _items[4].readUint(),
+                totalPixels: _items[5].readUint(),
+                totalPlayers: _items[6].readUint(),
+                totalScans: _items[7].readUint()
             }));
         }
     }

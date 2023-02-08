@@ -547,8 +547,10 @@ contract("WittyPixelsToken", ([ curator, master, stranger, player ]) => {
                         await witnet.reportResult(
                             tokenStatsId,
                             "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
-                            "0x8478423078646561646265656664656164626565666465616462656566646561646265656664656164626565666465616462656566646561646265656664656164626565661904D2187B193039",
+                            // "0x8478423078646561646265656664656164626565666465616462656566646561646265656664656164626565666465616462656566646561646265656664656164626565661904D2187B193039",
                                 // [ "0xdeadbeef...", 1234, 123, 12345]
+                            "0x88784064656164626565666465616462656566646561646265656664656164626565666465616462656566646561646265656664656164626565666465616462656566782E516D504B317333704E594C693945526971334244784B6134586F736757774652515579644855747A3459677071421901F41904D21903E81909291901591910E1",
+                                // [ "deadbeef...", "QmPK1s3pNYLi9ERiq3BDxKa4XosgWwFRQUydHUtz4YgpqB", 500, 1234, 1000, 2345, 345, 4321]
                             { from: master }
                         )
                         // var digestValue = await witnetRequestImageDigest.lastValue.call()
@@ -611,8 +613,10 @@ contract("WittyPixelsToken", ([ curator, master, stranger, player ]) => {
                         await witnet.reportResult(
                             tokenStatsId,
                             "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
-                            "0x8478423078646561646265656664656164626565666465616462656566646561646265656664656164626565666465616462656566646561646265656664656164626565661904D2187B193039",
+                            //"0x8478423078646561646265656664656164626565666465616462656566646561646265656664656164626565666465616462656566646561646265656664656164626565661904D2187B193039",
                                 // [ "0xdeadbeef...", 1234, 123, 12345]
+                            "0x887842307864656164626565666465616462656566646561646265656664656164626565666465616462656566646561646265656664656164626565666465616462656566782E516D504B317333704E594C693945526971334244784B6134586F736757774652515579644855747A3459677071421901F41904D21903E81909291901591910E1",
+                                // [ "0xdeadbeef...", "QmPK1s3pNYLi9ERiq3BDxKa4XosgWwFRQUydHUtz4YgpqB", 500, 1234, 1000, 2345, 345, 4321]
                             { from: master }
                         )
                     })
@@ -655,8 +659,8 @@ contract("WittyPixelsToken", ([ curator, master, stranger, player ]) => {
                         await witnet.reportResult(
                             tokenStatsId,
                             "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
-                            "0x847840646561646265656664656164626565666465616462656566646561646265656664656164626565666465616462656566646561646265656664656164626565661904D2187B193039",
-                                // [ "deadbeef...", 1234, 123, 12345]
+                            "0x88784064656164626565666465616462656566646561646265656664656164626565666465616462656566646561646265656664656164626565666465616462656566782E516D504B317333704E594C693945526971334244784B6134586F736757774652515579644855747A3459677071421901F41904D21903E81909291901591910E1",
+                                // [ "deadbeef...", "QmPK1s3pNYLi9ERiq3BDxKa4XosgWwFRQUydHUtz4YgpqB", 500, 1234, 1000, 2345, 345, 4321]
                             { from: master }
                         )
                     })
@@ -747,7 +751,7 @@ contract("WittyPixelsToken", ([ curator, master, stranger, player ]) => {
                 })
                 it("getTokenMetadata(1) should contain expected data", async () => {
                     var metadata = await token.getTokenMetadata.call(1)
-                    assert.equal(metadata.theStats.totalPixels, 1234)
+                    assert.equal(metadata.theStats.totalPixels, 2345)
                 })
                 it("ownerOf(1) should match getTokenVault(1)", async () => {
                     assert.equal(

@@ -52,7 +52,7 @@ library WittyPixelsLib {
         string  symbol;
         address token;
         uint256 tokenId;
-        uint256 totalPixels;
+        uint256 tokenPixels;
     }
 
     struct TokenVaultStorage {
@@ -111,7 +111,11 @@ library WittyPixelsLib {
     }
 
     struct ERC721TokenStats {
-        bytes32 playersRoot;
+        bytes32 authorshipsRoot;
+        string  canvasDigest;
+        uint256 canvasHeight;
+        uint256 canvasPixels;
+        uint256 canvasWidth;
         uint256 totalPixels;
         uint256 totalPlayers;
         uint256 totalScans;
@@ -145,7 +149,7 @@ library WittyPixelsLib {
     {
         string memory _tokenIdString = toString(tokenId);
         string memory _name = string(abi.encodePacked(
-            "\"name\": \"WittyPixelsLib.art #", _tokenIdString, "\","
+            "\"name\": \"WittyPixels.art #", _tokenIdString, "\","
         ));
         string memory _description = string(abi.encodePacked(
             "\"description\": \"",
@@ -198,33 +202,13 @@ library WittyPixelsLib {
                 "\"value\": ", toString(self.theEvent.endTs),
             "},"
         ));
-        string memory _canvasDate = string(abi.encodePacked(
-             "{",
-                "\"display_type\": \"date\",",
-                "\"trait_type\": \"Canvas Date\",",
-                "\"value\": ", toString(self.birthTs),
+        string memory _authorshipRoot = string(abi.encodePacked(
+            "{",
+                "\"trait_type\": \"Authorship's Root\",",
+                "\"value\": \"", toHexString(self.theStats.authorshipsRoot), "\"",
             "},"
         ));
-        // string memory _canvasHeight = string(abi.encodePacked(
-        //      "{",
-        //         "\"display_type\": \"number\",",
-        //         "\"trait_type\": \"Canvas Width\",",
-        //         "\"value\": ", toString(self.theCanvas.height),
-        //     "},"
-        // ));    
-        // string memory _canvasWidth = string(abi.encodePacked(
-        //      "{",
-        //         "\"display_type\": \"number\",",
-        //         "\"trait_type\": \"Canvas Width\",",
-        //         "\"value\": ", toString(self.theCanvas.width),
-        //     "},"
-        // ));
-        string memory _canvasPixels = string(abi.encodePacked(
-            "{", 
-                "\"trait_type\": \"Canvas Pixels\",",
-                "\"value\": ", toString(self.theStats.totalPixels),
-            "},"
-        ));
+        
         string memory _totalPlayers = string(abi.encodePacked(
             "{", 
                 "\"trait_type\": \"Total Players\",",
@@ -235,12 +219,6 @@ library WittyPixelsLib {
             "{", 
                 "\"trait_type\": \"Total Scans\",",
                 "\"value\": ", toString(self.theStats.totalScans),
-            "},"
-        ));
-        string memory _playersRoot = string(abi.encodePacked(
-            "{",
-                "\"trait_type\": \"Pixels Root\",",
-                "\"value\": \"", toHexString(self.theStats.playersRoot), "\"",
             "}"
         ));
         return string(abi.encodePacked(
@@ -248,13 +226,74 @@ library WittyPixelsLib {
             _eventVenue,
             _eventStartDate,
             _eventEndDate,
-            _canvasDate,
-            //_canvasHeight,
-            //_canvasWidth,
-            _canvasPixels,
+            _authorshipRoot,
+            _loadJsonCanvasAttributes(self),
             _totalPlayers,
-            _totalScans,
-            _playersRoot
+            _totalScans
+        ));
+    }
+
+    function _loadJsonCanvasAttributes(ERC721Token memory self)
+        private pure
+        returns (string memory)
+    {
+        string memory _canvasDate = string(abi.encodePacked(
+             "{",
+                "\"display_type\": \"date\",",
+                "\"trait_type\": \"Canvas Date\",",
+                "\"value\": ", toString(self.birthTs),
+            "},"
+        ));
+        string memory _canvasDigest = string(abi.encodePacked(
+            "{",
+                "\"trait_type\": \"Canvas Digest\",",
+                "\"value\": \"", self.theStats.canvasDigest, "\"",
+            "},"
+        ));        
+        string memory _canvasHeight = string(abi.encodePacked(
+             "{",
+                "\"display_type\": \"number\",",
+                "\"trait_type\": \"Canvas Height\",",
+                "\"value\": ", toString(self.theStats.canvasHeight),
+            "},"
+        ));    
+        string memory _canvasWidth = string(abi.encodePacked(
+             "{",
+                "\"display_type\": \"number\",",
+                "\"trait_type\": \"Canvas Width\",",
+                "\"value\": ", toString(self.theStats.canvasWidth),
+            "},"
+        ));
+        string memory _canvasPixels = string(abi.encodePacked(
+            "{", 
+                "\"trait_type\": \"Canvas Pixels\",",
+                "\"value\": ", toString(self.theStats.canvasPixels),
+            "},"
+        ));
+        string memory _canvasOverpaint;
+        if (
+            self.theStats.totalPixels > 0
+                && self.theStats.totalPixels > self.theStats.canvasPixels
+        ) {
+            uint _ratio = (self.theStats.totalPixels - self.theStats.canvasPixels);
+            _ratio *= 10 ** 6;
+            _ratio /= self.theStats.totalPixels;
+            _ratio /= 10 ** 4;
+            _canvasOverpaint = string(abi.encodePacked(
+                "{",
+                    "\"display_type\": \"boost_percentage\",",
+                    "\"trait_type\": \"Canvas Overpaint\",",
+                    "\"value\": ", toString(_ratio),
+                "},"
+            ));
+        }
+        return string(abi.encodePacked(
+            _canvasDate,
+            _canvasDigest,
+            _canvasHeight,            
+            _canvasWidth,
+            _canvasPixels,
+            _canvasOverpaint
         ));
     }
 
@@ -268,8 +307,8 @@ library WittyPixelsLib {
             "WittyPixelsTM collaborative art canvas drawn by ", _totalPlayersString,
             " attendees during '<b>", self.theEvent.name, "</b>' in ", self.theEvent.venue, 
             ". This token was fractionalized and secured by the [Witnet multichain",
-            " oracle](https://witnet.io). Historical WittyPixelsLib game info and",
-            " ownership distribution root during the '", self.theEvent.name, "'",
+            " oracle](https://witnet.io). Historical WittyPixelsTM game info and",
+            " authorship's root during '", self.theEvent.name, "'",
             " can be audited on [Witnet's block explorer](https://witnet.network/",
             _radHashHexString, ")."
         ));
