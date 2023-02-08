@@ -695,14 +695,17 @@ contract("WittyPixelsToken", ([ curator, master, stranger, player ]) => {
                         )
                     })
                     it("owner can fractionalize if providing valid auction settings", async () => {
-                        await token.fractionalize(
+                        var deltaPriceBN = "0x" + utils.padLeft((new BN(settings.core.events[0].auction.deltaPrice)).toString(16), "0", 64)
+                        var reservePriceBN = "0x" + utils.padLeft((new BN(settings.core.events[0].auction.reservePrice)).toString(16), "0", 64)
+                        var startingPriceBN = "0x" + utils.padLeft((new BN(settings.core.events[0].auction.startingPrice)).toString(16), "0", 64)
+                        var tx = await token.fractionalize(
                             1,
                             web3.eth.abi.encodeParameter(
                                 "uint256[5]", [
-                                    "0x" + new BN(settings.core.events[0].auction.deltaPrice),
+                                    deltaPriceBN,
                                     settings.core.events[0].auction.deltaSeconds,
-                                    "0x" + new BN(settings.core.events[0].auction.reservePrice),
-                                    "0x" + new BN(settings.core.events[0].auction.startingPrice),
+                                    reservePriceBN,
+                                    startingPriceBN,
                                     settings.core.events[0].auction.startingTs,
                                 ]
                             ),

@@ -11,6 +11,7 @@ module.exports = {
   getRealmNetworkFromArgs,
   getRealmNetworkFromString,
   isNullAddress,
+  padLeft,
   prompt,
   traceEvents,
   traceHeader,
@@ -79,6 +80,14 @@ function isNullAddress (addr) {
   return !addr ||
       addr === "0x0000000000000000000000000000000000000000" ||
       !web3.utils.isAddress(addr)
+}
+
+function padLeft(str, char, size) {
+  if (str.length < size) {
+      return char.repeat((size - str.length) / char.length) + str
+  } else {
+      return str
+  }
 }
 
 async function prompt (text) {

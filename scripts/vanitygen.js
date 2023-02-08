@@ -50,7 +50,7 @@ module.exports = async function () {
     console.log("Target:    ", target)
     console.log("=".repeat(40))
     while (count < hits) {
-        const salt = "0x" + padLeft(offset.toString(16), "0", 32)
+        const salt = "0x" + utils.padLeft(offset.toString(16), "0", 32)
         const addr = create2(from, salt, bytecode)
         if (addr.toLowerCase().startsWith(target)) {
             var found = `${offset} => ${web3.utils.toChecksumAddress(addr)}`
@@ -59,13 +59,5 @@ module.exports = async function () {
             count ++
         }
         offset ++
-    }
-}
-
-function padLeft(str, char, size) {
-    if (str.length < size) {
-        return char.repeat((size - str.length) / char.length) + str
-    } else {
-        return str
     }
 }
