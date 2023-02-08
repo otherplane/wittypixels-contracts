@@ -235,7 +235,11 @@ contract WittyPixelsToken
             __storage.tokenVaultPrototype.cloneAndInitialize(abi.encode(
                 WittyPixelsLib.TokenVaultInitParams({
                     curator: msg.sender,
-                    name: string(abi.encode(name(), " #", _tokenId.toString())),
+                    name: string(abi.encodePacked(
+                        name(),
+                        bytes(" #"),
+                        _tokenId.toString()
+                    )),
                     symbol: symbol(),
                     settings: _tokenVaultSettings,
                     token: address(this),
