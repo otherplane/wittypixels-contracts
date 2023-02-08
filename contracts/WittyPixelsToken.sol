@@ -263,7 +263,6 @@ contract WittyPixelsToken
             msg.sender,
             address(this),
             _tokenId,
-            _tokenVaultIndex,
             address(_tokenVault)
         );
 

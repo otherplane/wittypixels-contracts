@@ -19,7 +19,6 @@ interface ITokenVaultFactory {
         address indexed from,   // owner of the token being fractionalized
         address indexed token,  // token collection address
         uint256 tokenId,        // token id
-        uint256 tokenVaultIndex,// token vault index
         address tokenVault      // token vault contract just created
     );
 
