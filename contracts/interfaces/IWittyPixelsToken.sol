@@ -40,6 +40,14 @@ interface IWittyPixelsToken {
     /// @dev Returns zero addresses if the token is yet in 'Unknown' or 'Launched' status.
     function getTokenWitnetRequests(uint256 tokenId) external view returns (WittyPixelsLib.ERC721TokenWitnetRequests memory);
     
+    /// @notice Returns number of pixels within the WittyPixels Canvas of given token.
+    function pixelsOf(uint256 tokenId) external view returns (uint256);
+
+    /// @notice Returns number of pixels contributed to given WittyPixels Canvas by given address.
+    /// @dev Every WittyPixels player needs to claim contribution to a WittyPixels Canvas by calling 
+    /// @dev to the `redeem(bytes deeds)` method on the corresponding token's vault contract.
+    function pixelsFrom(uint256 tokenId, address from) external view returns (uint256);
+
     /// @notice Verifies the provided Merkle Proof matches the token's authorship's root that
     /// @notice was retrieved by the Witnet Oracle upon minting of given token. 
     /// @dev Reverts if the token has not yet been fractionalized.

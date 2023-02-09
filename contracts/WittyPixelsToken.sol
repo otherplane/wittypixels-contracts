@@ -459,7 +459,29 @@ contract WittyPixelsToken
         );
     }
 
-    /// @notice Returns total number of WittyPixelsLib tokens that have been minted so far.
+    /// @notice Returns number of pixels within the WittyPixels Canvas of given token.
+    function pixelsOf(uint256 _tokenId)
+        virtual override
+        external view
+        returns (uint256)
+    {
+        return __storage.items[_tokenId].theStats.totalPixels;
+    }
+
+    /// @notice Returns number of pixels contributed to given WittyPixels Canvas by given address.
+    /// @dev Every WittyPixels player needs to claim contribution to a WittyPixels Canvas by calling 
+    /// @dev to the `redeem(bytes deeds)` method on the corresponding token's vault contract.
+    function pixelsFrom(uint256 _tokenId, address _from)
+        virtual override
+        external view
+        returns (uint256)
+    {
+        IWittyPixelsTokenVault _vault = IWittyPixelsTokenVault(address(getTokenVault(_tokenId)));
+        return (address(_vault) != address(0)
+            ? _vault.pixelsOf(_from)
+            : 0
+        );
+    }
 
     /// @notice Count NFTs tracked by this contract.
     /// @return A count of valid NFTs tracked by this contract, where each one of
