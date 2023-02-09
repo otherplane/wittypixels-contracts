@@ -461,10 +461,10 @@ contract WittyPixelsToken
         return __storage.totalSupply;
     }
 
-    function verifyTokenPlayerScore(
+    function verifyTokenAuthorship(
             uint256 _tokenId,
             uint256 _playerIndex,
-            uint256 _playerScore,
+            uint256 _playerPixels,
             bytes32[] memory _proof
         )
         external view
@@ -477,7 +477,7 @@ contract WittyPixelsToken
             _playerIndex < __token.theStats.totalPlayers
                 && _proof.merkle(keccak256(abi.encode(
                     _playerIndex,
-                    _playerScore
+                    _playerPixels
                 ))) == __token.theStats.playersRoot
         );
     }

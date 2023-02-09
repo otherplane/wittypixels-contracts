@@ -11,13 +11,10 @@ interface IWittyPixelsToken {
     function getTokenStatusString(uint256 tokenId) external view returns (string memory);
     function getTokenVault(uint256 tokenId) external view returns (ITokenVaultWitnet);    
     function getTokenWitnetRequests(uint256 tokenId) external view returns (WittyPixelsLib.ERC721TokenWitnetRequests memory);
-    function imageURI(uint256 tokenId) external view returns (string memory);
-    function metadata(uint256 tokenId) external view returns (string memory);
-    function totalSupply() external view returns (uint256);
-    function verifyTokenPlayerScore(
+    function verifyTokenAuthorship(
             uint256 tokenId,
-            uint256 index,
-            uint256 score,
-            bytes32[] calldata proof
+            uint256 playerIndex,
+            uint256 playerPixels,
+            bytes32[] calldata authorshipProof
         ) external view returns (bool);
 }

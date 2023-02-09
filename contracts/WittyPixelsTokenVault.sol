@@ -183,7 +183,7 @@ contract WittyPixelsTokenVault
         );
         
         // verify player's score proof:
-        IWittyPixelsToken(_deeds.parentToken).verifyTokenPlayerScore(
+        IWittyPixelsToken(_deeds.parentToken).verifyTokenAuthorship(
             _deeds.parentTokenId,
             _deeds.playerIndex,
             _deeds.playerPixels,
