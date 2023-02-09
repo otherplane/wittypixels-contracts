@@ -383,8 +383,8 @@ contract WittyPixelsTokenVault
             status = IWittyPixelsTokenVault.Status.Awaiting;
         }
         stats = __storage.stats;
-        currentPrice = price();
-        nextPriceTs = nextPriceTimestamp();
+        currentPrice = getAuctionPrice();
+        nextPriceTs = getNextPriceTimestamp();
     }
 
     /// @notice Gets info regarding a formerly verified player, given its index. 
@@ -477,6 +477,7 @@ contract WittyPixelsTokenVault
     function auctioning()
         virtual override
         public view
+        wasInitialized
         returns (bool)
     {
         uint _startingTs = __storage.settings.startingTs;
@@ -487,7 +488,7 @@ contract WittyPixelsTokenVault
         );
     }
 
-    function price()
+    function getAuctionPrice()
         virtual override
         public view
         wasInitialized
@@ -512,7 +513,37 @@ contract WittyPixelsTokenVault
         }
     }
 
-    function nextPriceTimestamp()
+    function getAuctionSettings()
+        override
+        external view
+        wasInitialized
+        returns (bytes memory)
+    {
+        return abi.encode(__storage.settings);
+    }
+
+    function getAuctionType()
+        override
+        external pure
+        returns (bytes4)
+    {
+        return type(IWittyPixelsTokenVaultAuctionDutch).interfaceId;
+    }
+
+    function setAuctionSettings(bytes memory _settings)
+        override
+        external
+        onlyCurator
+        notSoldOut
+    {
+        _setAuctionSettings(_settings);
+    }
+
+
+    // ================================================================================================================
+    // --- Implements 'IWittyPixelsTokenVaultAuctionDutch' ------------------------------------------------------------
+
+    function getNextPriceTimestamp()
         override
         public view
         wasInitialized
@@ -521,7 +552,7 @@ contract WittyPixelsTokenVault
         IWittyPixelsTokenVaultAuctionDutch.Settings memory _settings = __storage.settings;
         if (
             acquired()
-                || price() == _settings.reservePrice    
+                || getAuctionPrice() == _settings.reservePrice
         ) {
             return 0;
         }
@@ -536,27 +567,9 @@ contract WittyPixelsTokenVault
         else {
             return _settings.startingTs;
         }
-    }
+    }    
 
-    function setDutchAuction(bytes memory _settings)
-        override
-        external
-        onlyCurator
-        notSoldOut
-    {
-        _setSettings(_settings);
-    }
-    
-    function settings()
-        override
-        external view
-        wasInitialized
-        returns (IWittyPixelsTokenVaultAuctionDutch.Settings memory)
-    {
-        return __storage.settings;
-    }
-    
-    
+
     // ================================================================================================================
     // --- Implements 'IWittyPixelsTokenVaultJackpots' ---------------------------------------------------------------------
 
@@ -783,7 +796,7 @@ contract WittyPixelsTokenVault
         __storage.parentToken = _params.token;
         __storage.parentTokenId = _params.tokenId;
         __storage.stats.totalPixels = _params.totalPixels;
-        _setSettings(_params.settings);
+        _setAuctionSettings(_params.settings);
     }
 
 
@@ -798,7 +811,7 @@ contract WittyPixelsTokenVault
         return ITokenVaultWitnet(_newInstance);
     }
 
-    function _setSettings(bytes memory _bytes) virtual internal {
+    function _setAuctionSettings(bytes memory _bytes) virtual internal {
         // decode dutch auction settings:
         IWittyPixelsTokenVaultAuctionDutch.Settings memory _settings = abi.decode(
             _bytes,
@@ -815,6 +828,6 @@ contract WittyPixelsTokenVault
         );
         // update storage:
         __storage.settings = _settings;
-        emit SettingsChanged(msg.sender, _settings);
+        emit AuctionSettings(msg.sender, _bytes);
     }
 }
