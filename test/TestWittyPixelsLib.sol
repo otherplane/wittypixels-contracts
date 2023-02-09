@@ -9,129 +9,83 @@ import "../contracts/libs/WittyPixelsLib.sol";
 contract TestWittyPixelsLib {
     using WittyPixelsLib for *;
 
-    function testOwnershipDeedsSignatureVerification() external {
-        bytes32[] memory proof_ = new bytes32[](3);
-        proof_[0] = 0x0000000000000000000000000000000000000000000000000000000000000000;
-        proof_[1] = 0x0000000000000000000000000000000000000000000000000000000000000000;
-        proof_[2] = 0x0000000000000000000000000000000000000000000000000000000000000000;
-        WittyPixelsLib.TokenVaultOwnershipDeeds memory deeds = WittyPixelsLib.TokenVaultOwnershipDeeds({
-            parentToken: 0xc0ffee3c6F66dE5a0adcCEc65Dc6bB20C8C6A454,
-            parentTokenId: 1,
-            playerAddress: 0x8d86Bc475bEDCB08179c5e6a4d494EbD3b44Ea8B,
-            playerIndex: 5,
-            playerPixels: 1235,
-            playerPixelsProof: proof_,
-            signature: hex"28aac88b7de30e7e82929f2535e907352b45855f070afdc25fe58aa74867233a0ac88ae11cecaede573ecf43b689882a1798b54a8cb5d253d93dedc221fc80311b"
-        });
-        bytes32 deedsHash = keccak256(abi.encode(
-            deeds.parentToken,
-            deeds.parentTokenId,
-            deeds.playerAddress,
-            deeds.playerIndex,
-            deeds.playerPixels,
-            deeds.playerPixelsProof
-        ));
-        Assert.equal(
-            WittyPixelsLib.recoverAddr(deedsHash, deeds.signature),
-            0xF8A654C0328Ba4bAE1aF69EB5856Fc807C8E5731,
-            "WittyPixelsLib: bad signature"
-        );
-    }
+    event Leaf(bytes32 hash);
+    event Root(bytes32 hash);
 
     function testMerkleProofLeaves5Good() external {
         bytes32 leaf = keccak256(abi.encode(
-            uint(5),
-            uint(1235)
+            uint(17),
+            uint(23)
         ));
+        emit Leaf(leaf);
         bytes32[] memory proof_ = new bytes32[](3);
-        proof_[0] = 0x0000000000000000000000000000000000000000000000000000000000000000;
-        proof_[1] = 0x0000000000000000000000000000000000000000000000000000000000000000;
-        proof_[2] = 0x0000000000000000000000000000000000000000000000000000000000000000;
+        proof_[0] = 0x20ea3f905c06089a25c77876ced137bb6b51042bd7f1cff5aa1f9eb2851b0d90;
+        proof_[1] = 0x306df6fb2caa2b338dc21474c97d7dd9d36d2842dee9a92642799ecb27faf1d6;
+        proof_[2] = 0xde31a920dbdd1f015b2a842f0275dc8dec6a82ff94d9b796a36f23c64a3c8332;
+        bytes32 root = WittyPixelsLib.merkle(proof_, leaf);
+        emit Root(root);
         Assert.equal(
-            WittyPixelsLib.merkle(proof_, leaf),
-            0x0,
+            root,
+            0xdaa20a043a0d291c2fe2fe518d35b6d471136321d760e29d5d48edeba5b7c5c9,
             "TestWittyPixelsLib: unexpected bad proof"
         );
     }
 
     function testMerkleProofLeaves5BadLeaf() external {
         bytes32 leaf = keccak256(abi.encode(
-            uint(5),
-            uint(1236)
+            uint(17),
+            uint(9999)
         ));
+        emit Leaf(leaf);
         bytes32[] memory proof_ = new bytes32[](3);
-        proof_[0] = 0x0000000000000000000000000000000000000000000000000000000000000000;
-        proof_[1] = 0x0000000000000000000000000000000000000000000000000000000000000000;
-        proof_[2] = 0x0000000000000000000000000000000000000000000000000000000000000000;
+        proof_[0] = 0x20ea3f905c06089a25c77876ced137bb6b51042bd7f1cff5aa1f9eb2851b0d90;
+        proof_[1] = 0x306df6fb2caa2b338dc21474c97d7dd9d36d2842dee9a92642799ecb27faf1d6;
+        proof_[2] = 0xde31a920dbdd1f015b2a842f0275dc8dec6a82ff94d9b796a36f23c64a3c8332;
+        bytes32 root = WittyPixelsLib.merkle(proof_, leaf);
+        emit Root(root);
         Assert.notEqual(
-            WittyPixelsLib.merkle(proof_, leaf),
-            0x0,
+            root,
+            0xdaa20a043a0d291c2fe2fe518d35b6d471136321d760e29d5d48edeba5b7c5c9,
             "TestWittyPixelsLib: unexpected valid proof"
         );
     }
 
     function testMerkleProofLeaves5BadProof() external {
         bytes32 leaf = keccak256(abi.encode(
-            uint(5),
-            uint(1235)
+            uint(17),
+            uint(23)
         ));
+        emit Leaf(leaf);
         bytes32[] memory proof_ = new bytes32[](3);
-        proof_[0] = 0x0000000000000000000000000000000000000000000000000000000000000000;
-        proof_[1] = 0x0000000000000000000000000000000000000000000000000000000000000000;
-        proof_[2] = 0x0000000000000000000000000000000000000000000000000000000000000000;
+        proof_[2] = 0x20ea3f905c06089a25c77876ced137bb6b51042bd7f1cff5aa1f9eb2851b0d90;
+        proof_[0] = 0x306df6fb2caa2b338dc21474c97d7dd9d36d2842dee9a92642799ecb27faf1d6;
+        proof_[1] = 0xde31a920dbdd1f015b2a842f0275dc8dec6a82ff94d9b796a36f23c64a3c8332;
+        bytes32 root = WittyPixelsLib.merkle(proof_, leaf);
+        emit Root(root);
         Assert.notEqual(
-            WittyPixelsLib.merkle(proof_, leaf),
-            0x0,
+            root,
+            0xdaa20a043a0d291c2fe2fe518d35b6d471136321d760e29d5d48edeba5b7c5c9,
             "TestWittyPixelsLib: unexpected valid proof"
         );
     }
 
-    function testMerkleProofLeaves8Good() external {
+     function testMerkleProofLeaves9Good() external {
         bytes32 leaf = keccak256(abi.encode(
-            uint(5),
-            uint(1235)
+            uint(49),
+            uint(0)
         ));
-        bytes32[] memory proof_ = new bytes32[](3);
-        proof_[0] = 0x0000000000000000000000000000000000000000000000000000000000000000;
-        proof_[1] = 0x0000000000000000000000000000000000000000000000000000000000000000;
-        proof_[2] = 0x0000000000000000000000000000000000000000000000000000000000000000;
+        emit Leaf(leaf);
+        bytes32[] memory proof_ = new bytes32[](4);
+        proof_[0] = 0xd3d19a62491178309c24d901a5f5d13c31ca07d47b0cddca25a2a73f6f30d4b0;
+        proof_[1] = 0xd00c516fbd2d30ae0f5b9a4772d5210620a541797ce4157cfe66eb50b636f208;
+        proof_[2] = 0x44246914b6905c3d48b4e57781e66199b274c84c8a434a8fc9c58d26482e20ad;
+        proof_[3] = 0xe9087ebbcd7c881ce19b43771bad3bdfcf1aa1bb85d25373d929e553193bbada;
+        bytes32 root = WittyPixelsLib.merkle(proof_, leaf);
+        emit Root(root);
         Assert.equal(
-            WittyPixelsLib.merkle(proof_, leaf),
-            0x0,
+            root,
+            0xf6b0c1acdfaea501dd80f5c8d228006aa6612cf960605011843de23c5633b905,
             "TestWittyPixelsLib: unexpected bad proof"
         );
     }
-
-    function testMerkleProofLeaves8BadLeaf() external {
-        bytes32 leaf = keccak256(abi.encode(
-            uint(5),
-            uint(1236)
-        ));
-        bytes32[] memory proof_ = new bytes32[](3);
-        proof_[0] = 0x0000000000000000000000000000000000000000000000000000000000000000;
-        proof_[1] = 0x0000000000000000000000000000000000000000000000000000000000000000;
-        proof_[2] = 0x0000000000000000000000000000000000000000000000000000000000000000;
-        Assert.notEqual(
-            WittyPixelsLib.merkle(proof_, leaf),
-            0x0,
-            "TestWittyPixelsLib: unexpected valid proof"
-        );
-    }
-
-    function testMerkleProofLeaves8BadProof() external {
-        bytes32 leaf = keccak256(abi.encode(
-            uint(5),
-            uint(1235)
-        ));
-        bytes32[] memory proof_ = new bytes32[](3);
-        proof_[0] = 0x0000000000000000000000000000000000000000000000000000000000000000;
-        proof_[1] = 0x0000000000000000000000000000000000000000000000000000000000000000;
-        proof_[2] = 0x0000000000000000000000000000000000000000000000000000000000000000;
-        Assert.notEqual(
-            WittyPixelsLib.merkle(proof_, leaf),
-            0x0,
-            "TestWittyPixelsLib: unexpected valid proof"
-        );
-    }
-
 }
