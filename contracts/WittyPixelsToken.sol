@@ -329,7 +329,7 @@ contract WittyPixelsToken
     // ================================================================================================================
     // --- Implementation of 'IWittyPixelsToken' ----------------------------------------------------------------------
 
-    /// @notice Returns base URI for all tokens of this collection.
+    /// @notice Returns base URI to be used by upcoming tokens of this collection.
     function baseURI()
         override public view
         initialized
@@ -338,7 +338,13 @@ contract WittyPixelsToken
         return __storage.baseURI;
     }
 
-    /// @notice Gets token's current status.
+    /// @notice Returns status of given WittyPixels token.
+    /// @dev Possible values:
+    /// @dev - 0 => Unknown, not yet launched
+    /// @dev - 1 => Launched: info about the corresponding WittyPixels events has been provided by the collection's owner
+    /// @dev - 2 => Minting: the token is being minted, awaiting for external data to be retrieved by the Witnet Oracle.
+    /// @dev - 3 => Fracionalized: the token has been minted and its ownership transfered to a WittyPixelsTokenVault contract.
+    /// @dev - 4 => Acquired: token's ownership has been acquired and belongs to the WittyPixelsTokenVault no more. 
     function getTokenStatus(uint256 _tokenId)
         override public view
         initialized
@@ -366,6 +372,7 @@ contract WittyPixelsToken
         }
     }
 
+    /// @notice Returns literal string representing current status of given WittyPixels token.    
     function getTokenStatusString(uint256 _tokenId)
         override external view
         initialized
@@ -385,7 +392,7 @@ contract WittyPixelsToken
         }
     }
 
-    /// @notice Gets token ERC721Token.
+    /// @notice Returns WittyPixels token metadata of given token.
     function getTokenMetadata(uint256 _tokenId)
         external view
         override
@@ -395,7 +402,8 @@ contract WittyPixelsToken
         return __storage.items[_tokenId];
     }
     
-    /// @notice Gets token vault contract, if any.
+    /// @notice Returns WittyPixelsTokenVault instance bound to the given token.
+    /// @dev Reverts if the token has not yet been fractionalized.
     function getTokenVault(uint256 _tokenId)
         public view
         override
@@ -407,9 +415,8 @@ contract WittyPixelsToken
         ];
     }
 
-    /// @notice Gets set of immutable contracts that were used for
-    /// @notice retrieving token's metadata and image digest from 
-    /// @notice the Witnet oracle.
+    /// @notice Returns set of Witnet data requests involved in the minting process.
+    /// @dev Returns zero addresses if the token is yet in 'Unknown' or 'Launched' status.
     function getTokenWitnetRequests(uint256 _tokenId)
         external view
         override
@@ -453,6 +460,10 @@ contract WittyPixelsToken
     }
 
     /// @notice Returns total number of WittyPixelsLib tokens that have been minted so far.
+
+    /// @notice Count NFTs tracked by this contract.
+    /// @return A count of valid NFTs tracked by this contract, where each one of
+    ///         them has an assigned and queryable owner not equal to the zero address
     function totalSupply()
         external view
         override
@@ -461,6 +472,9 @@ contract WittyPixelsToken
         return __storage.totalSupply;
     }
 
+    /// @notice Verifies the provided Merkle Proof matches the token's authorship's root that
+    /// @notice was retrieved by the Witnet Oracle upon minting of given token. 
+    /// @dev Reverts if the token has not yet been fractionalized.
     function verifyTokenAuthorship(
             uint256 _tokenId,
             uint256 _playerIndex,
