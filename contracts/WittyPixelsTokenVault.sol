@@ -795,7 +795,6 @@ contract WittyPixelsTokenVault
         __storage.curator = _params.curator;
         __storage.parentToken = _params.token;
         __storage.parentTokenId = _params.tokenId;
-        __storage.stats.totalPixels = _params.totalPixels;
         __storage.stats.totalPixels = _params.tokenPixels;
         _setAuctionSettings(_params.settings);
     }
