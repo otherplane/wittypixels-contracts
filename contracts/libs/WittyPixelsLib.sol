@@ -371,7 +371,7 @@ library WittyPixelsLib {
     {
         root = leaf;
         for (uint i = 0; i < proof.length; i ++) {
-            root = _hash(root, proof[i]);
+            root = hash(root, proof[i]);
         }
     }
 
