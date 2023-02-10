@@ -49,7 +49,7 @@ abstract contract IWittyPixelsTokenVault
         );
 
     /// @notice Gets info regarding a formerly verified player, given its index. 
-    /// @return playerAddress Address from which the token's ownership was redeemed. Zero if this player has redeemed ownership yet.
+    /// @return playerAddress Address from which the token's ownership was redeemed. Zero if this player hasn't redeemed ownership yet.
     /// @return redeemedPixels Number of pixels formerly redemeed by given player. 
     function getPlayerInfo(uint256) virtual external view returns (
             address playerAddress,
@@ -57,11 +57,13 @@ abstract contract IWittyPixelsTokenVault
         );
 
     /// @notice Gets accounting info regarding given address.
-    /// @return sharePercentage100 NFT ownership percentage based on current ERC20 balance, multiplied by a 100.
+    /// @return sharePer10000 NFT ownership percentage based on current ERC20 balance, multiplied by a 100.
     /// @return withdrawableFunds ETH/wei amount that can be potentially withdrawn from this address.
+    /// @return legacyPixels Soulbound pixels contributed from this wallet address, if any.
     function getWalletInfo(address) virtual external view returns (
-            uint16  sharePercentage100,
-            uint256 withdrawableFunds
+            uint256 sharePer10000,
+            uint256 withdrawableFunds,
+            uint256 legacyPixels
         );
 
     /// @notice Returns sum of legacy pixels ever redeemed from the given address.

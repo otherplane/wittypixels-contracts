@@ -394,7 +394,7 @@ contract WittyPixelsTokenVault
     }
 
     /// @notice Gets info regarding a formerly verified player, given its index. 
-    /// @return Address from which the token's ownership was redeemed. Zero if this player has redeemed ownership yet.
+    /// @return Address from which the token's ownership was redeemed. Zero if this player hasn't redeemed ownership yet.
     /// @return Number of pixels formerly redemeed by given player. 
     function getPlayerInfo(uint256 index)
         virtual override
@@ -410,17 +410,23 @@ contract WittyPixelsTokenVault
     }
 
     /// @notice Gets accounting info regarding given address.
-    /// @return NFT ownership percentage based on current ERC20 balance, multiplied by a 100.
-    /// @return ETH/wei amount that can be potentially withdrawn from this address.
+    /// @return sharePer10000 NFT ownership percentage based on current ERC20 balance, multiplied by a 100.
+    /// @return withdrawableFunds ETH/wei amount that can be potentially withdrawn from this address.
+    /// @return legacyPixels Soulbound pixels contributed from this wallet address, if any.
     function getWalletInfo(address _addr)
         virtual override
         external view
         wasInitialized
-        returns (uint16, uint256)
+        returns (
+            uint256 sharePer10000,
+            uint256 withdrawableFunds,
+            uint256 legacyPixels
+        )
     {
         return (
-            uint16(10 ** 4 * balanceOf(_addr) / (__storage.stats.totalPixels / 10 ** 18)),
-            withdrawableFrom(_addr)
+            (10 ** 4 * balanceOf(_addr)) / (__storage.stats.totalPixels * 10 ** 18),
+            withdrawableFrom(_addr),
+            pixelsOf(_addr)
         );
     }
 
@@ -430,7 +436,7 @@ contract WittyPixelsTokenVault
     /// her share if the parent NFT token ever gets acquired. 
     function pixelsOf(address _wallet)
         virtual override
-        external view
+        public view
         wasInitialized
         returns (uint256)
     {
