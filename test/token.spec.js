@@ -167,8 +167,142 @@ contract("WittyPixels", ([ curator, master, stranger, player ]) => {
             })
         })
     })
+
+    context("Token vault prototype address", async () => {
+        context("WittyPixelsClonableBase", async () => {
+            it("deployed uninitialized", async() => {
+                assert.equal(await prototype.initialized(), false)
+            })
+            it("deployed as no clone", async () => {
+                assert.equal(await prototype.cloned(), false)
+            })
+            it("self address matches instance address", async () => {
+                assert.equal(prototype.address, await prototype.self.call())
+            })
+        })
+        context("ERC20Upgradeable", async () => {
+            it("name() returns expected deployed with no name", async() => {
+                assert.equal(await prototype.name(), "")
+            })
+            it("deployed witn no symbol", async () => {
+                assert.equal(await prototype.symbol(), "")
+            })
+            it("deployed with no supply", async () => {
+                assert.equal((await prototype.totalSupply.call()).toString(), "0")
+            })
+        })
+        context("IWittyPixelsTokenVault", async () => {
+            it("getAuthorsCount() reverts", async() => {
+                await expectRevert(
+                    prototype.getAuthorsCount.call(),
+                    "not initialized"
+                )
+            })
+            it("getInfo() reverts", async () => {
+                await expectRevert(
+                    prototype.getInfo.call(),
+                    "not initialized"
+                )
+            })
+            it("getPlayerInfo(0) reverts", async () => {
+                await expectRevert(
+                    prototype.getPlayerInfo.call(0),
+                    "not initialized"
+                )
+            })
+            it("getWalletInfo(curator) reverts", async () => {
+                await expectRevert(
+                    prototype.getWalletInfo.call(curator),
+                    "not initialized"
+                )
+            })
+            it("pixelsOf(prototype) reverts", async () => {
+                await expectRevert(
+                    prototype.pixelsOf.call(prototype.address),
+                    "not initialized"
+                )
+            })
+            it("totalPixels() reverts", async () => {
+                await expectRevert(
+                    prototype.totalPixels.call(),
+                    "not initialized"
+                )
+            })
+        })
+        context("IWittyPixelsTokenVaultAuction", async () => {
+            it("auctioning() reverts", async() => {
+                await expectRevert(
+                    prototype.auctioning.call(),
+                    "not initialized"
+                )
+            })
+            it("getPrice() reverts", async () => {
+                await expectRevert(
+                    prototype.getPrice.call(),
+                    "not initialized"
+                )
+            })
+            it("getAuctionSettings() reverts", async () => {
+                await expectRevert(
+                    prototype.getAuctionSettings.call(),
+                    "not initialized"
+                )
+            })
+            it("getAuctionType() returns expected value", async () => {
+                assert.equal(await prototype.getAuctionType.call(), "0xd694c588")
+            })
+            it("setAuctionSettings(..) from master address reverts", async () => {
+                var deltaPriceBN = "0x" + utils.padLeft((new BN(settings.core.events[0].auction.deltaPrice)).toString(16), "0", 64)
+                var reservePriceBN = "0x" + utils.padLeft((new BN(settings.core.events[0].auction.reservePrice)).toString(16), "0", 64)
+                var startingPriceBN = "0x" + utils.padLeft((new BN(settings.core.events[0].auction.startingPrice)).toString(16), "0", 64)
+                await expectRevert(
+                    prototype.setAuctionSettings(
+                        web3.eth.abi.encodeParameter(
+                            "uint256[5]", [
+                                deltaPriceBN,
+                                settings.core.events[0].auction.deltaSeconds,
+                                reservePriceBN,
+                                startingPriceBN,
+                                settings.core.events[0].auction.startingTs,
+                            ]
+                        ),
+                        { from: master }
+                    ),
+                    "not the curator"
+                )
+            })
+        })
+        context("IWittyPixelsTokenVaultAuctionDutch", async () => {
+            it("afmijnen() paying 50 ETH reverts", async() => {
+                await expectRevert(
+                    prototype.afmijnen({ from: stranger, value: 50 * 10 ** 18 }),
+                    "not initialized"
+                )
+            })
+            it("getNextPriceTimestamp() reverts", async () => {
+                await expectRevert(
+                    prototype.getNextPriceTimestamp.call(),
+                    "not initialized"
+                )
+            })
+        })
+        context("ITokenVault", async () => {
+            it("curator() reverts", async() => {
+                await expectRevert(
+                    prototype.curator.call(),
+                    "not initialized"
+                )
+            })
+            it("soldOut() reverts", async () => {
+                await expectRevert(
+                    prototype.soldOut.call(),
+                    "not initialized"
+                )
+            })
+        })
+    })
     
-    context("Proxy address as a WitnetProxy", async () => {
+    context("Token proxy address as a WitnetProxy", async () => {
         
         context("Before being initialized:", async () => {
             it("proxy implementation address is zero", async () => {
