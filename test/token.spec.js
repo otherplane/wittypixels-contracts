@@ -955,6 +955,269 @@ contract("WittyPixels", ([ curator, master, stranger, player ]) => {
                         process.exit(1)
                     }
                 })
+                context("before first redemption...", async () => {
+                    it("auctioning() returns false", async () => {
+                        assert.equal(await tokenVault.auctioning.call(), false)
+                    })
+                    it("acquired() returns false", async () => {
+                        assert.equal(await tokenVault.acquired.call(), false)
+                    })
+                    it("trying to withdraw fails", async () => {
+                        await expectRevert(
+                            tokenVault.withdraw({ from: curator }),
+                            "not acquired yet"
+                        )
+                    })
+                    it("getAuthorsCount() returns 0", async () => {
+                        assert.equal(
+                            (await tokenVault.getAuthorsCount.call()).toString(),
+                            "0"
+                        )
+                    })
+                })
+                context("playerIndex: 17", async () => {
+                    it("zero balance before redemption", async () => {
+                        assert(
+                            await tokenVault.balanceOf(player),
+                            "0"
+                        )
+                    })
+                    it.skip("trying to redeem bad token with valid signature fails", async () => {
+                    })
+                    it.skip("trying to redeem zero address with valid signature fails", async () => {
+                    })
+                    it.skip("trying to redeem true player score with invalid signature fails", async () => {
+                    })
+                    it("trying to redeem false player score with valid signature fails", async () => {
+                        await expectRevert(
+                            tokenVault.redeem(
+                                web3.eth.abi.encodeParameter(
+                                    {
+                                        "TokenVaultOwnershipDeeds": {
+                                            "parentToken": 'address',
+                                            "parentTokenId": 'uint256',
+                                            "playerAddress": 'address',
+                                            "playerIndex": 'uint256',
+                                            "playerPixels": 'uint256',
+                                            "playerPixelsProof": 'bytes32[]',
+                                            "signature": 'bytes',
+                                        }
+                                    }, {
+                                        parentToken: token.address,
+                                        parentTokenId: "1",
+                                        playerAddress: player,
+                                        playerIndex: "17",
+                                        playerPixels: "333", // such a big lie !
+                                        playerPixelsProof: [
+                                            "0x20ea3f905c06089a25c77876ced137bb6b51042bd7f1cff5aa1f9eb2851b0d90",
+                                            "0x306df6fb2caa2b338dc21474c97d7dd9d36d2842dee9a92642799ecb27faf1d6",
+                                            "0xde31a920dbdd1f015b2a842f0275dc8dec6a82ff94d9b796a36f23c64a3c8332",
+                                        ],
+                                        signature: "0x28aac88b7de30e7e82929f2535e907352b45855f070afdc25fe58aa74867233a0ac88ae11cecaede573ecf43b689882a1798b54a8cb5d253d93dedc221fc80311b"
+                                    },
+                                ), { from: player }
+                            ),
+                            "false deeds"
+                        )
+                    })
+                    it("trying to redeem true deeds with valid signature works", async () => {
+                        var tx = await tokenVault.redeem(
+                            web3.eth.abi.encodeParameter(
+                                {
+                                    "TokenVaultOwnershipDeeds": {
+                                        "parentToken": 'address',
+                                        "parentTokenId": 'uint256',
+                                        "playerAddress": 'address',
+                                        "playerIndex": 'uint256',
+                                        "playerPixels": 'uint256',
+                                        "playerPixelsProof": 'bytes32[]',
+                                        "signature": 'bytes',
+                                    }
+                                }, {
+                                    parentToken: token.address,
+                                    parentTokenId: "1",
+                                    playerAddress: player,
+                                    playerIndex: "17", 
+                                    playerPixels: "23",
+                                    playerPixelsProof: [
+                                        "0x20ea3f905c06089a25c77876ced137bb6b51042bd7f1cff5aa1f9eb2851b0d90",
+                                        "0x306df6fb2caa2b338dc21474c97d7dd9d36d2842dee9a92642799ecb27faf1d6",
+                                        "0xde31a920dbdd1f015b2a842f0275dc8dec6a82ff94d9b796a36f23c64a3c8332",
+                                    ],
+                                    signature: "0x28aac88b7de30e7e82929f2535e907352b45855f070afdc25fe58aa74867233a0ac88ae11cecaede573ecf43b689882a1798b54a8cb5d253d93dedc221fc80311b"
+                                },
+                            ), { from: player }
+                        )
+                    })
+                    it("trying to redeem same deeds more than once fails", async () => {
+                        await expectRevert(
+                            tokenVault.redeem(
+                                web3.eth.abi.encodeParameter(
+                                    {
+                                        "TokenVaultOwnershipDeeds": {
+                                            "parentToken": 'address',
+                                            "parentTokenId": 'uint256',
+                                            "playerAddress": 'address',
+                                            "playerIndex": 'uint256',
+                                            "playerPixels": 'uint256',
+                                            "playerPixelsProof": 'bytes32[]',
+                                            "signature": 'bytes',
+                                        }
+                                    }, {
+                                        parentToken: token.address,
+                                        parentTokenId: "1",
+                                        playerAddress: player,
+                                        playerIndex: "17",
+                                        playerPixels: "23", 
+                                        playerPixelsProof: [
+                                            "0x20ea3f905c06089a25c77876ced137bb6b51042bd7f1cff5aa1f9eb2851b0d90",
+                                            "0x306df6fb2caa2b338dc21474c97d7dd9d36d2842dee9a92642799ecb27faf1d6",
+                                            "0xde31a920dbdd1f015b2a842f0275dc8dec6a82ff94d9b796a36f23c64a3c8332",
+                                        ],
+                                        signature: "0x28aac88b7de30e7e82929f2535e907352b45855f070afdc25fe58aa74867233a0ac88ae11cecaede573ecf43b689882a1798b54a8cb5d253d93dedc221fc80311b"
+                                    },
+                                ), { from: player }
+                            ),
+                            "already redeemed"
+                        )
+                    })
+                    it("player's balance after redemption matches expected value", async () => {
+                        var balanceOfPlayer = await tokenVault.balanceOf(player)
+                        assert.equal(balanceOfPlayer.toString(), "23000000000000000000")
+                    })
+                    it("redeemed player can transfer partial balance to non-player addresses", async () => {
+                        await tokenVault.transfer(stranger, "1000000000000000000", { from: player })
+                        var balanceOfStranger = await tokenVault.balanceOf(stranger)
+                        var balanceOfPlayer = await tokenVault.balanceOf(player)
+                        assert.equal(balanceOfStranger.toString(), "1000000000000000000")
+                        assert.equal(balanceOfPlayer.toString(), "22000000000000000000")
+                    })
+                    it("souldbound pixels after redemption and transfer matches expected value", async () => {
+                        var pixelsOf17 = await tokenVault.pixelsOf(player)
+                        assert.equal(pixelsOf17.toString(), "23")
+                    })
+                    it("token owners cannot withdraw", async () => {
+                        await expectRevert(
+                            tokenVault.withdraw({ from: player }),
+                            "not acquired yet"
+                        )
+                        await expectRevert(
+                            tokenVault.withdraw({ from: stranger }),
+                            "not acquired yet"
+                        )
+                    })
+                    it("getAuthorsCount() returns 1", async () => {
+                        assert.equal(
+                            (await tokenVault.getAuthorsCount.call()).toString(),
+                            "1"
+                        )                        
+                    })
+                    it("getPlayerInfo(17) returns expected values", async () => {
+                        var playerInfo = await tokenVault.getPlayerInfo.call(17)
+                        assert.equal(playerInfo[0], player)
+                        assert.equal(playerInfo[1], "23")
+                    })
+                    it("getWalletInfo(player) returns expected values", async () => {
+                        var walletInfo = await tokenVault.getWalletInfo.call(player)
+                        assert.equal(walletInfo[1], "0")
+                        assert.equal(walletInfo[2], "23")
+                    })
+                })
+                context("playerIndex: 3", async () => {
+                    it("trying to redeem true deeds with repeated player address and valid signature works", async () => {
+                        var tx = await tokenVault.redeem(
+                            web3.eth.abi.encodeParameter(
+                                {
+                                    "TokenVaultOwnershipDeeds": {
+                                        "parentToken": 'address',
+                                        "parentTokenId": 'uint256',
+                                        "playerAddress": 'address',
+                                        "playerIndex": 'uint256',
+                                        "playerPixels": 'uint256',
+                                        "playerPixelsProof": 'bytes32[]',
+                                        "signature": 'bytes',
+                                    }
+                                }, {
+                                    parentToken: token.address,
+                                    parentTokenId: "1",
+                                    playerAddress: player,
+                                    playerIndex: "3", 
+                                    playerPixels: "77",
+                                    playerPixelsProof: [
+                                        "0x05b8ccbb9d4d8fb16ea74ce3c29a41f1b461fbdaff4714a0d9a8eb05499746bc",
+                                        "0x550b876a53f6484cf42aa55bb6c8fbe2fd01da39646119ba0560d23728394567",
+                                        "0xde31a920dbdd1f015b2a842f0275dc8dec6a82ff94d9b796a36f23c64a3c8332",
+                                    ],
+                                    signature: "0x28aac88b7de30e7e82929f2535e907352b45855f070afdc25fe58aa74867233a0ac88ae11cecaede573ecf43b689882a1798b54a8cb5d253d93dedc221fc80311b"
+                                },
+                            ), { from: player }
+                        )
+                    })
+                    it("player's balance after redemption matches expected value", async () => {
+                        var balanceOfPlayer = await tokenVault.balanceOf(player)
+                        assert.equal(balanceOfPlayer.toString(), "99000000000000000000")
+                    })
+                    it("souldbound pixels after redemption and transfer matches expected value", async () => {
+                        var pixelsOfPlayer = await tokenVault.pixelsOf(player)
+                        assert.equal(pixelsOfPlayer.toString(), "100")
+                    })
+                    it("getAuthorsCount() returns 1", async () => {
+                        assert.equal(
+                            (await tokenVault.getAuthorsCount.call()).toString(),
+                            "1"
+                        )                        
+                    })
+                    it("getPlayerInfo(17) returns expected values", async () => {
+                        var playerInfo = await tokenVault.getPlayerInfo.call(17)
+                        assert.equal(playerInfo[0], player)
+                        assert.equal(playerInfo[1], "23")
+                    })
+                    it("getPlayerInfo(3) returns expected values", async () => {
+                        var playerInfo = await tokenVault.getPlayerInfo.call(17)
+                        assert.equal(playerInfo[0], player)
+                        assert.equal(playerInfo[1], "23")
+                    })
+                    it("getWalletInfo(player) returns expected values", async () => {
+                        var walletInfo = await tokenVault.getWalletInfo.call(player)
+                        assert.equal(walletInfo[1], "0")
+                        assert.equal(walletInfo[2], "100")
+                    })
+                })
+                context("after some redemptions...", async () => {
+                    it("getAuctionSettings() returns expected values", async () => {
+                        const raw = await tokenVault.getAuctionSettings.call()
+                        const params = web3.eth.abi.decodeParameter("uint256[5]", raw)
+                        assert.equal(params[1], settings.core.events[0].auction.deltaSeconds.toString())
+                        assert.equal(params[3], settings.core.events[0].auction.startingPrice)
+                    })
+                    it("stranger cannot change auction settings", async () =>{
+                        const data = await web3.eth.abi.encodeParameter(
+                            "uint256[5]", [
+                                settings.core.events[0].auction.deltaPrice,
+                                30, // seconds
+                                settings.core.events[0].auction.reservePrice,
+                                settings.core.events[0].auction.startingPrice,
+                                Math.floor(Date.now() / 1000)
+                            ]
+                        )
+                        await expectRevert(
+                            tokenVault.setAuctionSettings(data, { from: stranger }),
+                            "not the curator"
+                        )
+                    })
+                    it("curator can change auction settings", async () =>{
+                        const data = await web3.eth.abi.encodeParameter(
+                            "uint256[5]", [
+                                settings.core.events[0].auction.deltaPrice,
+                                30, // seconds
+                                settings.core.events[0].auction.reservePrice,
+                                settings.core.events[0].auction.startingPrice,
+                                Math.floor(Date.now() / 1000)
+                            ]
+                        )
+                        await tokenVault.setAuctionSettings(data, { from: curator })
+                    })
+                })
             })
             context("On 'Auctioning' status:", async () => {
             })
