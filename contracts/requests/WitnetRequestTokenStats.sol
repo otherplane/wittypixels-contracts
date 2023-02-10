@@ -51,6 +51,8 @@ contract WitnetRequestTokenStats
                 totalPlayers: _items[6].readUint(),
                 totalScans: _items[7].readUint()
             }));
+        } else {
+            revert("WitnetRequestTokenStats: unexpected number of response items");
         }
     }
 

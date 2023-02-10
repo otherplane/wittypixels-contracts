@@ -249,7 +249,10 @@ contract("WittyPixels", ([ curator, master, stranger, player ]) => {
                 )
             })
             it("getAuctionType() returns expected value", async () => {
-                assert.equal(await prototype.getAuctionType.call(), "0xd694c588")
+                assert.equal(
+                    await prototype.getAuctionType.call(),
+                    "0x6cc10588"
+                )
             })
             it("setAuctionSettings(..) from master address reverts", async () => {
                 var deltaPriceBN = "0x" + utils.padLeft((new BN(settings.core.events[0].auction.deltaPrice)).toString(16), "0", 64)
@@ -273,9 +276,9 @@ contract("WittyPixels", ([ curator, master, stranger, player ]) => {
             })
         })
         context("IWittyPixelsTokenVaultAuctionDutch", async () => {
-            it("afmijnen() paying 50 ETH reverts", async() => {
+            it("acquire() paying 50 ETH reverts", async() => {
                 await expectRevert(
-                    prototype.afmijnen({ from: stranger, value: 50 * 10 ** 18 }),
+                    prototype.acquire({ from: stranger, value: 50 * 10 ** 18 }),
                     "not initialized"
                 )
             })
@@ -293,9 +296,9 @@ contract("WittyPixels", ([ curator, master, stranger, player ]) => {
                     "not initialized"
                 )
             })
-            it("soldOut() reverts", async () => {
+            it("acquired() reverts", async () => {
                 await expectRevert(
-                    prototype.soldOut.call(),
+                    prototype.acquired.call(),
                     "not initialized"
                 )
             })
@@ -793,8 +796,8 @@ contract("WittyPixels", ([ curator, master, stranger, player ]) => {
                         await witnet.reportResult(
                             tokenStatsId,
                             "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
-                            "0x88784064656164626565666465616462656566646561646265656664656164626565666465616462656566646561646265656664656164626565666465616462656566782E516D504B317333704E594C693945526971334244784B6134586F736757774652515579644855747A3459677071421901F41904D21903E81909291901591910E1",
-                                // [ "deadbeef...", "QmPK1s3pNYLi9ERiq3BDxKa4XosgWwFRQUydHUtz4YgpqB", 500, 1234, 1000, 2345, 345, 4321]
+                            "0x88784064616132306130343361306432393163326665326665353138643335623664343731313336333231643736306532396435643438656465626135623763356339601901f41904D21901f4190929187c193039",
+                                // [ "daa20a043a0d291c2fe2fe518d35b6d471136321d760e29d5d48edeba5b7c5c9", "", 500, 1234, 500, 2345, 124, 12345]
                             { from: master }
                         )
                     })
@@ -886,6 +889,10 @@ contract("WittyPixels", ([ curator, master, stranger, player ]) => {
                 it("getTokenMetadata(1) should contain expected data", async () => {
                     var metadata = await token.getTokenMetadata.call(1)
                     assert.equal(metadata.theStats.totalPixels, 2345)
+                    assert.equal(
+                        metadata.theStats.authorshipsRoot,
+                        "0xdaa20a043a0d291c2fe2fe518d35b6d471136321d760e29d5d48edeba5b7c5c9"
+                    )
                 })
                 it("ownerOf(1) should match getTokenVault(1)", async () => {
                     assert.equal(
