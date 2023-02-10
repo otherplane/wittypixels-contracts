@@ -383,7 +383,7 @@ contract WittyPixelsTokenVault
             status = IWittyPixelsTokenVault.Status.Awaiting;
         }
         stats = __storage.stats;
-        currentPrice = getAuctionPrice();
+        currentPrice = getPrice();
         nextPriceTs = getNextPriceTimestamp();
     }
 
@@ -452,7 +452,7 @@ contract WittyPixelsTokenVault
         notSoldOut
     {
         // verify provided value is greater or equal to current price:
-        uint256 _finalPrice = price();
+        uint256 _finalPrice = getPrice();
         require(
             msg.value >= _finalPrice,
             "WittyPixelsTokenVault: insufficient value"
@@ -488,31 +488,6 @@ contract WittyPixelsTokenVault
         );
     }
 
-    function getAuctionPrice()
-        virtual override
-        public view
-        wasInitialized
-        returns (uint256)
-    {
-        IWittyPixelsTokenVaultAuctionDutch.Settings memory _settings = __storage.settings;
-        if (block.timestamp >= _settings.startingTs) {
-            if (__storage.finalPrice == 0) {
-                uint _tsDiff = block.timestamp - _settings.startingTs;
-                uint _priceRange = _settings.startingPrice - _settings.reservePrice;
-                uint _round = _tsDiff / _settings.deltaSeconds;
-                if (_round * _settings.deltaPrice <= _priceRange) {
-                    return _settings.startingPrice - _round * _settings.deltaPrice;
-                } else {
-                    return _settings.reservePrice;
-                }
-            } else {
-                return __storage.finalPrice;
-            }
-        } else {
-            return _settings.startingPrice;
-        }
-    }
-
     function getAuctionSettings()
         override
         external view
@@ -539,6 +514,31 @@ contract WittyPixelsTokenVault
         _setAuctionSettings(_settings);
     }
 
+    function getPrice()
+        virtual override
+        public view
+        wasInitialized
+        returns (uint256)
+    {
+        IWittyPixelsTokenVaultAuctionDutch.Settings memory _settings = __storage.settings;
+        if (block.timestamp >= _settings.startingTs) {
+            if (__storage.finalPrice == 0) {
+                uint _tsDiff = block.timestamp - _settings.startingTs;
+                uint _priceRange = _settings.startingPrice - _settings.reservePrice;
+                uint _round = _tsDiff / _settings.deltaSeconds;
+                if (_round * _settings.deltaPrice <= _priceRange) {
+                    return _settings.startingPrice - _round * _settings.deltaPrice;
+                } else {
+                    return _settings.reservePrice;
+                }
+            } else {
+                return __storage.finalPrice;
+            }
+        } else {
+            return _settings.startingPrice;
+        }
+    }
+
 
     // ================================================================================================================
     // --- Implements 'IWittyPixelsTokenVaultAuctionDutch' ------------------------------------------------------------
@@ -552,7 +552,7 @@ contract WittyPixelsTokenVault
         IWittyPixelsTokenVaultAuctionDutch.Settings memory _settings = __storage.settings;
         if (
             acquired()
-                || getAuctionPrice() == _settings.reservePrice
+                || getPrice() == _settings.reservePrice
         ) {
             return 0;
         }
