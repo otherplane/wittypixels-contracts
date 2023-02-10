@@ -14,15 +14,15 @@ const WittyPixelsTokenVault = artifacts.require("WittyPixelsTokenVault")
 
 const settings = require("../migrations/settings")
 
-contract("WittyPixelsToken", ([ curator, master, stranger, player ]) => {
+var bytecodes
+var implementation
+var prototype
+var proxy    
+var token
+var tokenVault
+var witnet
 
-    var bytecodes
-    var implementation
-    var prototype
-    var proxy    
-    var token
-    var tokenVault
-    var witnet
+contract("WittyPixels", ([ curator, master, stranger, player ]) => {
 
     before(async () => {
         bytecodes = await WitnetBytecodes.deployed()
@@ -33,8 +33,8 @@ contract("WittyPixelsToken", ([ curator, master, stranger, player ]) => {
         witnet = await WitnetRequestBoard.deployed()
     })
 
-    context(`Implementation address`, async () => {
-        
+    context(`Token implementation address`, async () => {
+    
         context("WittyPixelsUpgradeableBase", async () => {
             it("deployed as an upgradable implementation", async() => {
                 assert(await implementation.isUpgradable())
@@ -244,8 +244,8 @@ contract("WittyPixelsToken", ([ curator, master, stranger, player ]) => {
             })
         })
     })
-
-    context("Proxy address as a token", async () => {
+    
+    context("Token proxy address as a token", async () => {
 
         context("ERC721Metadata", async () => {
             it("baseURI() returns expected string", async () => {
@@ -803,6 +803,25 @@ contract("WittyPixelsToken", ([ curator, master, stranger, player ]) => {
                 })
             })
         })
+
+        context("NFT token vault #1", async () => {
+            var info
+            context("On 'Awaiting' status:", async () => {
+                before(async () => {
+                    info = await tokenVault.getInfo.call()
+                    if (info.status.toString() !== "0") {
+                        console.error("tokenVault: could not reach 'Awaiting' status")
+                        process.exit(1)
+                    }
+                })
+            })
+            context("On 'Auctioning' status:", async () => {
+            })
+            context("On 'Sold' status:", async () => {
+            })
+        })   
     })
+    
+    
 
 })
