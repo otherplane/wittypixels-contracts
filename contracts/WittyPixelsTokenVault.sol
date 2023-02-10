@@ -130,6 +130,7 @@ contract WittyPixelsTokenVault
     function curator()
         override
         external view
+        wasInitialized
         returns (address)
     {
         return __storage.curator;
@@ -218,6 +219,7 @@ contract WittyPixelsTokenVault
     function acquired()
         override
         public view
+        wasInitialized
         returns (bool)
     {
         return IERC721(__storage.parentToken).ownerOf(__storage.parentTokenId) != address(this);
@@ -268,12 +270,14 @@ contract WittyPixelsTokenVault
     function withdrawableFrom(address _from)
         virtual override
         public view
+        wasInitialized
         returns (uint256)
     {
         if (acquired()) {
             return (__storage.finalPrice * balanceOf(_from)) / (__storage.stats.totalPixels * 10 ** 18);
+        } else {
+            return 0;
         }
-        return 0;
     }
 
 
@@ -334,6 +338,7 @@ contract WittyPixelsTokenVault
     function getAuthorsCount()
         virtual override
         external view
+        wasInitialized
         returns (uint256)
     {
         return __storage.authors.length;
@@ -343,6 +348,7 @@ contract WittyPixelsTokenVault
     function getAuthorsRange(uint offset, uint count)
         virtual override
         external view
+        wasInitialized
         returns (address[] memory _authors)
     {
         uint _total = __storage.authors.length;
@@ -365,7 +371,7 @@ contract WittyPixelsTokenVault
     function getInfo()
         override
         external view
-
+        wasInitialized
         returns (
             Status status,
             Stats memory stats,
@@ -435,6 +441,7 @@ contract WittyPixelsTokenVault
     function totalPixels()
         virtual override
         external view
+        wasInitialized
         returns (uint256)
     {
         return __storage.stats.totalPixels;
