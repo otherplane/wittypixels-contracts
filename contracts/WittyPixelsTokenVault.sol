@@ -176,7 +176,7 @@ contract WittyPixelsTokenVault
         );
         require(
             __storage.players[_deeds.playerIndex].addr == address(0),
-            "WittyPixelsTokenVault: already minted"
+            "WittyPixelsTokenVault: already redeemed"
         );
         require(
             __storage.stats.redeemedPixels + _deeds.playerPixels <= __storage.stats.totalPixels,
@@ -184,11 +184,14 @@ contract WittyPixelsTokenVault
         );
         
         // verify player's score proof:
-        IWittyPixelsToken(_deeds.parentToken).verifyTokenAuthorship(
-            _deeds.parentTokenId,
-            _deeds.playerIndex,
-            _deeds.playerPixels,
-            _deeds.playerPixelsProof
+        require(
+            IWittyPixelsToken(_deeds.parentToken).verifyTokenAuthorship(
+                _deeds.parentTokenId,
+                _deeds.playerIndex,
+                _deeds.playerPixels,
+                _deeds.playerPixelsProof
+            ),
+            "WittyPixelsTokenVault: false deeds"
         );
         
         // store player's info:
