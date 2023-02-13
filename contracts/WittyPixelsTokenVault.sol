@@ -465,7 +465,7 @@ contract WittyPixelsTokenVault
         external payable
         wasInitialized
         nonReentrant
-        notSoldOut
+        notAcquiredYet
     {
         // verify provided value is greater or equal to current price:
         uint256 _finalPrice = getPrice();
@@ -525,7 +525,7 @@ contract WittyPixelsTokenVault
         override
         external
         onlyCurator
-        notSoldOut
+        notAcquiredYet
     {
         _setAuctionSettings(_settings);
     }
@@ -838,7 +838,6 @@ contract WittyPixelsTokenVault
             _settings.startingPrice >= _settings.reservePrice
                 && _settings.deltaPrice <= (_settings.startingPrice - _settings.reservePrice)
                 && _settings.deltaSeconds > 0
-                && _settings.startingTs > block.timestamp
                 && _settings.startingPrice > 0
             , "WittyPixelsTokenVault: bad settings"
         );
