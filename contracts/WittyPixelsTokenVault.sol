@@ -142,7 +142,6 @@ contract WittyPixelsTokenVault
         public
         wasInitialized
         nonReentrant
-        notSoldOut
     {
         // deserialize deeds data:
         WittyPixelsLib.TokenVaultOwnershipDeeds memory _deeds = abi.decode(
