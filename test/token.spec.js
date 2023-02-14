@@ -687,7 +687,7 @@ contract("WittyPixels", ([ curator, master, stranger, player ]) => {
                             // "0x8478423078646561646265656664656164626565666465616462656566646561646265656664656164626565666465616462656566646561646265656664656164626565661904D2187B193039",
                                 // [ "0xdeadbeef...", 1234, 123, 12345]
                             "0x88784064656164626565666465616462656566646561646265656664656164626565666465616462656566646561646265656664656164626565666465616462656566782E516D504B317333704E594C693945526971334244784B6134586F736757774652515579644855747A3459677071421901F41904D21903E81909291901591910E1",
-                                // [ "deadbeef...", "QmPK1s3pNYLi9ERiq3BDxKa4XosgWwFRQUydHUtz4YgpqB", 500, 1234, 1000, 2345, 345, 4321]
+                                // [ "deadbeef...", "QmPK1s3pNYLi9ERiq3BDxKa4XosgWwFRQUydHUtz4YgpqB", 500, 174, 1000, 2345, 345, 4321]
                             { from: master }
                         )
                         // var digestValue = await witnetRequestImageDigest.lastValue.call()
@@ -796,8 +796,8 @@ contract("WittyPixels", ([ curator, master, stranger, player ]) => {
                         await witnet.reportResult(
                             tokenStatsId,
                             "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
-                            "0x88784064616132306130343361306432393163326665326665353138643335623664343731313336333231643736306532396435643438656465626135623763356339601901f41904D21901f4190929187c193039",
-                                // [ "daa20a043a0d291c2fe2fe518d35b6d471136321d760e29d5d48edeba5b7c5c9", "", 500, 1234, 500, 2345, 124, 12345]
+                            "0x88784064616132306130343361306432393163326665326665353138643335623664343731313336333231643736306532396435643438656465626135623763356339601901f418ae1901f4190929187c193039",
+                                // [ "daa20a043a0d291c2fe2fe518d35b6d471136321d760e29d5d48edeba5b7c5c9", "", 500, 174, 500, 2345, 124, 12345]
                             { from: master }
                         )
                     })
@@ -929,8 +929,8 @@ contract("WittyPixels", ([ curator, master, stranger, player ]) => {
                     assert.equal(self, prototype.address, "unexpected self")
                     assert.equal(symbol, settings.core.collection.symbol, "bad symbol")
                     assert.equal(tokenCurator, curator, "bad curator")
-                    assert.equal(totalPixels.toString(), "1234", "bad total pixels")
-                    assert.equal(totalSupply.toString(), "1234000000000000000000", "bad total supply")
+                    assert.equal(totalPixels.toString(), "174", "bad total pixels")
+                    assert.equal(totalSupply.toString(), "174000000000000000000", "bad total supply")
                     assert.equal(price, "32000000000000000000", "unexpected initial price")
                     assert.equal(nextPriceTimestamp.toString(), settings.core.events[0].auction.startingTs, "bad auction start timestamp")
                     assert.equal(info.status.toString(), "0", "vault not in 'Awaiting status")
