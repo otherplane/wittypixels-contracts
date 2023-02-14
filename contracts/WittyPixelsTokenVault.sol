@@ -359,21 +359,23 @@ contract WittyPixelsTokenVault
         return __storage.authors.length;
     }
 
-    /// @notice Returns range of authors, as specified by `offset` and `count` params.
+    /// @notice Returns range of authors's address and legacy pixels, as specified by `offset` and `count` params.
     function getAuthorsRange(uint offset, uint count)
         virtual override
         external view
         wasInitialized
-        returns (address[] memory _authors)
+        returns (address[] memory addrs, uint256[] memory pixels)
     {
         uint _total = __storage.authors.length;
         if (offset < _total) {
             if (offset + count > _total) {
                 count = _total - offset;
             }
-            _authors = new address[](count);
+            addrs = new address[](count);
+            pixels = new uint256[](count);
             for (uint _i = 0; _i < count; _i ++) {
-                _authors[_i] = __storage.authors[_i + offset];
+                addrs[_i] = __storage.authors[_i + offset];
+                pixels[_i] = __storage.legacyPixels[addrs[_i]];
             }
         }
     }

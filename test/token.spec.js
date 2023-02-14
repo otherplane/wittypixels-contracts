@@ -1533,11 +1533,13 @@ it("curator can change auction settings", async () => {
                         assert.equal((await tokenVault.pixelsOf.call(player)).toString(), "100")
                         assert.equal((await tokenVault.pixelsOf.call(player2)).toString(), "69")
                     })
-                    it("getting array of authors works", async () => {
-                        const authors = await tokenVault.getAuthorsRange.call(0, 10)
-                        assert.equal(authors.length, 2)
-                        assert.equal(authors[0], player)
-                        assert.equal(authors[1], player2)
+                    it("getting range of authors works", async () => {
+                        assert.equal(range.addrs.length, 2)
+                        assert.equal(range.pixels.length, 2)
+                        assert.equal(range.addrs[0], player)
+                        assert.equal(range.addrs[1], player2)
+                        assert.equal(range.pixels[0].toString(), "100")
+                        assert.equal(range.pixels[1].toString(), "69")
                     })
                 })
             })

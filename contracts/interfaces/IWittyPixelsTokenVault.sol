@@ -33,8 +33,8 @@ abstract contract IWittyPixelsTokenVault
     /// @notice Returns number of legitimate players that have redeemed authorhsip of at least one pixel from the NFT token.
     function getAuthorsCount() virtual external view returns (uint256);
 
-    /// @notice Returns range of authors, as specified by `offset` and `count` params.
-    function getAuthorsRange(uint offset, uint count) virtual external view returns (address[] memory);
+    /// @notice Returns range of authors's address and legacy pixels, as specified by `offset` and `count` params.
+    function getAuthorsRange(uint offset, uint count) virtual external view returns (address[] memory, uint256[] memory);
 
     /// @notice Returns status data about the token vault contract, relevant from an UI/UX perspective
     /// @return status Enum value representing current contract status: Awaiting, Randomizing, Auctioning, Acquired
