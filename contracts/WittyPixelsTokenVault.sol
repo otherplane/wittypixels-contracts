@@ -21,7 +21,7 @@ contract WittyPixelsTokenVault
 
     WittyPixelsLib.TokenVaultStorage internal __storage;
 
-    modifier notSoldOut {
+    modifier notAcquiredYet {
         require(
             !acquired(),
             "WittyPixelsTokenVault: already acquired"
