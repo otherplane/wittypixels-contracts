@@ -25,7 +25,7 @@ module.exports = async function (deployer, network, [, from]) {
 
   var lib
   if (utils.isNullAddress(addresses[ecosystem][network]?.WittyPixelsLib)) {
-    await deployer.deploy(WittyPixelsLib)
+    await deployer.deploy(WittyPixelsLib, { from })
     lib = await WittyPixelsLib.deployed()
     addresses[ecosystem][network].WittyPixelsLib = lib.address
     if (!isDryRun) {
