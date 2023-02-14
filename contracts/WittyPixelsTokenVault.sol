@@ -55,6 +55,13 @@ contract WittyPixelsTokenVault
 
     receive() external payable {}
 
+    function setCurator(address newCurator)
+        external
+        onlyCurator
+    {
+        assert(newCurator != address(0));
+        __storage.curator = newCurator;
+    }
 
     // ================================================================================================================
     // --- Overrides IERC20Upgradeable interface ----------------------------------------------------------------------
