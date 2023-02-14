@@ -49,6 +49,9 @@ module.exports = async function (deployer, network, [, from]) {
     }
   } else {
     WitnetRequestImageDigest.address = addresses[ecosystem][network].WitnetRequestImageDigest
+    utils.traceHeader("Skipping 'WitnetRequetImageDigest'")
+    console.info("  ", "> contract address:", WitnetRequestImageDigest.address)
+    console.info()
   }
 
   if (utils.isNullAddress(addresses[ecosystem][network]?.WitnetRequestTokenStats)) {
@@ -70,5 +73,8 @@ module.exports = async function (deployer, network, [, from]) {
     }
   } else {
     WitnetRequestTokenStats.address = addresses[ecosystem][network].WitnetRequestTokenStats
+    utils.traceHeader("Skipping 'WitnetRequetTokenStats'")
+    console.info("  ", "> contract address:", WitnetRequestTokenStats.address)
+    console.info()
   }
 }

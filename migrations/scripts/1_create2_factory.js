@@ -22,7 +22,9 @@ module.exports = async function (deployer, network, [, from]) {
     } else {
       factory = await Create2Factory.at(addresses[ecosystem][network].Create2Factory)
       Create2Factory.address = factory.address
-      utils.traceHeader(`Create2Factory: ${factory.address}`)
+      utils.traceHeader(`Skipping 'Create2Factory'`)
+      console.info("   > Contract address:", factory.address)
+      console.info()
     }
   }
 }

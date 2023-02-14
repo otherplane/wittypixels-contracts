@@ -49,6 +49,9 @@ module.exports = async function (deployer, network, [, from]) {
     }
   } else {
     vault = await WittyPixelsTokenVault.at(addresses[ecosystem][network].WittyPixelsTokenVaultPrototype)
+    utils.traceHeader("Skipping 'WittyPixelsTokenVaultPrototype'")
+    console.info("  ", "> contract address:", vault.address)
+    console.info()
   }
 
   if (network !== "test") {

@@ -34,6 +34,9 @@ module.exports = async function (deployer, network, [, from]) {
   } else {
     lib = await WittyPixelsLib.at(addresses[ecosystem][network]?.WittyPixelsLib)
     WittyPixelsLib.address = lib.address
+    utils.traceHeader("Skipping 'WittyPixelsLib'")
+    console.info("  ", "> library address:", lib.address)
+    console.info()
   }
 
   var token
@@ -54,6 +57,9 @@ module.exports = async function (deployer, network, [, from]) {
     }
   } else {
     token = await WittyPixelsToken.at(addresses[ecosystem][network].WittyPixelsToken)
+    utils.traceHeader("Skipping 'WittyPixelsToken'")
+    console.info("  ", "> contract address:", token.address)
+    console.info()
   }
 
   if (network !== "test") {
@@ -104,6 +110,9 @@ module.exports = async function (deployer, network, [, from]) {
       }
     } else {
       proxy = await WitnetProxy.at(addresses[ecosystem][network].WittyPixelsTokenProxy)
+      utils.traceHeader("Skipping 'WittyPixelsTokenProxy'")
+      console.info("  ", "> proxy address:", proxy.address)
+      console.info()
     }
 
     var implementation = await proxy.implementation.call({ from })
@@ -118,19 +127,24 @@ module.exports = async function (deployer, network, [, from]) {
       if (implementation === "0x0000000000000000000000000000000000000000" ) {
         console.info("   > new token base uri:", settings.core.collection.baseURI)
       }      
-      const tx = await proxy.upgradeTo(
-        token.address,        
-        web3.eth.abi.encodeParameter(
-          "string[3]", [
-            settings.core.collection.baseURI,
-            settings.core.collection.name,
-            settings.core.collection.symbol
-          ]
-        ),
-        { from }
-      )
-      console.info("   => transaction hash :", tx.receipt.transactionHash)
-      console.info("   => transaction gas  :", tx.receipt.gasUsed)
+      try {
+        const tx = await proxy.upgradeTo(
+          token.address,        
+          web3.eth.abi.encodeParameter(
+            "string[3]", [
+              settings.core.collection.baseURI,
+              settings.core.collection.name,
+              settings.core.collection.symbol
+            ]
+          ),
+          { from }
+        )
+        console.info("   => transaction hash :", tx.receipt.transactionHash)
+        console.info("   => transaction gas  :", tx.receipt.gasUsed)
+      } catch (ex) {
+        console.error("   !! Cannot upgrade the token proxy:")
+        console.error(ex)
+      }
     }
   }
 }
