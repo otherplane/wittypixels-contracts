@@ -1508,7 +1508,7 @@ it("curator can change auction settings", async () => {
                     it("trying to withdraw from non-player address with WPX balance works", async () => {
                         const tx = await tokenVault.withdraw({ from: stranger })
                         const logs = tx.logs.filter(log => log.event === "Withdrawal")
-                        assert.equal(logs[0].args.member, stranger)
+                        assert.equal(logs[0].args.from, stranger)
                         assert.notEqual(logs[0].args.value, "0")
                     })
                     it("works if all WPX owners proceed to withdraw", async () => {

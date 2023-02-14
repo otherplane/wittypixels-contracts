@@ -12,7 +12,7 @@ abstract contract ITokenVault
         IERC1633
 {
     event Acquired(address buyer, uint256 value);
-    event Withdrawal(address member, uint256 value);
+    event Withdrawal(address from, uint256 value);
 
     /// @notice Returns whether this NFT vault has already been acquired. 
     function acquired() virtual external view returns (bool);
