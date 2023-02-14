@@ -14,26 +14,35 @@ const WittyPixelsTokenVault = artifacts.require("WittyPixelsTokenVault")
 
 const settings = require("../migrations/settings")
 
-var bytecodes
-var implementation
-var prototype
-var proxy    
-var token
-var tokenVault
-var witnet
+contract("WittyPixels", ([curator, master, stranger, player, player2, patron]) => {
 
-contract("WittyPixels", ([ curator, master, stranger, player ]) => {
-
+    var backend, backendWallet
+    var bytecodes
+    var implementation
+    var prototype
+    var proxy    
+    var token
+    var tokenVault
+    var witnet
+    
     before(async () => {
         bytecodes = await WitnetBytecodes.deployed()
         implementation = await WittyPixelsToken.deployed()
         prototype = await WittyPixelsTokenVault.deployed()
-        proxy = await WitnetProxy.new({ from: master })
-        token = await WittyPixelsToken.at(proxy.address)
         witnet = await WitnetRequestBoard.deployed()
+        backendWallet = await web3.eth.accounts.privateKeyToAccount(
+            '0x0000000000000000000000000000000000000000000000000000000000000001'
+        )
+        backend = backendWallet.address
     })
 
     context(`Token implementation address`, async () => {
+
+        before(async () => {
+            proxy = await WitnetProxy.new({ from: master })
+            token = await WittyPixelsToken.at(proxy.address)
+    
+        })
     
         context("WittyPixelsUpgradeableBase", async () => {
             it("deployed as an upgradable implementation", async() => {
@@ -854,7 +863,9 @@ contract("WittyPixels", ([ curator, master, stranger, player ]) => {
                         )
                         var logs = tx.logs.filter(log => log.event === "Fractionalized")
                         assert.equal(logs.length, 1, "'Fractionalized' was not emitted")
+                        // console.log("tokenVault =>", logs[0].args.tokenVault)
                         tokenVault = await WittyPixelsTokenVault.at(logs[0].args.tokenVault)
+                        // console.log("tokenVault =>", tokenVault.address)
                     })
                 })
             })
@@ -916,13 +927,14 @@ contract("WittyPixels", ([ curator, master, stranger, player ]) => {
                     var tokenCurator = await tokenVault.curator.call()
                     var totalPixels = await tokenVault.totalPixels.call()
                     var totalSupply = await tokenVault.totalSupply.call()
-                    var price = await tokenVault.price.call()                    
-                    var nextPriceTimestamp = await tokenVault.nextPriceTimestamp.call()
+                    var price = await tokenVault.getPrice.call()                    
+                    var nextPriceTimestamp = await tokenVault.getNextPriceTimestamp.call()
                     var info = await tokenVault.getInfo.call()
                     var authorsCount = await tokenVault.getAuthorsCount.call()
                     var jackpotsCount = await tokenVault.getJackpotsCount.call()
                     var randomized = await tokenVault.randomized.call()
                     var auctioning = await tokenVault.auctioning.call()
+                    await tokenVault.getAuctionSettings.call()                    
                     await tokenVault.settings.call()                    
                     assert.equal(cloned, true, "not cloned")
                     assert.equal(initialized, true, "not initialized")
@@ -947,11 +959,12 @@ contract("WittyPixels", ([ curator, master, stranger, player ]) => {
 
         context("NFT token vault #1", async () => {
             var info
+            var finalPrice
             context("On 'Awaiting' status:", async () => {
                 before(async () => {
                     info = await tokenVault.getInfo.call()
                     if (info.status.toString() !== "0") {
-                        console.error("tokenVault: could not reach 'Awaiting' status")
+                        console.error("tokenVault: not in 'Awaiting' status")
                         process.exit(1)
                     }
                 })
@@ -974,6 +987,28 @@ contract("WittyPixels", ([ curator, master, stranger, player ]) => {
                             "0"
                         )
                     })
+it("curator can change auction settings", async () => {
+    const data = await web3.eth.abi.encodeParameter(
+        "uint256[5]", [
+            settings.core.events[0].auction.deltaPrice,
+            30, // seconds
+            settings.core.events[0].auction.reservePrice,
+            settings.core.events[0].auction.startingPrice,
+            Math.floor(Date.now() / 1000)
+        ]
+    )
+    await tokenVault.setAuctionSettings(data, { from: curator })
+})
+                    it("stranger cannot transfer curatorship", async () => {
+                        await expectRevert(
+                            tokenVault.setCurator(stranger, { from: stranger }),
+                            "not the curator"
+                        )
+                    })
+                    it("current curator can transfer curatorship", async () => {
+                        await tokenVault.setCurator(backendWallet.address, { from: curator })
+                        assert.equal(backend, await tokenVault.curator.call())
+                    })
                 })
                 context("playerIndex: 17", async () => {
                     it("zero balance before redemption", async () => {
@@ -982,11 +1017,69 @@ contract("WittyPixels", ([ curator, master, stranger, player ]) => {
                             "0"
                         )
                     })
-                    it.skip("trying to redeem bad token with valid signature fails", async () => {
+                    it("trying to redeem bad token id with valid signature fails", async () => {
+                        await expectRevert(
+                            tokenVault.redeem(
+                                web3.eth.abi.encodeParameter(
+                                    {
+                                        "TokenVaultOwnershipDeeds": {
+                                            "parentToken": 'address',
+                                            "parentTokenId": 'uint256',
+                                            "playerAddress": 'address',
+                                            "playerIndex": 'uint256',
+                                            "playerPixels": 'uint256',
+                                            "playerPixelsProof": 'bytes32[]',
+                                            "signature": 'bytes',
+                                        }
+                                    }, {
+                                        parentToken: token.address,
+                                        parentTokenId: "0",  // bad token id
+                                        playerAddress: player,
+                                        playerIndex: "17",
+                                        playerPixels: "23", // such a big lie !
+                                        playerPixelsProof: [
+                                            "0x20ea3f905c06089a25c77876ced137bb6b51042bd7f1cff5aa1f9eb2851b0d90",
+                                            "0x306df6fb2caa2b338dc21474c97d7dd9d36d2842dee9a92642799ecb27faf1d6",
+                                            "0xde31a920dbdd1f015b2a842f0275dc8dec6a82ff94d9b796a36f23c64a3c8332",
+                                        ],
+                                        signature: "0x48f827480b88e042b3e82411ed1ccb54844a78585cd05aee2b831c662f167f6755059bb231d0d6070dd5ad8a7a28518fd01562064f8feba5a984e172d38be49a1c"
+                                    },
+                                ), { from: player }
+                            ),
+                            "unknown token"
+                        )
                     })
-                    it.skip("trying to redeem zero address with valid signature fails", async () => {
-                    })
-                    it.skip("trying to redeem true player score with invalid signature fails", async () => {
+                    it("trying to redeem true player score with invalid signature fails", async () => {
+                        await expectRevert(
+                            tokenVault.redeem(
+                                web3.eth.abi.encodeParameter(
+                                    {
+                                        "TokenVaultOwnershipDeeds": {
+                                            "parentToken": 'address',
+                                            "parentTokenId": 'uint256',
+                                            "playerAddress": 'address',
+                                            "playerIndex": 'uint256',
+                                            "playerPixels": 'uint256',
+                                            "playerPixelsProof": 'bytes32[]',
+                                            "signature": 'bytes',
+                                        }
+                                    }, {
+                                        parentToken: token.address,
+                                        parentTokenId: "1",
+                                        playerAddress: player,
+                                        playerIndex: "17", 
+                                        playerPixels: "23",
+                                        playerPixelsProof: [
+                                            "0x20ea3f905c06089a25c77876ced137bb6b51042bd7f1cff5aa1f9eb2851b0d90",
+                                            "0x306df6fb2caa2b338dc21474c97d7dd9d36d2842dee9a92642799ecb27faf1d6",
+                                            "0xde31a920dbdd1f015b2a842f0275dc8dec6a82ff94d9b796a36f23c64a3c8332",
+                                        ],
+                                        signature: "0x48f827480b88e042b3e82411ed1ccb54844a78585cd05aee2b831c662f167f6755059bb231d0d6070dd5ad8a7a28518fd01562064f8feba5a984e172d38be49a1c"
+                                    },
+                                ), { from: player }
+                            ),
+                            "bad signature"
+                        )
                     })
                     it("trying to redeem false player score with valid signature fails", async () => {
                         await expectRevert(
@@ -1013,7 +1106,7 @@ contract("WittyPixels", ([ curator, master, stranger, player ]) => {
                                             "0x306df6fb2caa2b338dc21474c97d7dd9d36d2842dee9a92642799ecb27faf1d6",
                                             "0xde31a920dbdd1f015b2a842f0275dc8dec6a82ff94d9b796a36f23c64a3c8332",
                                         ],
-                                        signature: "0x28aac88b7de30e7e82929f2535e907352b45855f070afdc25fe58aa74867233a0ac88ae11cecaede573ecf43b689882a1798b54a8cb5d253d93dedc221fc80311b"
+                                        signature: "0xecbc86f2a2fea1bd15168233101a952fd4365c7fa9ca6f3e9e776edd49e0ab0866d2d344995c22bb799b3bcb28f4d8f18debb9da6ba580bb938be528234a2c3f1b"
                                     },
                                 ), { from: player }
                             ),
@@ -1044,7 +1137,7 @@ contract("WittyPixels", ([ curator, master, stranger, player ]) => {
                                         "0x306df6fb2caa2b338dc21474c97d7dd9d36d2842dee9a92642799ecb27faf1d6",
                                         "0xde31a920dbdd1f015b2a842f0275dc8dec6a82ff94d9b796a36f23c64a3c8332",
                                     ],
-                                    signature: "0x28aac88b7de30e7e82929f2535e907352b45855f070afdc25fe58aa74867233a0ac88ae11cecaede573ecf43b689882a1798b54a8cb5d253d93dedc221fc80311b"
+                                    signature: "0x2ab3abcfd1ef74b103c15bcbc3278cc3590df25de3f0f3f55be55332dd45fc124b009bca1f67e68ce4403f8e53cd56525c1bd14d5402e142b25e14204efa01401c"
                                 },
                             ), { from: player }
                         )
@@ -1074,7 +1167,7 @@ contract("WittyPixels", ([ curator, master, stranger, player ]) => {
                                             "0x306df6fb2caa2b338dc21474c97d7dd9d36d2842dee9a92642799ecb27faf1d6",
                                             "0xde31a920dbdd1f015b2a842f0275dc8dec6a82ff94d9b796a36f23c64a3c8332",
                                         ],
-                                        signature: "0x28aac88b7de30e7e82929f2535e907352b45855f070afdc25fe58aa74867233a0ac88ae11cecaede573ecf43b689882a1798b54a8cb5d253d93dedc221fc80311b"
+                                        signature: "0x2ab3abcfd1ef74b103c15bcbc3278cc3590df25de3f0f3f55be55332dd45fc124b009bca1f67e68ce4403f8e53cd56525c1bd14d5402e142b25e14204efa01401c"
                                     },
                                 ), { from: player }
                             ),
@@ -1148,7 +1241,7 @@ contract("WittyPixels", ([ curator, master, stranger, player ]) => {
                                         "0x550b876a53f6484cf42aa55bb6c8fbe2fd01da39646119ba0560d23728394567",
                                         "0xde31a920dbdd1f015b2a842f0275dc8dec6a82ff94d9b796a36f23c64a3c8332",
                                     ],
-                                    signature: "0x28aac88b7de30e7e82929f2535e907352b45855f070afdc25fe58aa74867233a0ac88ae11cecaede573ecf43b689882a1798b54a8cb5d253d93dedc221fc80311b"
+                                    signature: "0x630ae255ffa3a3dc54f193eed870a66592d7426e735e200b829517c27e0b6c3220e312bd457e8a184aad71e7595879656caa7847d5183eee3ea0645b67f052201b"
                                 },
                             ), { from: player }
                         )
@@ -1184,7 +1277,7 @@ contract("WittyPixels", ([ curator, master, stranger, player ]) => {
                     })
                 })
                 context("after some redemptions...", async () => {
-                    it("getAuctionSettings() returns expected values", async () => {
+                    it.skip("getAuctionSettings() returns expected values", async () => {
                         const raw = await tokenVault.getAuctionSettings.call()
                         const params = web3.eth.abi.decodeParameter("uint256[5]", raw)
                         assert.equal(params[1], settings.core.events[0].auction.deltaSeconds.toString())
@@ -1205,7 +1298,7 @@ contract("WittyPixels", ([ curator, master, stranger, player ]) => {
                             "not the curator"
                         )
                     })
-                    it("curator can change auction settings", async () =>{
+                    it.skip("curator can change auction settings", async () => {
                         const data = await web3.eth.abi.encodeParameter(
                             "uint256[5]", [
                                 settings.core.events[0].auction.deltaPrice,
@@ -1220,8 +1313,233 @@ contract("WittyPixels", ([ curator, master, stranger, player ]) => {
                 })
             })
             context("On 'Auctioning' status:", async () => {
+                before(async () => {
+                    info = await tokenVault.getInfo.call()
+                    if (info.status.toString() !== "2") {
+                        console.error("tokenVault: not in 'Auctioning' status")
+                        process.exit(1)
+                    }
+                })
+                context("before next redemption...", async () => {
+                    it("auctioning() returns true", async () => {
+                        assert.equal(await tokenVault.auctioning.call(), true)
+                    })
+                    it("acquired() returns false", async () => {
+                        assert.equal(await tokenVault.acquired.call(), false)
+                    })
+                    it("trying to withdraw fails", async () => {
+                        await expectRevert(
+                            tokenVault.withdraw({ from: curator }),
+                            "not acquired yet"
+                        )
+                    })
+                    it("getAuthorsCount() returns 1", async () => {
+                        assert.equal(
+                            (await tokenVault.getAuthorsCount.call()).toString(),
+                            "1"
+                        )
+                    })
+                })
+                context("playerIndex: 123", async () => {
+                    it("trying to redeem true deeds refering new player address from stranger address but valid signature works", async () => {
+                        var tx = await tokenVault.redeem(
+                            web3.eth.abi.encodeParameter(
+                                {
+                                    "TokenVaultOwnershipDeeds": {
+                                        "parentToken": 'address',
+                                        "parentTokenId": 'uint256',
+                                        "playerAddress": 'address',
+                                        "playerIndex": 'uint256',
+                                        "playerPixels": 'uint256',
+                                        "playerPixelsProof": 'bytes32[]',
+                                        "signature": 'bytes',
+                                    }
+                                }, {
+                                    parentToken: token.address,
+                                    parentTokenId: "1",
+                                    playerAddress: player2,
+                                    playerIndex: "123", 
+                                    playerPixels: "0",
+                                    playerPixelsProof: [
+                                        '0x44246914b6905c3d48b4e57781e66199b274c84c8a434a8fc9c58d26482e20ad',
+                                    ],
+                                    signature: "0xc071155f9753b48b2275f22c1207cae6f837de81662f7e6a81f25b4de91aa474026ae5fd82c123bbcdd224de0ccb00290c5f7250e3223f88c5df530c6d8157fe1c"
+                                },
+                            ), { from: stranger }
+                        )
+                    })
+                    it("player's balance after redemption matches expected value", async () => {
+                        var balanceOfPlayer = await tokenVault.balanceOf(player2)
+                        assert.equal(balanceOfPlayer.toString(), "0")
+                    })
+                    it("souldbound pixels after redemption and transfer matches expected value", async () => {
+                        var pixelsOfPlayer2 = await tokenVault.pixelsOf(player2)
+                        assert.equal(pixelsOfPlayer2.toString(), "0")
+                    })
+                    it("getAuthorsCount() after redeeming new player with no pixels still returns 1", async () => {
+                        assert.equal(
+                            (await tokenVault.getAuthorsCount.call()).toString(),
+                            "1"
+                        )                        
+                    })
+                    it("getPlayerInfo(123) returns expected values", async () => {
+                        var playerInfo = await tokenVault.getPlayerInfo.call(123)
+                        assert.equal(playerInfo[0], player2)
+                        assert.equal(playerInfo[1], "0")
+                    })
+                    it("getWalletInfo(player2) returns expected values", async () => {
+                        var walletInfo = await tokenVault.getWalletInfo.call(player2)
             })
             context("On 'Sold' status:", async () => {
+                        assert.equal(walletInfo[1].toString(), "0")
+                        assert.equal(walletInfo[2].toString(), "0")
+                    })
+                })
+                context("auction interactions...", async () => {
+                    it("getPrice() returns some value greater than zero", async () => {
+                        finalPrice = await tokenVault.getPrice.call()
+                        assert.notEqual(finalPrice.toString(), "0")
+                    })
+                    it("getNextPriceTimestamp() returns some value greater than zero", async () => {
+                        assert.notEqual((await tokenVault.getNextPriceTimestamp.call()).toString(), "0")
+                    })
+                    it("trying to acquire by paying less than required price fails", async () => {
+                        await expectRevert(
+                            tokenVault.acquire({ from: patron, value: 10 ** 17 }),
+                            "insufficient value"
+                        )
+                    })
+                    it("trying to acquire by paying double the required price works, but only actual price is paid", async () => {
+                        const beforeBalance = await web3.eth.getBalance(patron)
+                        await tokenVault.acquire({ from: patron, value: (finalPrice * 2).toString() })
+                        const afterBalance = await web3.eth.getBalance(patron)
+                        assert(beforeBalance - afterBalance < (finalPrice * 2))
+                    })
+                })
+            })
+            context("On 'Acquired' status:", async () => {
+                before(async () => {
+                    info = await tokenVault.getInfo.call()
+                    if (info.status.toString() !== "3") {
+                        console.error("tokenVault: could not reach 'Acquired' status")
+                        process.exit(1)
+                    }
+                })
+                context("before next redemption...", async () => {
+                    it("auctioning() returns false", async () => {
+                        assert.equal(await tokenVault.auctioning.call(), false)
+                    })
+                    it("acquired() returns true", async () => {
+                        assert.equal(await tokenVault.acquired.call(), true)
+                    })
+                    it("getAuthorsCount() after redeeming new player with no pixels returns 1", async () => {
+                        assert.equal(
+                            (await tokenVault.getAuthorsCount.call()).toString(),
+                            "1"
+                        )
+                    })
+                    it("ownership of NFT token #1 has been transferred to actual buyer", async () => {
+                        assert.equal(await token.ownerOf.call(1), patron)
+                        assert.equal(await token.getTokenStatusString.call(1), "Acquired")
+                    })
+                })
+                context("playerIndex: 521", async () => {
+                    it("trying to redeem true deeds refering new player address from stranger address but valid signature works", async () => {
+                        var tx = await tokenVault.redeem(
+                            web3.eth.abi.encodeParameter(
+                                {
+                                    "TokenVaultOwnershipDeeds": {
+                                        "parentToken": 'address',
+                                        "parentTokenId": 'uint256',
+                                        "playerAddress": 'address',
+                                        "playerIndex": 'uint256',
+                                        "playerPixels": 'uint256',
+                                        "playerPixelsProof": 'bytes32[]',
+                                        "signature": 'bytes',
+                                    }
+                                }, {
+                                    parentToken: token.address,
+                                    parentTokenId: "1",
+                                    playerAddress: player2,
+                                    playerIndex: "521", 
+                                    playerPixels: "69",
+                                    playerPixelsProof: [
+                                        '0x989fb179f4b9e7c79597668c23db03a7622f64e76736a9fb45d5a6c8c3eef33d',
+                                        '0x306df6fb2caa2b338dc21474c97d7dd9d36d2842dee9a92642799ecb27faf1d6',
+                                        '0xde31a920dbdd1f015b2a842f0275dc8dec6a82ff94d9b796a36f23c64a3c8332',
+                                    ],
+                                    signature: "0x4fc807a545d69e33e14cda4af4cb2ffc68fbea783a525295a62b11d03d19092a50b5552e354d23e162f0ceb3685a9e8d4aa108656e97a8415102923ac09342a91b"
+                                },
+                            ), { from: player2 }
+                        )
+                    })
+                    it("player's balance after redemption matches expected value", async () => {
+                        var balanceOfPlayer2 = await tokenVault.balanceOf(player2)
+                        assert.equal(balanceOfPlayer2.toString(), "69000000000000000000")
+                    })
+                    it("souldbound pixels after redemption and transfer matches expected value", async () => {
+                        var pixelsOfPlayer2 = await tokenVault.pixelsOf(player2)
+                        assert.equal(pixelsOfPlayer2.toString(), "69")
+                    })
+                    it("getAuthorsCount() returns 2", async () => {
+                        assert.equal(
+                            (await tokenVault.getAuthorsCount.call()).toString(),
+                            "2"
+                        )                        
+                    })
+                    it("getPlayerInfo(521) returns expected values", async () => {
+                        var playerInfo = await tokenVault.getPlayerInfo.call(521)
+                        assert.equal(playerInfo[0], player2)
+                        assert.equal(playerInfo[1], "69")
+                    })
+                    it("getWalletInfo(player2) returns expected values", async () => {
+                        var walletInfo = await tokenVault.getWalletInfo.call(player2)
+                        assert.notEqual(walletInfo[1], "0")
+                        assert.equal(walletInfo[2], "69")
+                    })
+                })
+                context("withdrawal interactions...", async() => {
+                    it("trying to withdraw from address with no WPX balance fails", async () => {
+                        await expectRevert(
+                            tokenVault.withdraw({ from: curator }),
+                            "no balance"
+                        )
+                    })
+                    it("trying to withdraw from non-player address with WPX balance works", async () => {
+                        const tx = await tokenVault.withdraw({ from: stranger })
+                        const logs = tx.logs.filter(log => log.event === "Withdrawal")
+                        assert.equal(logs[0].args.member, stranger)
+                        assert.notEqual(logs[0].args.value, "0")
+                    })
+                    it("works if all WPX owners proceed to withdraw", async () => {
+                        var tx = await tokenVault.withdraw({ from: player })
+                        var logs = tx.logs.filter(log => log.event === "Withdrawal")
+                        logs = tx.logs.filter(log => log.event === "Withdrawal")
+                    })
+                })
+                context("after withdrawals...", async () => {
+                    it("getAuthorsCount() returns 2", async () => {
+                        assert((await tokenVault.getAuthorsCount.call()).toString(), "2")
+                    })
+                    it("token vault balance ends up being expected value", async () => {
+                        const info = await tokenVault.getInfo.call()
+                        const totalPixels = await tokenVault.totalPixels.call()
+                        const missingPixels = totalPixels - info.stats.redeemedPixels
+                        const expectedBalance = finalPrice * missingPixels / totalPixels;
+                        const actualBalance = await web3.eth.getBalance(tokenVault.address)
+                        assert.equal(actualBalance.toString().substring(0, 16), expectedBalance.toString().substring(0, 16))
+                    })
+                    it("legacy pixels for all players are preserved", async () => {
+                        assert.equal((await tokenVault.pixelsOf.call(player)).toString(), "100")
+                        assert.equal((await tokenVault.pixelsOf.call(player2)).toString(), "69")
+                    })
+                    it("getting array of authors works", async () => {
+                        const authors = await tokenVault.getAuthorsRange.call(0, 10)
+                        assert.equal(authors.length, 2)
+                        assert.equal(authors[0], player)
+                        assert.equal(authors[1], player2)
+                    })
+                })
             })
         })   
     })

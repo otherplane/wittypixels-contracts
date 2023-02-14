@@ -14,7 +14,7 @@ const keccak256 = (x) => {
     return h
 }
 
-contract("MerkleTree", () => {
+contract("MerkleTree.js", () => {
     
     var playersA1 = [
         { index: 0, pixels: 5 },
