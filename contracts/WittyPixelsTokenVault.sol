@@ -162,6 +162,17 @@ contract WittyPixelsTokenVault
             WittyPixelsLib.recoverAddr(_deedshash, _deeds.signature) == __storage.curator,
             "WittyPixelsTokenVault: bad signature"
         );
+
+        // verify player's pixels proof:
+        require(
+            IWittyPixelsToken(_deeds.parentToken).verifyTokenAuthorship(
+                _deeds.parentTokenId,
+                _deeds.playerIndex,
+                _deeds.playerPixels,
+                _deeds.playerPixelsProof
+            ),
+            "WittyPixelsTokenVault: false deeds"
+        );
         
         // verify intrinsicals:
         require(
@@ -181,18 +192,7 @@ contract WittyPixelsTokenVault
             __storage.stats.redeemedPixels + _deeds.playerPixels <= __storage.stats.totalPixels,
             "WittyPixelsTokenVault: overbooking :/"
         );
-        
-        // verify player's score proof:
-        require(
-            IWittyPixelsToken(_deeds.parentToken).verifyTokenAuthorship(
-                _deeds.parentTokenId,
-                _deeds.playerIndex,
-                _deeds.playerPixels,
-                _deeds.playerPixelsProof
-            ),
-            "WittyPixelsTokenVault: false deeds"
-        );
-        
+
         // store player's info:
         uint _currentPixels = __storage.legacyPixels[_deeds.playerAddress];
         if (
