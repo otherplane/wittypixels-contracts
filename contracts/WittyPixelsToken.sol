@@ -510,11 +510,10 @@ contract WittyPixelsToken
     {
         WittyPixelsLib.ERC721Token storage __token = __storage.items[_tokenId];
         return (
-            _playerIndex < __token.theStats.totalPlayers
-                && _proof.merkle(keccak256(abi.encode(
-                    _playerIndex,
-                    _playerPixels
-                ))) == __token.theStats.authorshipsRoot
+            _proof.merkle(keccak256(abi.encode(
+                _playerIndex,
+                _playerPixels
+            ))) == __token.theStats.authorshipsRoot
         );
     }
 
