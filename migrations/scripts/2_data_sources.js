@@ -41,33 +41,42 @@ module.exports = async function (deployer, network, [, from]) {
   if (!witnetHashes.sources) witnetHashes.sources = {}    
   const witnetSources = require("../witnet/sources.js")
   for (const key in witnetSources) {      
-    if (
-      !witnetHashes.sources[key]
-        || witnetHashes.sources[key] === ""
-        || witnetHashes.sources[key] === "0x"
-        || await dataSourceNotRegistered(witnetRegistry, witnetHashes.sources[key]) === true
-    ) {
-      const source = witnetSources[key]
-      const header = `Verifying Witnet data source '${key}'...`
-      console.info()
-      console.info("  ", header)
-      console.info("  ", "-".repeat(header.length))
-      console.info(`   > Request schema:      ${source.requestSchema || "https://"}`)
-      console.info(`   > Request method:      ${await source.requestMethod || 1}`)
-      console.info(`   > Request authority:   ${source.requestAuthority}`)
-      if (source.requestPath)  {
-        console.info(`   > Request path:        ${source.requestPath}`)
-      }
-      if (source.requestQuery) {
-        console.info(`   > Request query:       ${source.requestQuery}`)
-      }
-      if (source.requestBody) {
-        console.info(`   > Request body:        ${source.requestBody}`)
-      }
-      if (source.requestHeaders) {
-        console.info(`   > Request headers:     ${source.requestHeaders}`)
-      }
-      console.info(`   > Request script:      ${source.requestScript || "0x80"}`)
+    const source = witnetSources[key]
+    const header = `Verifying Witnet data source '${key}'...`
+    console.info()
+    console.info("  ", header)
+    console.info("  ", "-".repeat(header.length))
+    console.info(`   > Request schema:      ${source.requestSchema || "https://"}`)
+    console.info(`   > Request method:      ${await source.requestMethod || 1}`)
+    console.info(`   > Request authority:   ${source.requestAuthority}`)
+    if (source.requestPath)  {
+      console.info(`   > Request path:        ${source.requestPath}`)
+    }
+    if (source.requestQuery) {
+      console.info(`   > Request query:       ${source.requestQuery}`)
+    }
+    if (source.requestBody) {
+      console.info(`   > Request body:        ${source.requestBody}`)
+    }
+    if (source.requestHeaders) {
+      console.info(`   > Request headers:     ${source.requestHeaders}`)
+    }
+    console.info(`   > Request script:      ${source.requestScript || "0x80"}`)
+    // get actual hash for this data source
+    var hash = await witnetRegistry.verifyDataSource.call(
+      await source.requestMethod || 1,
+      0, 0,
+      source.requestSchema || "https://",
+      source.requestAuthority,
+      source.requestPath || "",
+      source.requestQuery || "",
+      source.requestBody || "",
+      source.requestHeaders || [],
+      source.requestScript || "0x80",
+      { from }
+    )
+    // register the data source if actual hash differs from hashes file
+    if (hash !== witnetHashes.sources[key]) {
       const tx = await witnetRegistry.verifyDataSource(
         await source.requestMethod || 1,
         0, 0,
@@ -82,31 +91,40 @@ module.exports = async function (deployer, network, [, from]) {
       )
       console.info(`   > transaction hash:    ${tx.receipt.transactionHash}`)
       console.info(`   > gas used:            ${tx.receipt.gasUsed}`)
-      witnetHashes.sources[key] = tx.logs[tx.logs.length - 1].args.hash
-      console.info(`   < data source hash:    ${witnetHashes.sources[key]}`)
-      saveHashes(witnetHashes)
+      hash = tx.logs[tx.logs.length - 1].args.hash
+      console.info(`   < new data source hash:${hash}`)
+    } else {
+      console.info(`   $ Already verified as: ${hash}`)
     }
+    witnetHashes.sources[key] = hash      
+    saveHashes(witnetHashes)
   }
 
   if (!witnetHashes.slas) witnetHashes.slas = {}
   const witnetSLAs = require("../witnet/slas")
   for (const key in witnetSLAs) {    
-    if (
-      !witnetHashes.slas[key]
-        || witnetHashes.slas[key] === ""
-        || witnetHashes.slas[key] === "0x"
-        || await slaNotRegistered(witnetRegistry, witnetHashes.slas[key]) === true
-    ) {
-      const sla = witnetSLAs[key]
-      const header = `Verifying Witnet radon SLA '${key}'...`
-      console.info()
-      console.info("  ", header)
-      console.info("  ", "-".repeat(header.length))
-      console.info(`   > Number of witnesses:   ${sla.numWitnesses}`)
-      console.info(`   > Consensus quorum:      ${sla.minConsensusPercentage}%`)
-      console.info(`   > Commit/Reveal fee:     ${sla.commitRevealFee} nanoWits`)
-      console.info(`   > Witnessing reward:     ${sla.witnessReward} nanoWits`)
-      console.info(`   > Witnessing collateral: ${sla.collateral} nanoWits`)
+    const sla = witnetSLAs[key]
+    const header = `Verifying Witnet radon SLA '${key}'...`
+    console.info()
+    console.info("  ", header)
+    console.info("  ", "-".repeat(header.length))
+    console.info(`   > Number of witnesses:   ${sla.numWitnesses}`)
+    console.info(`   > Consensus quorum:      ${sla.minConsensusPercentage}%`)
+    console.info(`   > Commit/Reveal fee:     ${sla.commitRevealFee} nanoWits`)
+    console.info(`   > Witnessing reward:     ${sla.witnessReward} nanoWits`)
+    console.info(`   > Witnessing collateral: ${sla.collateral} nanoWits`)
+    // get actual hash for this radon SLA
+    var hash = await witnetRegistry.verifyRadonSLA.call([
+      sla.witnessReward,
+        sla.numWitnesses,
+        sla.commitRevealFee,
+        sla.minConsensusPercentage,
+        sla.collateral,
+      ], 
+      { from }
+    )
+    // register the SLA if actual hash differs from hashes file
+    if (hash !== witnetHashes.slas[key]) {
       const tx = await witnetRegistry.verifyRadonSLA([
           sla.witnessReward,
           sla.numWitnesses,
@@ -116,30 +134,37 @@ module.exports = async function (deployer, network, [, from]) {
         ], 
         { from }
       )
-      console.info(`   > transaction hash:    ${tx.receipt.transactionHash}`)
-      console.info(`   > gas used:            ${tx.receipt.gasUsed}`)
-      witnetHashes.slas[key] = tx.logs[0].args.hash
-      console.info(`   < radon SLA hash:      ${witnetHashes.slas[key]}`)
-      saveHashes(witnetHashes)
+      console.info(`   > transaction hash:      ${tx.receipt.transactionHash}`)
+      console.info(`   > gas used:              ${tx.receipt.gasUsed}`)        
+      hash = tx.logs[tx.logs.length - 1].args.hash
+      console.info(`   < new radon SLA hash:    ${hash}`)
+    } else {
+      console.info(`   $ Already verified as:   ${hash}`)
     }
+    witnetHashes.slas[key] = hash
+    saveHashes(witnetHashes)
   }
 
   if (!witnetHashes.reducers) witnetHashes.reducers = {}
   const witnetReducers = require("../witnet/reducers.js")
   for (const key in witnetReducers) {    
-    if (
-      !witnetHashes.reducers[key]
-        || witnetHashes.reducers[key] === ""
-        || witnetHashes.reducers[key] === "0x"
-        || await reducerNotRegistered(witnetRegistry, witnetHashes.reducers[key]) === true
-    ) {
-      const reducer = witnetReducers[key]
-      const header = `Verifying Witnet radon reducer '${key}'...`
-      console.info()
-      console.info("  ", header)
-      console.info("  ", "-".repeat(header.length))
-      console.info(`   > Reducer opcode:      ${reducer.opcode}`)
-      console.info(`   > Reducer filters:     ${reducer.filters || '(no filters)'}`)
+    const reducer = witnetReducers[key]
+    const header = `Verifying Witnet radon reducer '${key}'...`
+    console.info()
+    console.info("  ", header)
+    console.info("  ", "-".repeat(header.length))
+    console.info(`   > Reducer opcode:      ${reducer.opcode}`)
+    console.info(`   > Reducer filters:     ${reducer.filters.length > 0 ? reducer.filters : '(no filters)'}`)
+    // get actual hash for this radon reducer
+    var hash = await witnetRegistry.verifyRadonReducer.call([
+      reducer.opcode,
+        reducer.filters,
+        reducer.script,
+      ],
+      { from }
+    )
+    // register the reducer if actual hash differs from hashes file
+    if (hash !== witnetHashes.reducers[key]) {
       const tx = await witnetRegistry.verifyRadonReducer([
           reducer.opcode,
           reducer.filters,
@@ -149,11 +174,15 @@ module.exports = async function (deployer, network, [, from]) {
       )
       console.info(`   > transaction hash:    ${tx.receipt.transactionHash}`)
       console.info(`   > gas used:            ${tx.receipt.gasUsed}`)
-      witnetHashes.reducers[key] = tx.logs[0].args.hash
-      console.info(`   < radon reducer hash:  ${witnetHashes.reducers[key]}`)
-      saveHashes(witnetHashes)
+      hash = tx.logs[tx.logs.length - 1].args.hash
+      console.info(`   < new reducer hash:    ${hash}`)
+    } else {
+      console.info(`   $ Already verified as: ${hash}`)
     }
+    witnetHashes.reducers[key] = hash
+    saveHashes(witnetHashes)
   }
+  console.info()
 }
 
 function saveHashes(hashes) {
@@ -162,30 +191,4 @@ function saveHashes(hashes) {
     JSON.stringify(hashes, null, 4),
     { flag: 'w+'}
   )
-}
-
-async function dataSourceNotRegistered(bytecodes, hash) {
-  try {
-    await bytecodes.lookupDataSource.call(hash)
-    return false
-  } catch {
-    return true
-  }
-}
-
-async function reducerNotRegistered(bytecodes, hash) {
-  try {
-    await bytecodes.lookupRadonReducer.call(hash)
-    return false
-  } catch {
-    return true
-  }
-}
-
-async function slaNotRegistered(bytecodes, hash) {
-  try {
-    await bytecodes.lookupRadonSLA.call(hash)
-  } catch {
-    return true
-  }
 }
