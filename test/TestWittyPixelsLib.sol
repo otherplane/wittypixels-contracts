@@ -9,6 +9,62 @@ import "../contracts/libs/WittyPixelsLib.sol";
 contract TestWittyPixelsLib {
     using WittyPixelsLib for *;
 
+    function testTokenOwnershipVerificationProofSize1() external {
+        bytes32[] memory proof_ = new bytes32[](1);
+        proof_[0] = 0x44246914b6905c3d48b4e57781e66199b274c84c8a434a8fc9c58d26482e20ad;
+        WittyPixelsLib.TokenVaultOwnershipDeeds memory deeds = WittyPixelsLib.TokenVaultOwnershipDeeds({
+            parentToken: 0x1858cCeC051049Fa1269E958da2d33bCA27c6Db8,
+            parentTokenId: 1,
+            playerAddress: 0x0d1d4e623D10F9FBA5Db95830F7d3839406C6AF2,
+            playerIndex: 123,
+            playerPixels: 0,
+            playerPixelsProof: proof_,
+            signature: hex"c071155f9753b48b2275f22c1207cae6f837de81662f7e6a81f25b4de91aa474026ae5fd82c123bbcdd224de0ccb00290c5f7250e3223f88c5df530c6d8157fe1c"
+        });
+        bytes32 deedsHash = keccak256(abi.encode(
+            deeds.parentToken,
+            deeds.parentTokenId,
+            deeds.playerAddress,
+            deeds.playerIndex,
+            deeds.playerPixels,
+            deeds.playerPixelsProof
+        ));
+        Assert.equal(
+            WittyPixelsLib.recoverAddr(deedsHash, deeds.signature),
+            0x7E5F4552091A69125d5DfCb7b8C2659029395Bdf,
+            "WittyPixelsLib: bad signature"
+        );
+    }
+
+    function testTokenOwnershipVerificationProofSize3() external {
+        bytes32[] memory proof_ = new bytes32[](3);
+        proof_[0] = 0x20ea3f905c06089a25c77876ced137bb6b51042bd7f1cff5aa1f9eb2851b0d90;
+        proof_[1] = 0x306df6fb2caa2b338dc21474c97d7dd9d36d2842dee9a92642799ecb27faf1d6;
+        proof_[2] = 0xde31a920dbdd1f015b2a842f0275dc8dec6a82ff94d9b796a36f23c64a3c8332;
+        WittyPixelsLib.TokenVaultOwnershipDeeds memory deeds = WittyPixelsLib.TokenVaultOwnershipDeeds({
+            parentToken: 0x1858cCeC051049Fa1269E958da2d33bCA27c6Db8,
+            parentTokenId: 1,
+            playerAddress: 0x821aEa9a577a9b44299B9c15c88cf3087F3b5544,
+            playerIndex: 17,
+            playerPixels: 23,
+            playerPixelsProof: proof_,
+            signature: hex"2ab3abcfd1ef74b103c15bcbc3278cc3590df25de3f0f3f55be55332dd45fc124b009bca1f67e68ce4403f8e53cd56525c1bd14d5402e142b25e14204efa01401c"
+        });
+        bytes32 deedsHash = keccak256(abi.encode(
+            deeds.parentToken,
+            deeds.parentTokenId,
+            deeds.playerAddress,
+            deeds.playerIndex,
+            deeds.playerPixels,
+            deeds.playerPixelsProof
+        ));
+        Assert.equal(
+            WittyPixelsLib.recoverAddr(deedsHash, deeds.signature),
+            0x7E5F4552091A69125d5DfCb7b8C2659029395Bdf,
+            "WittyPixelsLib: bad signature"
+        );
+    }
+
     event Leaf(bytes32 hash);
     event Root(bytes32 hash);
 
