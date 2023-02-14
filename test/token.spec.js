@@ -1389,8 +1389,6 @@ it("curator can change auction settings", async () => {
                     })
                     it("getWalletInfo(player2) returns expected values", async () => {
                         var walletInfo = await tokenVault.getWalletInfo.call(player2)
-            })
-            context("On 'Sold' status:", async () => {
                         assert.equal(walletInfo[1].toString(), "0")
                         assert.equal(walletInfo[2].toString(), "0")
                     })
