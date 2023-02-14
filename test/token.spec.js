@@ -1376,10 +1376,10 @@ it("curator can change auction settings", async () => {
                         var pixelsOfPlayer2 = await tokenVault.pixelsOf(player2)
                         assert.equal(pixelsOfPlayer2.toString(), "0")
                     })
-                    it("getAuthorsCount() after redeeming new player with no pixels still returns 1", async () => {
+                    it("getAuthorsCount() after redeeming new player with no pixels now returns 2", async () => {
                         assert.equal(
                             (await tokenVault.getAuthorsCount.call()).toString(),
-                            "1"
+                            "2"
                         )                        
                     })
                     it("getPlayerInfo(123) returns expected values", async () => {
@@ -1432,10 +1432,10 @@ it("curator can change auction settings", async () => {
                     it("acquired() returns true", async () => {
                         assert.equal(await tokenVault.acquired.call(), true)
                     })
-                    it("getAuthorsCount() after redeeming new player with no pixels returns 1", async () => {
+                    it("getAuthorsCount() returns 2", async () => {
                         assert.equal(
                             (await tokenVault.getAuthorsCount.call()).toString(),
-                            "1"
+                            "2"
                         )
                     })
                     it("ownership of NFT token #1 has been transferred to actual buyer", async () => {

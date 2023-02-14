@@ -195,15 +195,21 @@ contract WittyPixelsTokenVault
         
         // store player's info:
         uint _currentPixels = __storage.legacyPixels[_deeds.playerAddress];
-        if (_currentPixels == 0) {
+        if (
+            _currentPixels == 0
+                && !__storage.redeemed[_deeds.playerAddress]
+        ) {
+            // upon first redemption from playerAddress, add it to the author's list
             __storage.authors.push(_deeds.playerAddress);
-        } 
-        __storage.legacyPixels[_deeds.playerAddress] = _currentPixels + _deeds.playerPixels;
+            __storage.redeemed[_deeds.playerAddress] = true;
+        }
+        if (_deeds.playerPixels > 0) {
+            __storage.legacyPixels[_deeds.playerAddress] = _currentPixels + _deeds.playerPixels;    
+        }
         __storage.players[_deeds.playerIndex] = WittyPixelsLib.TokenVaultPlayerInfo({
             addr: _deeds.playerAddress,
             pixels: _deeds.playerPixels
         });
-        
 
         // update stats meters:
         __storage.stats.redeemedPixels += _deeds.playerPixels;

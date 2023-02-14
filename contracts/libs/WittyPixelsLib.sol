@@ -71,6 +71,7 @@ library WittyPixelsLib {
         
         address[] authors;
         mapping (address => uint256) legacyPixels;
+        mapping (address => bool) redeemed;
         mapping (uint256 => TokenVaultPlayerInfo) players;        
         mapping (address => TokenVaultJackpotWinner) winners;
     }
