@@ -4,7 +4,7 @@
         "high-1": "0x328994135a4fcc2d14ae55f1d9ba1a2f0661e4cb9507714c7a39486ba0e56103"
     },
     "sources": {
-        "image-digest": "0xf251c3fe08c6c32f87575a5b26124793173e6e42600363bab8ebd0ca163b18b8",
+        "image-digest": "0x4e7142f3dc943272f3ec79c9cae256233e82e256b1931efbca22bce9c11be1b2",
         "token-stats": "0x5cafac251592c5c74eb0c68b5c5909afc0fd7b0b270ceec5f0e0ca5a2cebc3a6"
     },
     "reducers": {

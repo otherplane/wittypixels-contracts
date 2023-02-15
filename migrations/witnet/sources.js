@@ -4,6 +4,7 @@ module.exports = {
         requestMethod: Witnet.Types.RETRIEVAL_METHODS.HttpGet,
         requestSchema: "https://",        
         requestAuthority: "\\0\\",
+        requestQuery: "base64=true",
         requestScript: 
             "0x811874",
             // new Witnet.Script([ Witnet.TYPES.STRING ])
