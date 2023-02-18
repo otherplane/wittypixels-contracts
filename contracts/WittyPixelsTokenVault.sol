@@ -7,7 +7,6 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 
 import "./interfaces/IWittyPixelsToken.sol";
 import "./interfaces/IWittyPixelsTokenVault.sol";
-import "./interfaces/IWittyPixelsTokenJackpots.sol";
 
 import "./patterns/WittyPixelsClonableBase.sol";
 
@@ -37,19 +36,7 @@ contract WittyPixelsTokenVault
         _;
     }
 
-    modifier wasRandomized {
-        require(
-            randomized(),
-            "WittyPixelsTokenVault: not yet randomized"
-        );
-        _;
-    }
-
-    constructor (
-            address _randomizer,
-            bytes32 _version
-        )
-        IWittyPixelsTokenVault(_randomizer)
+    constructor (bytes32 _version)
         WittyPixelsClonableBase(_version)
     {}
 
@@ -315,36 +302,6 @@ contract WittyPixelsTokenVault
         return _afterCloning(_cloneDeterministic(_salt), _initdata);
     }
 
-    function getRandomizeBlock()
-        override
-        external view
-        returns (uint256)
-    {
-        return __storage.witnetRandomnessBlock;
-    }
-
-    function randomized()
-        override
-        public view
-        returns (bool)
-    {
-        return (
-            __storage.witnetRandomnessBlock != 0
-                && randomizer.isRandomized(__storage.witnetRandomnessBlock)
-        );
-    }
-
-    function randomizing()
-        override
-        public view
-        returns (bool)
-    {
-        return (
-            __storage.witnetRandomnessBlock != 0 
-                && !randomizer.isRandomized(__storage.witnetRandomnessBlock)
-        );
-    }
-
 
     // ================================================================================================================
     // --- Implements 'IWittyPixelsTokenVault' ------------------------------------------------------------------------
@@ -398,8 +355,6 @@ contract WittyPixelsTokenVault
     {
         if (acquired()) {
             status = IWittyPixelsTokenVault.Status.Acquired;
-        } else if (randomizing()) {
-            status = IWittyPixelsTokenVault.Status.Randomizing;
         } else if (auctioning()) {
             status = IWittyPixelsTokenVault.Status.Auctioning;
         } else {
@@ -603,182 +558,6 @@ contract WittyPixelsTokenVault
     }    
 
 
-    // ================================================================================================================
-    // --- Implements 'IWittyPixelsTokenVaultJackpots' ---------------------------------------------------------------------
-
-    function claimJackpot()
-        override
-        external
-        wasRandomized
-        nonReentrant
-        returns (uint256)
-    {
-        WittyPixelsLib.TokenVaultJackpotWinner storage __winner = __storage.winners[msg.sender];
-        require(
-            __winner.awarded,
-            "WittyPixelsTokenVault: not awarded"
-        );
-        require(
-            !__winner.claimed,
-            "WittyPixelsTokenVault: already claimed"
-        );
-        __winner.claimed = true;        
-        return IWittyPixelsTokenJackpots(__storage.parentToken).transferTokenJackpot(
-            __storage.parentTokenId,
-            __winner.index,
-            payable(msg.sender)
-        );
-    }
-
-    function getJackpotByIndex(uint256 _index)
-        override
-        external view
-        wasInitialized
-        returns (address, address, uint256, string memory)
-    {
-        return IWittyPixelsTokenJackpots(__storage.parentToken).getTokenJackpotByIndex(
-            __storage.parentTokenId,
-            _index
-        );
-    }
-
-    function getJackpotByWinner(address _winner)
-        override
-        external view
-        wasInitialized
-        returns (
-            uint256 _index,
-            address _sponsor,
-            uint256 _value,
-            string memory _text
-        )
-    {
-        WittyPixelsLib.TokenVaultJackpotWinner storage __winner = __storage.winners[_winner];
-        require(
-            __winner.awarded,
-            "WittyPixelsTokenVault: not a winner"
-        );
-        _index = __winner.index;
-        (_sponsor,, _value, _text) = IWittyPixelsTokenJackpots(__storage.parentToken).getTokenJackpotByIndex(
-            __storage.parentTokenId,
-            _index
-        );
-    }
-
-    function getJackpotsContestantsCount()
-        override
-        external view
-        returns (uint256)
-    {
-        return __storage.authors.length;
-    }
-
-    function getJackpotsContestantsAddresses(uint _offset, uint _size)
-        override
-        external view
-        returns (address[] memory _addrs)
-    {
-        require(
-            _offset + _size <= __storage.authors.length,
-            "WittyPixelsTokenVault: out of range"
-        );
-        _addrs = new address[](_size);
-        address[] storage __members = __storage.authors;
-        for (uint _i = 0; _i < _size; _i ++) {
-            _addrs[_i] = __members[_offset + _i];
-        }
-    }
-
-    function getJackpotsCount()
-        override
-        public view
-        wasInitialized
-        returns (uint256)
-    {
-        return IWittyPixelsTokenJackpots(__storage.parentToken).getTokenJackpotsCount(
-            __storage.parentTokenId
-        );
-    }
-    
-    function getJackpotsTotalValue()
-        override
-        external view
-        wasInitialized
-        returns (uint256)
-    {
-        return IWittyPixelsTokenJackpots(__storage.parentToken).getTokenJackpotsTotalValue(
-            __storage.parentTokenId
-        );
-    }
-
-    function randomizeWinners()
-        override 
-        external payable
-        wasInitialized
-        nonReentrant
-        onlyCurator
-    {
-        require(
-            block.timestamp >= __storage.settings.startingTs,
-            "WittyPixelsTokenVault: not yet possible"
-        );
-        require(
-            __storage.witnetRandomness != 0,
-            "WittyPixelsTokenVault: already randomized"
-        );
-        require(
-            __storage.witnetRandomnessBlock == 0,
-            "WittyPixelsTokenVault: already randomizing"
-        );
-        require(
-            getJackpotsCount() > 0,
-            "WittyPixelsTokenVault: no jackpots"
-        );
-        require(
-            __storage.authors.length >= getJackpotsCount(),
-            "WittyPixelsTokenVault: not enough contestants"
-        );
-        __storage.witnetRandomnessBlock = block.number;
-        uint _usedFunds = randomizer.randomize{value: msg.value}();
-        if (_usedFunds < msg.value) {
-            payable(msg.sender).transfer(msg.value - _usedFunds);
-        }
-    }
-
-    function settleWinners()
-        override
-        external
-    {
-        require(
-            randomizing(),
-            "WittyPixelsTokenVault: not randomizing"
-        );
-        bytes32 _randomness = randomizer.getRandomnessAfter(__storage.witnetRandomnessBlock);
-        address[] storage __members = __storage.authors;        
-        uint _jackpots = getJackpotsCount();        
-        uint32 _contestants = uint32(__members.length);
-        for (uint _jackpotIndex = 0; _jackpotIndex < _jackpots; _jackpotIndex ++) {
-            uint _winnerIndex = randomizer.random(
-                _contestants,
-                _jackpotIndex,
-                _randomness
-            );
-            address _winnerAddr = __members[_winnerIndex];
-            if (_winnerIndex != _contestants - 1) {
-                __members[_winnerIndex] = __members[_contestants - 1];
-                __members[_contestants - 1] = _winnerAddr;
-            }
-            __storage.winners[_winnerAddr] = WittyPixelsLib.TokenVaultJackpotWinner({
-                awarded: true,
-                claimed: false,
-                index  : _jackpotIndex
-            });
-            emit Winner(_winnerAddr, _jackpotIndex);
-            _contestants --;
-        }
-        __storage.witnetRandomness = _randomness;
-    }
-
 
     // ================================================================================================================
     // --- Overrides 'Clonable' ---------------------------------------------------------------------------------------
@@ -809,8 +588,7 @@ contract WittyPixelsTokenVault
             "WittyPixelsTokenVault: no curator"
         );
         require(
-            _params.token.supportsInterface(type(IWittyPixelsToken).interfaceId)
-                && _params.token.supportsInterface(type(IWittyPixelsTokenJackpots).interfaceId),
+            _params.token.supportsInterface(type(IWittyPixelsToken).interfaceId),
             "WittyPixelsTokenVault: uncompliant vault factory"
         );
         require(

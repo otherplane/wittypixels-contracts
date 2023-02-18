@@ -63,8 +63,6 @@ library WittyPixelsLib {
         // --- IWittyPixelsTokenVault
         address curator;
         uint256 finalPrice;
-        bytes32 witnetRandomness;
-        uint256 witnetRandomnessBlock;
         
         IWittyPixelsTokenVaultAuctionDutch.Settings settings;
         IWittyPixelsTokenVault.Stats stats;

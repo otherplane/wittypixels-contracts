@@ -11,7 +11,6 @@ import "witnet-solidity-bridge/contracts/patterns/Clonable.sol";
 import "./interfaces/ITokenVaultFactory.sol";
 import "./interfaces/IWittyPixelsToken.sol";
 import "./interfaces/IWittyPixelsTokenAdmin.sol";
-import "./interfaces/IWittyPixelsTokenJackpots.sol";
 
 import "./patterns/WittyPixelsUpgradeableBase.sol";
 
@@ -24,8 +23,8 @@ contract WittyPixelsToken
         ITokenVaultFactory,
         IWittyPixelsToken,
         IWittyPixelsTokenAdmin,
-        IWittyPixelsTokenJackpots,
-        WittyPixelsUpgradeableBase
+        WittyPixelsUpgradeableBase,
+        // Secured by Witnet !!
 {
     using ERC165Checker for address;
     using WittyPixelsLib for bytes;
@@ -42,14 +41,6 @@ contract WittyPixelsToken
         require(
             __storage.implementation != address(0),
             "WittyPixelsToken: not initialized"
-        );
-        _;
-    }
-
-    modifier onlyTokenSponsors(uint256 _tokenId) {
-        require(
-            __storage.sponsors[_tokenId].jackpots[msg.sender].authorized,
-            "WittyPixelsToken: not authorized"
         );
         _;
     }
@@ -98,7 +89,6 @@ contract WittyPixelsToken
     {
         return _interfaceId == type(ITokenVaultFactory).interfaceId
             || _interfaceId == type(IWittyPixelsToken).interfaceId
-            || _interfaceId == type(IWittyPixelsTokenJackpots).interfaceId
             || ERC721Upgradeable.supportsInterface(_interfaceId)
             || _interfaceId == type(Ownable2StepUpgradeable).interfaceId
             || _interfaceId == type(Upgradeable).interfaceId
@@ -625,40 +615,7 @@ contract WittyPixelsToken
         __storage.baseURI = WittyPixelsLib.checkBaseURI(_uri);
     }
 
-    /// @notice Update sponsors access-list by adding new players. 
-    /// @dev If already included in the list, names could still be updated.
-    function setTokenSponsors(
-            uint256 _tokenId,
-            address[] calldata _addresses,
-            string[] calldata _texts
-        )
-        external
-        override
-        onlyOwner
-    {
-        assert(_addresses.length == _texts.length);
-        // tokenId can only be current totalSupply + 1: not minted, and not in the process of being minted
-        require(
-            _tokenId == __storage.totalSupply + 1,
-            "WittyPixelsToken: invalid token"
-        );
-        // add new sponsor addresses to the access list if not yet there:
-        WittyPixelsLib.ERC721TokenSponsors storage __sponsors = __storage.sponsors[_tokenId];
-        for (uint _i = 0; _i < _addresses.length; _i ++) {
-            address _addr = _addresses[_i];
-            if (!__sponsors.jackpots[_addr].authorized) {
-                __sponsors.addresses.push(_addr);
-                __sponsors.jackpots[_addr].authorized = true;
-                emit NewTokenSponsor(
-                    _tokenId,
-                    __sponsors.addresses.length - 1,
-                    _addr
-                );
-            }
-            // update sponsor name in all cases
-            __sponsors.jackpots[_addr].text = _texts[_i];
-        }
-    }
+
 
     /// @notice Vault logic contract to be used in next calls to `fractionalize(..)`. 
     /// @dev Prototype ownership needs to have been previously transferred to this contract.
@@ -669,102 +626,6 @@ contract WittyPixelsToken
     {
         _verifyPrototypeCompliance(_prototype);
         __storage.tokenVaultPrototype = IWittyPixelsTokenVault(_prototype);
-    }
-
-
-    // ================================================================================================================
-    // --- Implementation of 'IWittyPixelsTokenJackpots' --------------------------------------------------------------
-
-    function getTokenJackpotByIndex(
-            uint256 _tokenId,
-            uint256 _index
-        )
-        external view
-        override
-        returns (
-            address _sponsor,
-            address _winner,
-            uint256 _value,
-            string memory _text
-        )
-    {
-        WittyPixelsLib.ERC721TokenSponsors storage __sponsors = __storage.sponsors[_tokenId];
-        if (_index < __sponsors.addresses.length) {
-            _sponsor = __sponsors.addresses[_index];
-            WittyPixelsLib.ERC721TokenJackpot storage __jackpot = __sponsors.jackpots[_sponsor];
-            _text = __jackpot.text;
-            _value = __jackpot.value;
-            _winner = __jackpot.winner;
-        }
-    }
-
-    function getTokenJackpotsCount(uint256 _tokenId)
-        external view
-        override
-        returns (uint256)
-    {
-        return __storage.sponsors[_tokenId].addresses.length;
-    }
-
-    function getTokenJackpotsTotalValue(uint256 _tokenId)
-        external view
-        override
-        returns (uint256)
-    {
-        return __storage.sponsors[_tokenId].totalJackpots;
-    }
-
-    function sponsoriseToken(uint256 _tokenId)
-        external payable
-        override
-        onlyTokenSponsors(_tokenId)
-        tokenInStatus(_tokenId, WittyPixelsLib.ERC721TokenStatus.Void)
-    {
-        WittyPixelsLib.ERC721TokenSponsors storage __sponsors = __storage.sponsors[_tokenId];
-        __sponsors.jackpots[msg.sender].value += msg.value;
-        __sponsors.totalJackpots += msg.value;
-    }
-
-    function transferTokenJackpot(
-            uint256 _tokenId,
-            uint256 _index,
-            address payable _winner
-        )
-        external
-        override
-        tokenExists(_tokenId)
-        returns (uint256 _value)
-    {
-        require(
-            getTokenVault(_tokenId).parentToken() == address(this),
-            "WittyPixelsToken: unauthorized"
-        );
-        assert(_winner != address(0));
-        WittyPixelsLib.ERC721TokenSponsors storage __sponsors = __storage.sponsors[_tokenId];
-        assert(_index < __sponsors.addresses.length);
-        address _sponsor = __sponsors.addresses[_index];
-        WittyPixelsLib.ERC721TokenJackpot storage __jackpot = __sponsors.jackpots[_sponsor];
-        require(
-            __jackpot.winner == address(0), "WittyPixelsToken: already claimed"
-        );
-        _value = __jackpot.value;
-        require(
-            _value > 0,
-            "WittyPixelsToken: no jackpot value"
-        );
-        require(
-            _value < address(this).balance,
-            "WittyPixelsToken: not enough balance"
-        );
-        __jackpot.value = 0;
-        __jackpot.winner = _winner;
-        _winner.transfer(_value);
-        emit Jackpot(
-            _tokenId, 
-            _index,
-            _winner,
-            _value
-        );
     }
 
 
