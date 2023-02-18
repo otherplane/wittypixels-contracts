@@ -38,10 +38,10 @@ abstract contract WittyPixelsClonableBase
         initializer
         onlyDelegateCalls
     {
-        _initialize(_initBytes);
+        __initialize(_initBytes);
     }
 
-    function _initialize(bytes memory) 
+    function __initialize(bytes memory) 
         virtual
         internal
     {

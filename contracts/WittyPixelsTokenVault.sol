@@ -18,8 +18,10 @@ contract WittyPixelsTokenVault
 {
     using ERC165Checker for address;
 
-    WittyPixelsLib.TokenVaultStorage internal __storage;
-
+    bytes32 public constant SLOTHASH =
+        /* keccak256("art.wittypixels.token.vault") */
+        0x3c39a4bcf91d618a40909e659271a0d850789843a1b2ede0bffa31cd98ff6976;
+    
     modifier notAcquiredYet {
         require(
             !acquired(),
@@ -30,7 +32,7 @@ contract WittyPixelsTokenVault
 
     modifier onlyCurator {
         require(
-            msg.sender == __storage.curator,
+            msg.sender == __wpx20().curator,
             "WittyPixelsTokenVault: not the curator"
         );
         _;
@@ -47,13 +49,13 @@ contract WittyPixelsTokenVault
         onlyCurator
     {
         assert(newCurator != address(0));
-        __storage.curator = newCurator;
+        __wpx20().curator = newCurator;
     }
 
     // ================================================================================================================
     // --- Overrides IERC20Upgradeable interface ----------------------------------------------------------------------
 
-    /// @notice Increment `__storage.stats.totalTransfers` every time an ERC20 transfer is confirmed.
+    /// @notice Increment `__wpx20().stats.totalTransfers` every time an ERC20 transfer is confirmed.
     /// @dev Hook that is called after any transfer of tokens. This includes minting and burning.
     /// Calling conditions:
     /// - when `from` and `to` are both non-zero, `amount` of ``from``'s tokens has been transferred to `to`.
@@ -72,7 +74,7 @@ contract WittyPixelsTokenVault
             _from != address(0)
                 && _to != address(0)
         ) {
-            __storage.stats.totalTransfers ++;
+            __wpx20().stats.totalTransfers ++;
         }
     }
 
@@ -105,7 +107,7 @@ contract WittyPixelsTokenVault
         external view
         returns (address)
     {
-        return __storage.parentToken;
+        return __wpx20().parentToken;
     }
 
     function parentTokenId()
@@ -113,7 +115,7 @@ contract WittyPixelsTokenVault
         external view
         returns(uint256)
     {
-        return __storage.parentTokenId;
+        return __wpx20().parentTokenId;
     }
 
 
@@ -127,7 +129,7 @@ contract WittyPixelsTokenVault
         wasInitialized
         returns (address)
     {
-        return __storage.curator;
+        return __wpx20().curator;
     }
 
     /// @notice Mint ERC-20 tokens, ergo token ownership, by providing ownership deeds.
@@ -141,20 +143,6 @@ contract WittyPixelsTokenVault
         WittyPixelsLib.TokenVaultOwnershipDeeds memory _deeds = abi.decode(
             _deedsdata,
             (WittyPixelsLib.TokenVaultOwnershipDeeds)
-        );
-        
-        // verify curator's signature:
-        bytes32 _deedshash = keccak256(abi.encode(
-            _deeds.parentToken,
-            _deeds.parentTokenId,
-            _deeds.playerAddress,
-            _deeds.playerIndex,
-            _deeds.playerPixels,
-            _deeds.playerPixelsProof
-        ));
-        require(
-            WittyPixelsLib.recoverAddr(_deedshash, _deeds.signature) == __storage.curator,
-            "WittyPixelsTokenVault: bad signature"
         );
 
         // verify player's pixels proof:
@@ -170,8 +158,8 @@ contract WittyPixelsTokenVault
         
         // verify intrinsicals:
         require(
-            _deeds.parentToken == __storage.parentToken
-                && _deeds.parentTokenId == __storage.parentTokenId
+            _deeds.parentToken == __wpx20().parentToken
+                && _deeds.parentTokenId == __wpx20().parentTokenId
             , "WittyPixelsTokenVault: bad token"
         );
         require(
@@ -179,35 +167,49 @@ contract WittyPixelsTokenVault
             "WittyPixelsTokenVault: null address"
         );
         require(
-            __storage.players[_deeds.playerIndex].addr == address(0),
+            __wpx20().players[_deeds.playerIndex].addr == address(0),
             "WittyPixelsTokenVault: already redeemed"
         );
         require(
-            __storage.stats.redeemedPixels + _deeds.playerPixels <= __storage.stats.totalPixels,
+            __wpx20().stats.redeemedPixels + _deeds.playerPixels <= __wpx20().stats.totalPixels,
             "WittyPixelsTokenVault: overbooking :/"
         );
 
+        // verify curator's signature:
+        bytes32 _deedshash = keccak256(abi.encode(
+            _deeds.parentToken,
+            _deeds.parentTokenId,
+            _deeds.playerAddress,
+            _deeds.playerIndex,
+            _deeds.playerPixels,
+            _deeds.playerPixelsProof
+        ));
+        require(
+            WittyPixelsLib.recoverAddr(_deedshash, _deeds.signature) == __wpx20().curator,
+            "WittyPixelsTokenVault: bad signature"
+        );
+
         // store player's info:
-        uint _currentPixels = __storage.legacyPixels[_deeds.playerAddress];
+        uint _currentPixels = __wpx20().legacyPixels[_deeds.playerAddress];
         if (
             _currentPixels == 0
-                && !__storage.redeemed[_deeds.playerAddress]
+                && !__wpx20().redeemed[_deeds.playerAddress]
         ) {
             // upon first redemption from playerAddress, add it to the author's list
-            __storage.authors.push(_deeds.playerAddress);
-            __storage.redeemed[_deeds.playerAddress] = true;
+            __wpx20().authors.push(_deeds.playerAddress);
+            __wpx20().redeemed[_deeds.playerAddress] = true;
         }
         if (_deeds.playerPixels > 0) {
-            __storage.legacyPixels[_deeds.playerAddress] = _currentPixels + _deeds.playerPixels;    
+            __wpx20().legacyPixels[_deeds.playerAddress] = _currentPixels + _deeds.playerPixels;    
         }
-        __storage.players[_deeds.playerIndex] = WittyPixelsLib.TokenVaultPlayerInfo({
+        __wpx20().players[_deeds.playerIndex] = WittyPixelsLib.TokenVaultPlayerInfo({
             addr: _deeds.playerAddress,
             pixels: _deeds.playerPixels
         });
 
         // update stats meters:
-        __storage.stats.redeemedPixels += _deeds.playerPixels;
-        __storage.stats.redeemedPlayers ++;
+        __wpx20().stats.redeemedPixels += _deeds.playerPixels;
+        __wpx20().stats.redeemedPlayers ++;
 
         // transfer sovereign tokens to player's verified address:
         _transfer(
@@ -224,7 +226,7 @@ contract WittyPixelsTokenVault
         wasInitialized
         returns (bool)
     {
-        return IERC721(__storage.parentToken).ownerOf(__storage.parentTokenId) != address(this);
+        return IERC721(__wpx20().parentToken).ownerOf(__wpx20().parentTokenId) != address(this);
     }
 
     /// @notice Withdraw paid value in proportion to number of shares.
@@ -250,7 +252,7 @@ contract WittyPixelsTokenVault
         );
         
         // check vault contract has enough funds for the cash out:
-        _withdrawn = (__storage.finalPrice * _erc20balance) / (__storage.stats.totalPixels * 10 ** 18);
+        _withdrawn = (__wpx20().finalPrice * _erc20balance) / (__wpx20().stats.totalPixels * 10 ** 18);
         require(
             address(this).balance >= _withdrawn,
             "WittyPixelsTokenVault: insufficient funds"
@@ -264,7 +266,7 @@ contract WittyPixelsTokenVault
         emit Withdrawal(msg.sender, _withdrawn);
 
         // update stats meters:
-        __storage.stats.totalWithdrawals ++;
+        __wpx20().stats.totalWithdrawals ++;
     }
 
     /// @notice Tells withdrawable amount in weis from the given address.
@@ -276,7 +278,7 @@ contract WittyPixelsTokenVault
         returns (uint256)
     {
         if (acquired()) {
-            return (__storage.finalPrice * balanceOf(_from)) / (__storage.stats.totalPixels * 10 ** 18);
+            return (__wpx20().finalPrice * balanceOf(_from)) / (__wpx20().stats.totalPixels * 10 ** 18);
         } else {
             return 0;
         }
@@ -291,7 +293,7 @@ contract WittyPixelsTokenVault
         external
         returns (ITokenVaultWitnet)
     {
-        return _afterCloning(_clone(), _initdata);
+        return __afterCloning(_clone(), _initdata);
     }
 
     function cloneDeterministicAndInitialize(bytes32 _salt, bytes memory _initdata)
@@ -299,7 +301,7 @@ contract WittyPixelsTokenVault
         external
         returns (ITokenVaultWitnet)
     {
-        return _afterCloning(_cloneDeterministic(_salt), _initdata);
+        return __afterCloning(_cloneDeterministic(_salt), _initdata);
     }
 
 
@@ -313,7 +315,7 @@ contract WittyPixelsTokenVault
         wasInitialized
         returns (uint256)
     {
-        return __storage.authors.length;
+        return __wpx20().authors.length;
     }
 
     /// @notice Returns range of authors's address and legacy pixels, as specified by `offset` and `count` params.
@@ -323,7 +325,7 @@ contract WittyPixelsTokenVault
         wasInitialized
         returns (address[] memory addrs, uint256[] memory pixels)
     {
-        uint _total = __storage.authors.length;
+        uint _total = __wpx20().authors.length;
         if (offset < _total) {
             if (offset + count > _total) {
                 count = _total - offset;
@@ -331,8 +333,8 @@ contract WittyPixelsTokenVault
             addrs = new address[](count);
             pixels = new uint256[](count);
             for (uint _i = 0; _i < count; _i ++) {
-                addrs[_i] = __storage.authors[_i + offset];
-                pixels[_i] = __storage.legacyPixels[addrs[_i]];
+                addrs[_i] = __wpx20().authors[_i + offset];
+                pixels[_i] = __wpx20().legacyPixels[addrs[_i]];
             }
         }
     }
@@ -360,7 +362,7 @@ contract WittyPixelsTokenVault
         } else {
             status = IWittyPixelsTokenVault.Status.Awaiting;
         }
-        stats = __storage.stats;
+        stats = __wpx20().stats;
         currentPrice = getPrice();
         nextPriceTs = getNextPriceTimestamp();
     }
@@ -374,7 +376,7 @@ contract WittyPixelsTokenVault
         wasInitialized
         returns (address, uint256)
     {
-        WittyPixelsLib.TokenVaultPlayerInfo storage __info = __storage.players[index];
+        WittyPixelsLib.TokenVaultPlayerInfo storage __info = __wpx20().players[index];
         return (
             __info.addr,
             __info.pixels
@@ -399,7 +401,7 @@ contract WittyPixelsTokenVault
     {
         return (
             balanceOf(_addr),
-            (10 ** 4 * balanceOf(_addr)) / (__storage.stats.totalPixels * 10 ** 18),
+            (10 ** 4 * balanceOf(_addr)) / (__wpx20().stats.totalPixels * 10 ** 18),
             withdrawableFrom(_addr),
             pixelsOf(_addr)
         );
@@ -415,7 +417,7 @@ contract WittyPixelsTokenVault
         wasInitialized
         returns (uint256)
     {
-        return __storage.legacyPixels[_wallet];
+        return __wpx20().legacyPixels[_wallet];
     }    
 
     /// @notice Returns total number of finalized pixels within the WittyPixelsLib canvas.
@@ -425,7 +427,7 @@ contract WittyPixelsTokenVault
         wasInitialized
         returns (uint256)
     {
-        return __storage.stats.totalPixels;
+        return __wpx20().stats.totalPixels;
     }
 
     
@@ -447,14 +449,14 @@ contract WittyPixelsTokenVault
         );
 
         // safely transfer parent token id ownership to the bidder:
-        IERC721(__storage.parentToken).safeTransferFrom(
+        IERC721(__wpx20().parentToken).safeTransferFrom(
             address(this),
             msg.sender,
-            __storage.parentTokenId
+            __wpx20().parentTokenId
         );
 
         // store final price:
-        __storage.finalPrice = _finalPrice;
+        __wpx20().finalPrice = _finalPrice;
         
         // transfer back unused funds if `msg.value` was higher than current price:
         if (msg.value > _finalPrice) {
@@ -468,7 +470,7 @@ contract WittyPixelsTokenVault
         wasInitialized
         returns (bool)
     {
-        uint _startingTs = __storage.settings.startingTs;
+        uint _startingTs = __wpx20().settings.startingTs;
         return (
             _startingTs != 0
                 && block.timestamp >= _startingTs
@@ -482,7 +484,7 @@ contract WittyPixelsTokenVault
         wasInitialized
         returns (bytes memory)
     {
-        return abi.encode(__storage.settings);
+        return abi.encode(__wpx20().settings);
     }
 
     function getAuctionType()
@@ -499,7 +501,7 @@ contract WittyPixelsTokenVault
         onlyCurator
         notAcquiredYet
     {
-        _setAuctionSettings(_settings);
+        __setAuctionSettings(_settings);
     }
 
     function getPrice()
@@ -508,9 +510,9 @@ contract WittyPixelsTokenVault
         wasInitialized
         returns (uint256)
     {
-        ITokenVaultAuctionDutch.Settings memory _settings = __storage.settings;
+        ITokenVaultAuctionDutch.Settings memory _settings = __wpx20().settings;
         if (block.timestamp >= _settings.startingTs) {
-            if (__storage.finalPrice == 0) {
+            if (__wpx20().finalPrice == 0) {
                 uint _tsDiff = block.timestamp - _settings.startingTs;
                 uint _priceRange = _settings.startingPrice - _settings.reservePrice;
                 uint _round = _tsDiff / _settings.deltaSeconds;
@@ -520,7 +522,7 @@ contract WittyPixelsTokenVault
                     return _settings.reservePrice;
                 }
             } else {
-                return __storage.finalPrice;
+                return __wpx20().finalPrice;
             }
         } else {
             return _settings.startingPrice;
@@ -537,7 +539,7 @@ contract WittyPixelsTokenVault
         wasInitialized
         returns (uint256)
     {
-        ITokenVaultAuctionDutch.Settings memory _settings = __storage.settings;
+        ITokenVaultAuctionDutch.Settings memory _settings = __wpx20().settings;
         if (
             acquired()
                 || getPrice() == _settings.reservePrice
@@ -567,16 +569,16 @@ contract WittyPixelsTokenVault
         public view
         returns (bool)
     {
-        return __storage.curator != address(0);
+        return __wpx20().curator != address(0);
     }
 
     /// Initialize storage-context when invoked as delegatecall. 
     /// @dev Must fail when trying to initialize same instance more than once.
-    function _initialize(bytes memory _initBytes) 
+    function __initialize(bytes memory _initBytes) 
         virtual override
         internal
     {   
-        super._initialize(_initBytes);
+        super.__initialize(_initBytes);
 
         // decode and validate initialization parameters:
         WittyPixelsLib.TokenVaultInitParams memory _params = abi.decode(
@@ -603,26 +605,26 @@ contract WittyPixelsTokenVault
         _mint(address(this), _params.tokenPixels * 10 ** 18);
             
         // initialize clone storage:
-        __storage.curator = _params.curator;
-        __storage.parentToken = _params.token;
-        __storage.parentTokenId = _params.tokenId;
-        __storage.stats.totalPixels = _params.tokenPixels;
-        _setAuctionSettings(_params.settings);
+        __wpx20().curator = _params.curator;
+        __wpx20().parentToken = _params.token;
+        __wpx20().parentTokenId = _params.tokenId;
+        __wpx20().stats.totalPixels = _params.tokenPixels;
+        __setAuctionSettings(_params.settings);
     }
 
 
     // ================================================================================================================
     // --- Internal virtual methods -----------------------------------------------------------------------------------
 
-    function _afterCloning(address _newInstance, bytes memory _initdata)
+    function __afterCloning(address _newInstance, bytes memory _initdata)
         virtual internal
         returns (ITokenVaultWitnet)
     {
-        Clonable(_newInstance).initializeClone(_initdata);
+        WittyPixelsClonableBase(_newInstance).initializeClone(_initdata);
         return ITokenVaultWitnet(_newInstance);
     }
 
-    function _setAuctionSettings(bytes memory _bytes) virtual internal {
+    function __setAuctionSettings(bytes memory _bytes) virtual internal {
         // decode dutch auction settings:
         ITokenVaultAuctionDutch.Settings memory _settings = abi.decode(
             _bytes,
@@ -637,7 +639,16 @@ contract WittyPixelsTokenVault
             , "WittyPixelsTokenVault: bad settings"
         );
         // update storage:
-        __storage.settings = _settings;
+        __wpx20().settings = _settings;
         emit AuctionSettings(msg.sender, _bytes);
+    }
+
+    function __wpx20()
+        internal pure
+        returns (WittyPixelsLib.TokenVaultStorage storage ptr)
+    {
+        assembly {
+            ptr.slot := SLOTHASH
+        }
     }
 }

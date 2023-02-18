@@ -12,7 +12,13 @@ library WittyPixelsLib {
 
     using WitnetCBOR for WitnetCBOR.CBOR;
 
-    bytes16 private constant _HEX_SYMBOLS_ = "0123456789abcdef";
+    bytes32 internal constant WPX_TOKEN_SLOTHASH =
+        /* keccak256("art.wittypixels.token") */
+        0xa1c65a69721a75d8ec79c686c8573bd06e7f0c400997cbe153064301cbc480d5;
+    
+    bytes32 internal constant WPX_TOKEN_VAULT_SLOTHASH =
+        /* keccak256("art.wittypixels.token.vault") */
+        0x3c39a4bcf91d618a40909e659271a0d850789843a1b2ede0bffa31cd98ff6976;
 
     struct TokenInitParams {
         string baseURI;
@@ -72,8 +78,7 @@ library WittyPixelsLib {
         address[] authors;
         mapping (address => uint256) legacyPixels;
         mapping (address => bool) redeemed;
-        mapping (uint256 => TokenVaultPlayerInfo) players;        
-        mapping (address => TokenVaultJackpotWinner) winners;
+        mapping (uint256 => TokenVaultPlayerInfo) players;
     }
 
     struct TokenVaultJackpotWinner {
@@ -513,6 +518,8 @@ library WittyPixelsLib {
             }
         }
     }
+
+    bytes16 private constant _HEX_SYMBOLS_ = "0123456789abcdef";
 
     /// @dev Converts a `uint256` to its ASCII `string` decimal representation.
     function toString(uint256 value)
