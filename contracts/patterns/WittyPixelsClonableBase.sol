@@ -33,8 +33,16 @@ abstract contract WittyPixelsClonableBase
     // ================================================================================================================
     // --- 'Clonable' extension ---------------------------------------------------------------------------------------
 
+    function initializeClone(bytes memory _initBytes)
+        virtual external
+        initializer
+        onlyDelegateCalls
+    {
+        _initialize(_initBytes);
+    }
+
     function _initialize(bytes memory) 
-        virtual override
+        virtual
         internal
     {
         // initialize openzeppelin's underlying patterns

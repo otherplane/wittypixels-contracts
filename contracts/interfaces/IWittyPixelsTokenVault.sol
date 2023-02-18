@@ -10,10 +10,6 @@ abstract contract IWittyPixelsTokenVault
         IWittyPixelsTokenVaultAuctionDutch,
         
 {
-    constructor(address _randomizer)
-        ITokenVaultWitnet(_randomizer)
-    {}
-
     struct Stats {
         uint256 redeemedPixels;
         uint256 redeemedPlayers;

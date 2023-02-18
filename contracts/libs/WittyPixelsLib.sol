@@ -2,10 +2,15 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/math/Math.sol";
-import "witnet-solidity-bridge/contracts/requests/WitnetRequestTemplate.sol";
+
+import "witnet-solidity-bridge/contracts/requests/WitnetRequest.sol";
+import "witnet-solidity-bridge/contracts/libs/WitnetV2.sol";
+
 import "../interfaces/IWittyPixelsTokenVault.sol";
 
 library WittyPixelsLib {
+
+    using WitnetCBOR for WitnetCBOR.CBOR;
 
     bytes16 private constant _HEX_SYMBOLS_ = "0123456789abcdef";
 
@@ -133,9 +138,31 @@ library WittyPixelsLib {
         string text;
     }
     
-    struct ERC721TokenWitnetRequests {
-        WitnetRequestTemplate imageDigest;
-        WitnetRequestTemplate tokenStats;
+    function toString(WitnetCBOR.CBOR memory cbor)
+        public pure
+        returns (string memory)
+    {
+        return cbor.readString();
+    }
+
+    function toERC721TokenStats(WitnetCBOR.CBOR memory cbor)
+        public pure
+        returns (ERC721TokenStats memory)
+    {
+        WitnetCBOR.CBOR[] memory fields = cbor.readArray();
+        if (fields.length >= 7) {
+            return ERC721TokenStats({
+                canvasHeight: fields[0].readUint(),
+                canvasPixels: fields[1].readUint(),
+                canvasRoot:   toBytes32(fromHex(fields[2].readString())),
+                canvasWidth:  fields[3].readUint(),
+                totalPixels:  fields[4].readUint(),
+                totalPlayers: fields[5].readUint(),
+                totalScans:   fields[6].readUint()
+            });
+        } else {
+            revert("WittyPixelsLib: missing fields");
+        }
     }
 
     function toJSON(
