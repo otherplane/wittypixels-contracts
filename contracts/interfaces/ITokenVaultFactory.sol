@@ -30,7 +30,7 @@ interface ITokenVaultFactory {
     
     /// @notice Returns token vault prototype being instantiated when fractionalizing. 
     /// @dev If destructible, it must be owned by the factory contract.
-    function getTokenVaultPrototype() external view returns (ITokenVault);
+    function getTokenVaultFactoryPrototype() external view returns (ITokenVault);
 
     /// @notice Returns number of vaults created so far.
     function totalTokenVaults() external view returns (uint256);

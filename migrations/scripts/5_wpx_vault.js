@@ -34,7 +34,7 @@ module.exports = async function (deployer, network, [, from]) {
 
   if (network !== "test") {
     var token = await WittyPixelsToken.at(addresses[ecosystem][network].WittyPixelsTokenProxy)
-    var prototype = await token.tokenVaultPrototype.call({ from })
+    var prototype = await token.getTokenVaultFactoryPrototype.call({ from })
     if (prototype.toLowerCase() !== vault.address.toLowerCase()) {
       const header = `Setting WittyPixelsTokenProxy's prototype...`
       console.info()

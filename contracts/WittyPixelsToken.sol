@@ -280,7 +280,7 @@ contract WittyPixelsToken
 
     /// @notice Returns token vault prototype being instantiated when fractionalizing. 
     /// @dev If destructible, it must be owned by this contract.
-    function geTokenVaultPrototype()
+    function getTokenVaultFactoryPrototype()
         external view
         returns (ITokenVault)
     {
@@ -578,7 +578,7 @@ contract WittyPixelsToken
 
     /// @notice Vault logic contract to be used in next calls to `fractionalize(..)`. 
     /// @dev Prototype ownership needs to have been previously transferred to this contract.
-    function setTokenVaultPrototype(address _prototype)
+    function setTokenVaultFactoryPrototype(address _prototype)
         external
         override
         onlyOwner

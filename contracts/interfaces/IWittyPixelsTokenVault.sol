@@ -8,7 +8,6 @@ abstract contract IWittyPixelsTokenVault
     is
         ITokenVaultWitnet,
         ITokenVaultAuctionDutch
-        
 {
     struct Stats {
         uint256 redeemedPixels;
@@ -55,12 +54,12 @@ abstract contract IWittyPixelsTokenVault
     /// @return wpxBalance Current ERC20 balance.
     /// @return wpxShare10000 NFT ownership percentage based on current ERC20 balance, multiplied by a 100.
     /// @return withdrawableWeis ETH/wei amount that can be potentially withdrawn from this address.
-    /// @return legacyPixels Soulbound pixels contributed from this wallet address, if any.    
+    /// @return soulboundPixels Soulbound pixels contributed from this wallet address, if any.    
     function getWalletInfo(address) virtual external view returns (
             uint256 wpxBalance,
             uint256 wpxShare10000,
             uint256 withdrawableWeis,
-            uint256 legacyPixels
+            uint256 soulboundPixels
         );
 
     /// @notice Returns sum of legacy pixels ever redeemed from the given address.

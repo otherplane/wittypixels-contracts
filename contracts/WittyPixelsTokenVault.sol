@@ -387,7 +387,7 @@ contract WittyPixelsTokenVault
     /// @return wpxBalance Current ERC20 balance.
     /// @return wpxShare10000 NFT ownership percentage based on current ERC20 balance, multiplied by a 100.
     /// @return withdrawableWeis ETH/wei amount that can be potentially withdrawn from this address.
-    /// @return legacyPixels Soulbound pixels contributed from this wallet address, if any.
+    /// @return soulboundPixels Soulbound pixels contributed from this wallet address, if any.
     function getWalletInfo(address _addr)
         virtual override
         external view
@@ -396,7 +396,7 @@ contract WittyPixelsTokenVault
             uint256 wpxBalance,
             uint256 wpxShare10000,
             uint256 withdrawableWeis,
-            uint256 legacyPixels
+            uint256 soulboundPixels
         )
     {
         return (

@@ -22,5 +22,5 @@ interface IWittyPixelsTokenAdmin {
 
     /// @notice Sets token vault contract to be used as prototype in following mints.
     /// @dev Prototype ownership needs to have been previously transferred to this contract.
-    function setTokenVaultPrototype(address prototype) external;    
+    function setTokenVaultFactoryPrototype(address prototype) external;    
 }
