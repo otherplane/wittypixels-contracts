@@ -502,14 +502,12 @@ contract WittyPixelsToken
         __storage.items[_tokenId].theEvent = _theEvent;
     }
     
-    function mint(
-            uint256 _tokenId,
-            bytes32 _witnetSlaHash
-        )
+    function mint(WitnetV2.RadonSLA calldata _witnetSLA)
         override external payable
-        onlyOwner 
+        onlyOwner
         nonReentrant
     {
+        uint256 _tokenId = __storage.totalSupply + 1;
         WittyPixelsLib.ERC721TokenStatus _status = getTokenStatus(_tokenId);
         require(
             _status == WittyPixelsLib.ERC721TokenStatus.Launching

@@ -4,7 +4,6 @@ pragma solidity ^0.8.0;
 import "./ITokenVault.sol";
 
 interface ITokenVaultFactory {
-
     
     /// @notice A new token has been fractionalized from this factory.
     event Fractionalized(
@@ -29,14 +28,11 @@ interface ITokenVaultFactory {
     /// @dev First created vault should be assigned index 1.
     function getTokenVaultByIndex(uint256 index) external view returns (ITokenVault);
     
-    /// @notice Gets current status of indexed token vault created by this factory.
-    /// @dev First created vault should be assigned index 1.
-    function getTokenVaultStatusByIndex(uint256 index) external view returns (TokenVaultStatus);
-
     /// @notice Returns token vault prototype being instantiated when fractionalizing. 
     /// @dev If destructible, it must be owned by the factory contract.
-    function tokenVaultPrototype() external view returns (ITokenVault);
+    function getTokenVaultPrototype() external view returns (ITokenVault);
 
     /// @notice Returns number of vaults created so far.
     function totalTokenVaults() external view returns (uint256);
+
 }
