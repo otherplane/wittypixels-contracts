@@ -66,7 +66,7 @@ library WittyPixelsLib {
         address curator;
         uint256 finalPrice;
         
-        IWittyPixelsTokenVaultAuctionDutch.Settings settings;
+        ITokenVaultAuctionDutch.Settings settings;
         IWittyPixelsTokenVault.Stats stats;
         
         address[] authors;

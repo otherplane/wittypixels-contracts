@@ -13,10 +13,10 @@ import "witnet-solidity-bridge/contracts/impls/boards/trustable/WitnetRequestBoa
 import "witnet-solidity-bridge/contracts/libs/WitnetLib.sol";
 import "witnet-solidity-bridge/contracts/libs/WitnetEncodingLib.sol";
 
-// Witnet dependencies:
+// Witnet build dependency:
 import "witnet-solidity-bridge/contracts/UsingWitnet.sol";
 
-// WittyPixels dependencies:
+// WittyPixels interfaces:
 import "./interfaces/ITokenVaultFactory.sol";
 import "./interfaces/IWittyPixelsToken.sol";
 import "./interfaces/IWittyPixelsTokenAdmin.sol";
@@ -29,7 +29,6 @@ import "./patterns/WittyPixelsUpgradeableBase.sol";
 contract WittyPixelsToken
     is
         ERC721Upgradeable,
-        ITokenVaultFactory,
         IWittyPixelsToken,
         IWittyPixelsTokenAdmin,
         WittyPixelsUpgradeableBase,
@@ -49,6 +48,14 @@ contract WittyPixelsToken
 
     WittyPixelsLib.TokenStorage internal __storage;
 
+    /// @notice A new token has been fractionalized from this factory.
+    event Fractionalized(
+        address indexed from,   // owner of the token being fractionalized
+        address indexed token,  // token collection address
+        uint256 tokenId,        // token id
+        address tokenVault      // token vault contract just created
+    );
+    
     modifier initialized {
         require(
             __proxiable().implementation != address(0),
@@ -170,35 +177,21 @@ contract WittyPixelsToken
 
 
     // ================================================================================================================
-    // --- Implementation of 'ITokenVaultFactory' ---------------------------------------------------------------------
+    // --- Based on 'ITokenVaultFactory' ------------------------------------------------------------------------------
 
-    /// @notice Fractionalize given token by transferring ownership to new instance of ERC-20 ERC721Token Vault. 
-    /// @dev This vault factory is only intended for fractionalizing its own tokens.
-    function fractionalize(address, uint256, bytes memory)
-        external pure
-        override
-        returns (ITokenVault)
-    {
-        revert("WittyPixelsToken: not implemented");
-    }
-
-    /// @notice Fractionalize given token by transferring ownership to new instance
+    /// @notice Fractionalize next token in collection by transferring ownership to new instance
     /// @notice of the ERC721 Token Vault prototype contract. 
     /// @dev Token must be in 'Minting' status and involved Witnet requests successfully solved.
-    /// @param _tokenId ERC721Token identifier within that collection.
+    /// @dev Once Witnet requests involved in minting process are solved, anyone may proceed withç
+    /// @dev fractionalization of next token. Curatorship of the vault will be transferred to the owner, though.
     /// @param _tokenVaultSettings Extra settings to be passed when initializing the token vault contract.
-    function fractionalize(
-            uint256 _tokenId,
-            bytes   memory _tokenVaultSettings
-        )
+    function fractionalize(bytes memory _tokenVaultSettings)
         external
-        tokenInStatus(_tokenId, WittyPixelsLib.ERC721TokenStatus.Minting)
-        onlyOwner
+        tokenInStatus(__storage.totalSupply + 1, WittyPixelsLib.ERC721TokenStatus.Minting)
         returns (ITokenVault)
     {
-        WittyPixelsLib.ERC721Token storage __token = __storage.items[_tokenId];
-        WittyPixelsLib.ERC721TokenWitnetRequests storage __requests = __storage.witnetRequests[_tokenId];
-        
+        uint256 _tokenId = __storage.totalSupply + 1;
+
         // Check there's a token vault prototype set:
         require(
             address(__storage.tokenVaultPrototype) != address(0),
@@ -283,56 +276,13 @@ contract WittyPixelsToken
         return ITokenVault(address(_tokenVault));
     }
 
-    /// @notice Gets data of a token vault created by this factory.
-    function getTokenVaultByIndex(uint256 index)
-        public view
-        override
-        returns (ITokenVault)
-    {
-        if (index < __storage.totalTokenVaults) {
-            return ITokenVault(__storage.vaults[index]);
-        } else {
-            return ITokenVault(address(0));
-        }
-    }
-    
-    /// @notice Gets current status of token vault created by this factory.
-    function getTokenVaultStatusByIndex(uint256 index)
-        external view
-        returns (TokenVaultStatus)
-    {
-        ITokenVault _vault = getTokenVaultByIndex(index);
-        if (address(_vault) != address(0)) {
-            try _vault.acquired() returns (bool _acquired) {
-                return (_acquired
-                    ? ITokenVaultFactory.TokenVaultStatus.Acquired
-                    : ITokenVaultFactory.TokenVaultStatus.Active
-                );
-            } catch {
-                return ITokenVaultFactory.TokenVaultStatus.Deleted;
-            }
-        } else {
-            return ITokenVaultFactory.TokenVaultStatus.Unknown;
-        }
-    }
-
     /// @notice Returns token vault prototype being instantiated when fractionalizing. 
     /// @dev If destructible, it must be owned by this contract.
-    function tokenVaultPrototype()
+    function geTokenVaultPrototype()
         external view
-        override
         returns (ITokenVault)
     {
         return ITokenVault(__storage.tokenVaultPrototype);
-    }
-
-    /// @notice Returns number of vaults created so far.
-    function totalTokenVaults()
-        external view
-        override 
-        returns (uint256)
-    {
-        return __storage.totalTokenVaults;
     }
 
 

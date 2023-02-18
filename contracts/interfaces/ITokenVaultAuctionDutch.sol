@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "./IWittyPixelsTokenVaultAuction.sol";
+import "./ITokenVaultAuction.sol";
 
-abstract contract IWittyPixelsTokenVaultAuctionDutch
+abstract contract ITokenVaultAuctionDutch
     is
-        IWittyPixelsTokenVaultAuction
+        ITokenVaultAuction
 {  
     struct Settings {
         uint256 deltaPrice;

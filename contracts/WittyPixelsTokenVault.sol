@@ -430,7 +430,7 @@ contract WittyPixelsTokenVault
 
     
     // ================================================================================================================
-    // --- Implements 'IWittyPixelsTokenVaultAuctionDutch' ------------------------------------------------------------
+    // --- Implements 'ITokenVaultAuctionDutch' ------------------------------------------------------------
 
     function acquire()
         override
@@ -490,7 +490,7 @@ contract WittyPixelsTokenVault
         external pure
         returns (bytes4)
     {
-        return type(IWittyPixelsTokenVaultAuctionDutch).interfaceId;
+        return type(ITokenVaultAuctionDutch).interfaceId;
     }
 
     function setAuctionSettings(bytes memory _settings)
@@ -508,7 +508,7 @@ contract WittyPixelsTokenVault
         wasInitialized
         returns (uint256)
     {
-        IWittyPixelsTokenVaultAuctionDutch.Settings memory _settings = __storage.settings;
+        ITokenVaultAuctionDutch.Settings memory _settings = __storage.settings;
         if (block.timestamp >= _settings.startingTs) {
             if (__storage.finalPrice == 0) {
                 uint _tsDiff = block.timestamp - _settings.startingTs;
@@ -529,7 +529,7 @@ contract WittyPixelsTokenVault
 
 
     // ================================================================================================================
-    // --- Implements 'IWittyPixelsTokenVaultAuctionDutch' ------------------------------------------------------------
+    // --- Implements 'ITokenVaultAuctionDutch' ------------------------------------------------------------
 
     function getNextPriceTimestamp()
         override
@@ -537,7 +537,7 @@ contract WittyPixelsTokenVault
         wasInitialized
         returns (uint256)
     {
-        IWittyPixelsTokenVaultAuctionDutch.Settings memory _settings = __storage.settings;
+        ITokenVaultAuctionDutch.Settings memory _settings = __storage.settings;
         if (
             acquired()
                 || getPrice() == _settings.reservePrice
@@ -624,9 +624,9 @@ contract WittyPixelsTokenVault
 
     function _setAuctionSettings(bytes memory _bytes) virtual internal {
         // decode dutch auction settings:
-        IWittyPixelsTokenVaultAuctionDutch.Settings memory _settings = abi.decode(
+        ITokenVaultAuctionDutch.Settings memory _settings = abi.decode(
             _bytes,
-            (IWittyPixelsTokenVaultAuctionDutch.Settings)
+            (ITokenVaultAuctionDutch.Settings)
         );
         // verify settings:
         require(

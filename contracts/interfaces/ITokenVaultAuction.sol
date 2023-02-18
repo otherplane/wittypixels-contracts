@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-interface IWittyPixelsTokenVaultAuction {    
+interface ITokenVaultAuction {    
     event AuctionSettings(address indexed from, bytes settings);    
     function auctioning() external view returns (bool);
     function getPrice() external view returns (uint256);

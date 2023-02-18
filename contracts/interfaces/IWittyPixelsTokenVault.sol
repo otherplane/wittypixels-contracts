@@ -2,12 +2,12 @@
 pragma solidity ^0.8.0;
 
 import "./ITokenVaultWitnet.sol";
-
+import "./ITokenVaultAuctionDutch.sol";
 
 abstract contract IWittyPixelsTokenVault
     is
         ITokenVaultWitnet,
-        IWittyPixelsTokenVaultAuctionDutch,
+        ITokenVaultAuctionDutch
         
 {
     struct Stats {
