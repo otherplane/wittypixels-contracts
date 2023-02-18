@@ -4,10 +4,7 @@ const addresses = require("../addresses")
 const utils = require("../../scripts/utils")
 
 const WitnetBytecodes = artifacts.require("WitnetBytecodes")
-const WitnetRequestBoard = artifacts.require("WitnetRequestBoardTrustableDefault")
-const WitnetRequestImageDigest = artifacts.require("WitnetRequestImageDigest")
-const WitnetRequestTokenStats = artifacts.require("WitnetRequestTokenStats")
-
+const WitnetRequestFactory = artifacts.require("WitnetRequestFactory")
 
 module.exports = async function (deployer, network, [, from]) {
   const isDryRun = network === "test" || network.split("-")[1] === "fork" || network.split("-")[0] === "develop"
@@ -21,60 +18,46 @@ module.exports = async function (deployer, network, [, from]) {
   if (!isDryRun) {
     try {
       witnetAddresses = require("witnet-solidity-bridge/migrations/witnet.addresses")[ecosystem][network]
-      WitnetBytecodes.address = witnetAddresses.WitnetBytecodes
-      WitnetRequestBoard.address = witnetAddresses.WitnetRequestBoard
+      WitnetRequestFactory.address = witnetAddresses.WitnetRequestFactory
     } catch (e) {
       console.error("Fatal: Witnet Foundation addresses were not provided!", e)
       process.exit(1)
     }
-  }
-  const witnetHashes = require("../witnet/hashes")
-  
-  if (utils.isNullAddress(addresses[ecosystem][network]?.WitnetRequestImageDigest)) {
+  } else {
     await deployer.deploy(
-      WitnetRequestImageDigest,
-      witnetAddresses?.WitnetRequestBoard || WitnetRequestBoard.address,
-      witnetAddresses?.WitnetBytecodes || WitnetBytecodes.address,
-      [
-        witnetHashes.sources["image-digest"],
-      ],
-      witnetHashes.reducers["mode-no-filters"],
-      witnetHashes.reducers["mode-no-filters"],
+      WitnetRequestFactory,
+      WitnetBytecodes.address,
+      true,
+      utils.fromAscii(network),
       { from, gas: 6721975 }
     )
-    var contract = await WitnetRequestImageDigest.deployed()
-    addresses[ecosystem][network].WitnetRequestImageDigest = contract.address
-    if (!isDryRun) {
-      utils.saveAddresses(addresses)
-    }
-  } else {
-    WitnetRequestImageDigest.address = addresses[ecosystem][network].WitnetRequestImageDigest
-    utils.traceHeader("Skipping 'WitnetRequetImageDigest'")
-    console.info("  ", "> contract address:", WitnetRequestImageDigest.address)
-    console.info()
   }
 
-  if (utils.isNullAddress(addresses[ecosystem][network]?.WitnetRequestTokenStats)) {
-    await deployer.deploy(
-      WitnetRequestTokenStats,
-      witnetAddresses?.WitnetRequestBoard || WitnetRequestBoard.address,
-      witnetAddresses?.WitnetBytecodes || WitnetBytecodes.address,
-      [ 
-        witnetHashes.sources["token-stats"],
-      ],
-      witnetHashes.reducers["mode-no-filters"],
-      witnetHashes.reducers["mode-no-filters"],
-      { from, gas: 6721975 }
-    )
-    var contract = await WitnetRequestTokenStats.deployed()
-    addresses[ecosystem][network].WitnetRequestTokenStats = contract.address
-    if (!isDryRun) {
+  const witnetHashes = require("../witnet/hashes"); if (!witnetHashes.rads) witnetHashes.rads = {}
+  const witnetRequestFactory = await WitnetRequestFactory.at(WitnetRequestFactory.address);
+  const witnetRequestTemplates = require("../witnet/templates.js")
+  
+  for (const key in witnetRequestTemplates) {
+    const template = witnetRequestTemplates[key]
+    if (isDryRun || utils.isNullAddress(addresses[ecosystem][network][key])) {
+      utils.traceHeader(`Building '${key}'...`)
+      console.info("  ", "> factory address: ", witnetRequestFactory.address)
+      var tx = await witnetRequestFactory.buildRequestTemplate(
+        template.sources,
+        template.aggregator,
+        template.tally,
+        template?.resultDataMaxSize || 0,
+        { from }
+      )
+      tx.logs = tx.logs.filter(log => log.event === 'WitnetRequestTemplateBuilt')
+      console.info("  ", "> transaction hash:", tx.receipt.transactionHash)
+      console.info("  ", "> transaction gas: ", tx.receipt.gasUsed)
+      console.info("  ", "> template address:", tx.logs[0].args.template)
+      addresses[ecosystem][network][key] = tx.logs[0].args.template
       utils.saveAddresses(addresses)
+    } else {
+      utils.traceHeader(`Skipping '${key}'`)
+      console.info("  ", "> template address:", addresses[ecosystem][network][key])
     }
-  } else {
-    WitnetRequestTokenStats.address = addresses[ecosystem][network].WitnetRequestTokenStats
-    utils.traceHeader("Skipping 'WitnetRequetTokenStats'")
-    console.info("  ", "> contract address:", WitnetRequestTokenStats.address)
-    console.info()
   }
 }

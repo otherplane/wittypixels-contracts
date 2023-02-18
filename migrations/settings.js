@@ -19,6 +19,13 @@ module.exports = {
           reservePrice:   "1000000000000000000", //  1.00 ETH
           startingPrice: "32000000000000000000", // 32.00 ETH
           startingTs:     1677974400 + 7 * 3600, // Sun, 5 March 2023 0:00 GMT-7
+        },
+        witnetSLA: {
+          numWitnesses: 16,
+          minConsensusPercentage: 75,  // %
+          minerCommitFee: "100000000", // 0.1 WIT
+          witnessReward: "1000000000", // 1.0 WIT
+          witnessCollateral: "15000000000", // 15.0 WIT
         }
       },
     ],

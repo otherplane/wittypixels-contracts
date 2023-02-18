@@ -1,18 +1,16 @@
 const Witnet = require("witnet-requests")
 module.exports = {
-    "image-digest": {
+    "wpx-image-digest": {
         requestMethod: Witnet.Types.RETRIEVAL_METHODS.HttpGet,
-        requestSchema: "https://",        
         requestAuthority: "\\0\\",
-        requestQuery: "base64=true",
+        requestQuery: "digest=sha-256",
         requestScript: 
             "0x811874",
             // new Witnet.Script([ Witnet.TYPES.STRING ])
             //      .length()
     },
-    "token-stats": {
+    "wpx-token-stats": {
         requestMethod: Witnet.Types.RETRIEVAL_METHODS.HttpGet,
-        requestSchema: "https://",
         requestAuthority: "\\0\\",
         requestScript:
             "0x8218771869", 

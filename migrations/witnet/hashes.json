@@ -1,13 +1,9 @@
 {
-    "slas": {
-        "high-16": "0x738a610e267ba49e7d22c96a5f59740e88a10ba8a942047052e57dc3e69c0a64",
-        "high-1": "0x328994135a4fcc2d14ae55f1d9ba1a2f0661e4cb9507714c7a39486ba0e56103"
+    "reducers": {
+        "mode-no-filters": "0x7fd784182e4ee25820fef9dd2f438836a658dabba24e32a494dca9695e631e0e"
     },
     "sources": {
-        "image-digest": "0x4e7142f3dc943272f3ec79c9cae256233e82e256b1931efbca22bce9c11be1b2",
-        "token-stats": "0x5cafac251592c5c74eb0c68b5c5909afc0fd7b0b270ceec5f0e0ca5a2cebc3a6"
-    },
-    "reducers": {
-        "mode-no-filters": "0x5c6037e17112ad2502ced33a32a65e1df780e7996de2b65aff08f47c4c58a3d0"
+        "wpx-image-digest": "0x6719e5ff80bd4da6c1b941a53f7f45e52bcc2ea8c74029b254facb55dac1bf1d",
+        "wpx-token-stats": "0x568fee5c3070a830943a5144e7acd1a5a402d96f6b6242b6e3912d13bba98b52"
     }
 }

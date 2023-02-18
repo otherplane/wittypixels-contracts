@@ -16,7 +16,8 @@ module.exports = {
   traceEvents,
   traceHeader,
   traceTx,
-  saveAddresses
+  saveAddresses,
+  saveHashes,
 }
 
 function fromAscii (str) {
@@ -115,5 +116,13 @@ function saveAddresses(addrs, path) {
     `${path || './migrations/'}/addresses.json`,
     JSON.stringify(addrs, null, 4),
     { flag: 'w+' }
+  )
+}
+
+function saveHashes(hashes) {
+  fs.writeFileSync(
+    "./migrations/witnet/hashes.json",
+    JSON.stringify(hashes, null, 4),
+    { flag: 'w+'}
   )
 }
