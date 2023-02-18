@@ -2,9 +2,6 @@ const addresses = require("../addresses")
 const package = require ("../../package")
 const utils = require("../../scripts/utils")
 
-const WitnetRandomness = artifacts.require("WitnetRandomness")
-const WitnetRandomnessMock = artifacts.require("WitnetRandomnessMock")
-
 const WittyPixelsToken = artifacts.require("WittyPixelsToken")
 const WittyPixelsTokenVault = artifacts.require("WittyPixelsTokenVault")
 
@@ -16,29 +13,10 @@ module.exports = async function (deployer, network, [, from]) {
   if (!addresses[ecosystem]) addresses[ecosystem] = {}
   if (!addresses[ecosystem][network]) addresses[ecosystem][network] = {}
 
-  var witnetAddresses
-  var randomizer
-  if (!isDryRun) {
-    try {
-      witnetAddresses = require("witnet-solidity-bridge/migrations/witnet.addresses")[ecosystem][network]
-      randomizer = await WitnetRandomness.at(witnetAddresses.WitnetRandomness)
-    } catch (e) {
-      console.error("Fatal: Witnet Foundation addresses were not provided!", e)
-      process.exit(1)
-    }
-  } else {
-    randomizer = await WitnetRandomnessMock.new(
-      2,        // _mockRandomizeLatencyBlocks
-      10 ** 15, // _mockRandomizeFee
-      { from }
-    )
-  }
-
   var vault
   if (utils.isNullAddress(addresses[ecosystem][network]?.WittyPixelsTokenVaultPrototype)) {
     await deployer.deploy(
       WittyPixelsTokenVault,
-      randomizer.address,
       utils.fromAscii(package.version),
       { from }
     )
@@ -65,7 +43,7 @@ module.exports = async function (deployer, network, [, from]) {
       console.info()
       console.info("   > old vault prototype:", prototype)
       console.info("   > new vault prototype:", vault.address, `(v${await vault.version.call({ from })})`)
-      const tx = await token.setTokenVaultPrototype(vault.address, { from })
+      const tx = await token.setTokenVaultFactoryPrototype(vault.address, { from })
       console.info("   => transaction hash :", tx.receipt.transactionHash)
       console.info("   => transaction gas  :", tx.receipt.gasUsed)
     }

@@ -4,11 +4,21 @@
             "Create2Factory": "0x1B99e3b8d5981D829E1C9a7f520B33515E7133d1",
             "WitnetRequestTemplateImageDigest": "",
             "WitnetRequestTemplateTokenStats": "",
-            "WittyPixelsLib": "0xeF5122429db46687D57d1fEbE5a93A8965442032",
-            "WittyPixelsToken": "0x22D97F93E983720cfD07E7adB10B7aFc073bAE63",
-            "WittyPixelsTokenProxy": "0xc0ffee3c6F66dE5a0adcCEc65Dc6bB20C8C6A454",
-            "WittyPixelsTokenVaultPrototype": "0x6ecD6Ca7700711CB07700dc167aD023514dA4F1B"
+            "WittyPixelsLib": "",
+            "WittyPixelsToken": "",
+            "WittyPixelsTokenProxy": "",
+            "WittyPixelsTokenVaultPrototype": ""
         }
     },
-    "default": {}
+    "default": {
+        "develop": {
+            "Create2Factory": "0x1f4cCa39C64996Bc4dB17F8Cd67132fef6Fc822a",
+            "WitnetRequestTemplateImageDigest": "0xB64B3E131377466842EE21928641437BF335514B",
+            "WitnetRequestTemplateTokenStats": "0x704C90aaC3CaF0B5410a464a1767720eeC507FBa"
+        },
+        "test": {
+            "WitnetRequestTemplateImageDigest": "0x1dEFD7a2383e3F2d4d89ac7c8e836ea6A1dCDEd7",
+            "WitnetRequestTemplateTokenStats": "0xb5CCb24b6E4e1079e838df14d32E9eCB7BF6F8bB"
+        }
+    }
 }

@@ -12,9 +12,6 @@ const WitnetProxy = artifacts.require("WitnetProxy")
 const WittyPixelsLib = artifacts.require("WittyPixelsLib")
 const WittyPixelsToken = artifacts.require("WittyPixelsToken")
 
-const WitnetRequestImageDigest = artifacts.require("WitnetRequestImageDigest")
-const WitnetRequestTokenStats = artifacts.require("WitnetRequestTokenStats")
-
 module.exports = async function (deployer, network, [, from]) {
   const isDryRun = network === "test" || network.split("-")[1] === "fork" || network.split("-")[0] === "develop"
   const ecosystem = utils.getRealmNetworkFromArgs()[0]
@@ -41,11 +38,19 @@ module.exports = async function (deployer, network, [, from]) {
 
   var token
   if (utils.isNullAddress(addresses[ecosystem][network]?.WittyPixelsToken)) {
+    var wrbAddress
+    if (isDryRun) {
+      const wrb = artifacts.require("WitnetRequestBoardTrustableDefault")
+      wrbAddress = wrb.address
+    } else {
+      wrbAddress = addresses[ecosystem][network].WitnetRequestBoard
+    }
     await deployer.link(WittyPixelsLib, WittyPixelsToken);
     await deployer.deploy(
       WittyPixelsToken,
-      WitnetRequestImageDigest.address,
-      WitnetRequestTokenStats.address,
+      wrbAddress,
+      addresses[ecosystem][network].WitnetRequestTemplateImageDigest,
+      addresses[ecosystem][network].WitnetRequestTemplateTokenStats,
       settings.core.collection.upgradable,
       utils.fromAscii(package.version),
       { from }
