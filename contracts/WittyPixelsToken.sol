@@ -268,11 +268,8 @@ contract WittyPixelsToken
         ));
 
         // Store token vault contract:
-        uint _tokenVaultIndex = ++ __storage.totalTokenVaults;
-        __storage.vaults[_tokenVaultIndex] = _tokenVault;
-
-        // Update reference to token vault contract in token's metadata
-        __storage.tokenVaultIndex[_tokenId] = _tokenVaultIndex;
+        __storage.vaults[_tokenId] = _tokenVault;
+        __storage.totalTokenVaults ++;
 
         // Mint the actual ERC-721 token and set the just created vault contract as first owner ever:
         _mint(address(_tokenVault), _tokenId);
@@ -281,12 +278,7 @@ contract WittyPixelsToken
         __storage.totalSupply ++;
 
         // Emits event
-        emit Fractionalized(
-            msg.sender,
-            address(this),
-            _tokenId,
-            address(_tokenVault)
-        );
+        emit Fractionalized(msg.sender, address(this), _tokenId, address(_tokenVault));
 
         return ITokenVault(address(_tokenVault));
     }
@@ -369,10 +361,10 @@ contract WittyPixelsToken
         returns (WittyPixelsLib.ERC721TokenStatus)
     {
         if (_tokenId <= __storage.totalSupply) {
-            uint _vaultIndex = __storage.tokenVaultIndex[_tokenId];
+            IWittyPixelsTokenVault _tokenVault = __storage.vaults[_tokenId];
             if (
-                _vaultIndex > 0
-                    && ownerOf(_tokenId) != address(__storage.vaults[_vaultIndex])
+                address(_tokenVault) != address(0)
+                    && ownerOf(_tokenId) != address(__storage.vaults[_tokenId])
             ) {
                 return WittyPixelsLib.ERC721TokenStatus.Acquired;
             } else {
@@ -428,20 +420,18 @@ contract WittyPixelsToken
         tokenExists(_tokenId)
         returns (ITokenVaultWitnet)
     {
-        return __storage.vaults[
-            __storage.tokenVaultIndex[_tokenId]
-        ];
+        return __storage.vaults[_tokenId];
     }
 
-    /// @notice Returns set of Witnet data requests involved in the minting process.
+    /// @notice Returns Identifiers of Witnet queries involved in the minting process.
     /// @dev Returns zero addresses if the token is yet in 'Unknown' or 'Launched' status.
-    function getTokenWitnetRequests(uint256 _tokenId)
+    function getTokenWitnetQueries(uint256 _tokenId)
         external view
         override
         initialized
-        returns (WittyPixelsLib.ERC721TokenWitnetRequests memory)
+        returns (WittyPixelsLib.ERC721TokenWitnetQueries memory)
     {
-        return __storage.witnetRequests[_tokenId];
+        return __storage.tokenWitnetQueries[_tokenId];
     }
 
     /// @notice Returns image URI of given token.
@@ -471,10 +461,7 @@ contract WittyPixelsToken
         tokenExists(_tokenId)
         returns (string memory)
     {
-        return __storage.items[_tokenId].toJSON(
-            _tokenId,
-            __storage.witnetRequests[_tokenId].tokenStats.retrievalHash()
-        );
+        return __storage.items[_tokenId].toJSON(_tokenId);
     }
 
     /// @notice Returns number of pixels within the WittyPixels Canvas of given token.
@@ -531,7 +518,7 @@ contract WittyPixelsToken
             _proof.merkle(keccak256(abi.encode(
                 _playerIndex,
                 _playerPixels
-            ))) == __token.theStats.authorshipsRoot
+            ))) == __token.theStats.canvasRoot
         );
     }
 

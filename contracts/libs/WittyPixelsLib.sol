@@ -21,8 +21,6 @@ library WittyPixelsLib {
     }
 
     struct TokenStorage {
-        address implementation;
-        
         // --- ERC721
         string  baseURI;
         uint256 totalSupply;
@@ -34,10 +32,9 @@ library WittyPixelsLib {
         mapping (uint256 => IWittyPixelsTokenVault) vaults;
 
         // --- WittyPixelsToken
-        uint mintingTokenId;
-        mapping (uint256 => ERC721TokenWitnetRequests) witnetRequests;
-        mapping (uint256 => uint256) tokenVaultIndex;
-        mapping (uint256 => ERC721TokenSponsors) sponsors;        
+        WitnetRequest witnetImageDigest;
+        WitnetRequest witnetTokenStats;
+        mapping (uint256 => ERC721TokenWitnetQueries) tokenWitnetQueries;
     }
 
     struct TokenVaultOwnershipDeeds {
@@ -101,8 +98,9 @@ library WittyPixelsLib {
     struct ERC721Token {
         string  baseURI;
         uint256 birthTs;        
-        bytes32 imageWitnetTxHash;         
-        bytes32 statsWitnetTxHash;
+        string  imageDigest;
+        bytes32 imageDigestWitnetTxHash;         
+        bytes32 tokenStatsWitnetRadHash;
         ERC721TokenEvent theEvent;
         ERC721TokenStats theStats;
     }
@@ -115,10 +113,9 @@ library WittyPixelsLib {
     }
 
     struct ERC721TokenStats {
-        bytes32 authorshipsRoot;
-        string  canvasDigest;
         uint256 canvasHeight;
         uint256 canvasPixels;
+        bytes32 canvasRoot;
         uint256 canvasWidth;
         uint256 totalPixels;
         uint256 totalPlayers;
@@ -138,6 +135,11 @@ library WittyPixelsLib {
         string text;
     }
     
+    struct ERC721TokenWitnetQueries {
+        uint256 imageDigestId;
+        uint256 tokenStatsId;
+    }
+
     function toString(WitnetCBOR.CBOR memory cbor)
         public pure
         returns (string memory)
@@ -167,8 +169,7 @@ library WittyPixelsLib {
 
     function toJSON(
             ERC721Token memory self,
-            uint256 tokenId,
-            bytes32 tokenStatsRadHash
+            uint256 tokenId
         )
         public pure
         returns (string memory)
@@ -179,7 +180,7 @@ library WittyPixelsLib {
         ));
         string memory _description = string(abi.encodePacked(
             "\"description\": \"",
-            _loadJsonDescription(self, tokenStatsRadHash),
+            _loadJsonDescription(self),
             "\","
         ));
         string memory _externalUrl = string(abi.encodePacked(
@@ -231,7 +232,7 @@ library WittyPixelsLib {
         string memory _authorshipRoot = string(abi.encodePacked(
             "{",
                 "\"trait_type\": \"Authorship's Root\",",
-                "\"value\": \"", toHexString(self.theStats.authorshipsRoot), "\"",
+                "\"value\": \"", toHexString(self.theStats.canvasRoot), "\"",
             "},"
         ));
         
@@ -273,7 +274,7 @@ library WittyPixelsLib {
         string memory _canvasDigest = string(abi.encodePacked(
             "{",
                 "\"trait_type\": \"Canvas Digest\",",
-                "\"value\": \"", self.theStats.canvasDigest, "\"",
+                "\"value\": \"", self.imageDigest, "\"",
             "},"
         ));        
         string memory _canvasHeight = string(abi.encodePacked(
@@ -323,12 +324,12 @@ library WittyPixelsLib {
         ));
     }
 
-    function _loadJsonDescription(ERC721Token memory self, bytes32 tokenStatsRadHash)
+    function _loadJsonDescription(ERC721Token memory self)
         private pure
         returns (string memory)
     {
         string memory _totalPlayersString = toString(self.theStats.totalPlayers);
-        string memory _radHashHexString = toHexString(tokenStatsRadHash);
+        string memory _radHashHexString = toHexString(self.tokenStatsWitnetRadHash);
         return string(abi.encodePacked(
             "WittyPixelsTM collaborative art canvas drawn by ", _totalPlayersString,
             " attendees during '<b>", self.theEvent.name, "</b>' in ", self.theEvent.venue, 
@@ -354,7 +355,10 @@ library WittyPixelsLib {
         return uri;
     }
 
-    function tokenImageURI(uint256 tokenId, string memory baseURI) internal pure returns (string memory) {
+    function tokenImageURI(uint256 tokenId, string memory baseURI)
+        internal pure
+        returns (string memory)
+    {
         return string(abi.encodePacked(
             baseURI,
             "image/",
@@ -362,7 +366,10 @@ library WittyPixelsLib {
         ));
     }
 
-    function tokenMetadataURI(uint256 tokenId, string memory baseURI) internal pure returns (string memory) {
+    function tokenMetadataURI(uint256 tokenId, string memory baseURI)
+        internal pure
+        returns (string memory)
+    {
         return string(abi.encodePacked(
             baseURI,
             "metadata/",
@@ -370,7 +377,10 @@ library WittyPixelsLib {
         ));
     }
 
-    function tokenStatsURI(uint256 tokenId, string memory baseURI) internal pure returns (string memory) {
+    function tokenStatsURI(uint256 tokenId, string memory baseURI)
+        internal pure
+        returns (string memory)
+    {
         return string(abi.encodePacked(
             baseURI,
             "stats/",
@@ -505,7 +515,10 @@ library WittyPixelsLib {
     }
 
     /// @dev Converts a `uint256` to its ASCII `string` decimal representation.
-    function toString(uint256 value) internal pure returns (string memory) {
+    function toString(uint256 value)
+        internal pure
+        returns (string memory)
+    {
         unchecked {
             uint256 length = Math.log10(value) + 1;
             string memory buffer = new string(length);
@@ -528,7 +541,10 @@ library WittyPixelsLib {
     }
 
     /// @dev Converts a `bytes32` to its hex `string` representation with no "0x" prefix.
-    function toHexString(bytes32 value) internal pure returns (string memory) {
+    function toHexString(bytes32 value)
+        internal pure
+        returns (string memory)
+    {
         bytes memory buffer = new bytes(64);
         for (uint256 i = 64; i > 0; i --) {
             buffer[i - 1] = _HEX_SYMBOLS_[uint(value) & 0xf];
