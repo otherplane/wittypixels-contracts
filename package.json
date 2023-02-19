@@ -1,6 +1,6 @@
 {
   "name": "wittypixels-contracts",
-  "version": "1.0.3",
+  "version": "1.1.4",
   "description": "WittyPixelsTM Solidity Contracts",
   "author": "Guillermo Diaz <guillermo@otherplane.com>",
   "license": "MIT",
@@ -21,7 +21,7 @@
   "dependencies": {
     "@openzeppelin/contracts": "4.8.0",
     "@openzeppelin/contracts-upgradeable": "4.8.0",
-    "witnet-solidity-bridge": "https://github.com/guidiaz/witnet-solidity-bridge#feat/bytecodes#f3a171dbcc1433fbeafb0e53e7856c9a7ab0794f"
+    "witnet-solidity-bridge": "https://github.com/guidiaz/witnet-solidity-bridge#feat/WitnetRequestFactory#36a55f06f25643cfbccf23b27a47ddfa643e7eb7"
   },
   "devDependencies": {
     "chai": "4.3.6",
