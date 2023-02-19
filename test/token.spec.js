@@ -1,14 +1,12 @@
 const utils = require("../scripts/utils")
-const { BN, expectEvent, expectRevert } = require("@openzeppelin/test-helpers")
+const { BN, expectRevert } = require("@openzeppelin/test-helpers")
 const { assert } = require("chai")
-const { expectRevertCustomError } = require("custom-error-test-helper")
+const addresses = require("../migrations/addresses")
 
 const WitnetBytecodes = artifacts.require("WitnetBytecodes")
 const WitnetProxy = artifacts.require("WitnetProxy")
 const WitnetRequestBoard = artifacts.require("WitnetRequestBoardTrustableDefault")
-const WitnetRequestTemplate = artifacts.require("WitnetRequestTemplate")
-const WitnetRequestImageDigest = artifacts.require("WitnetRequestImageDigest")
-const WitnetRequestTokenStats = artifacts.require("WitnetRequestTokenStats")
+
 const WittyPixelsToken = artifacts.require("WittyPixelsToken")
 const WittyPixelsTokenVault = artifacts.require("WittyPixelsTokenVault")
 
@@ -30,6 +28,8 @@ contract("WittyPixels", ([curator, master, stranger, player, player2, patron]) =
         implementation = await WittyPixelsToken.deployed()
         prototype = await WittyPixelsTokenVault.deployed()
         witnet = await WitnetRequestBoard.deployed()
+        proxy = await WitnetProxy.new({ from: master })
+        token = await WittyPixelsToken.at(proxy.address)
         backendWallet = await web3.eth.accounts.privateKeyToAccount(
             '0x0000000000000000000000000000000000000000000000000000000000000001'
         )
@@ -37,12 +37,6 @@ contract("WittyPixels", ([curator, master, stranger, player, player2, patron]) =
     })
 
     context(`Token implementation address`, async () => {
-
-        before(async () => {
-            proxy = await WitnetProxy.new({ from: master })
-            token = await WittyPixelsToken.at(proxy.address)
-    
-        })
     
         context("WittyPixelsUpgradeableBase", async () => {
             it("deployed as an upgradable implementation", async() => {
@@ -116,10 +110,10 @@ contract("WittyPixels", ([curator, master, stranger, player, player2, patron]) =
             it("cannot launch new event", async () => {
                 await expectRevert(
                     implementation.launch([
-                        settings.core.events[0].name,
-                        settings.core.events[0].venue,
-                        settings.core.events[0].startTs,
-                        settings.core.events[0].endTs
+                        settings.core.events[0].metadata.name,
+                        settings.core.events[0].metadata.venue,
+                        settings.core.events[0].metadata.startTs,
+                        settings.core.events[0].metadata.endTs
                     ], { from: master }),
                     "not the owner"
                 )
@@ -132,28 +126,19 @@ contract("WittyPixels", ([curator, master, stranger, player, player2, patron]) =
             })
         })
         
-        context("IWittyPixelsTokenJackpots", async () => {
-            it("jackpots count for token #1 is zero", async () => {
-                assert.equal(await implementation.getTokenJackpotsCount(1), 0)
-            })
-        })
-        
         context("ITokenVaultFactory", async () => {
             it("token vault prototype addess is zero", async () => {
-                assert.equal(await implementation.tokenVaultPrototype.call(), "0x0000000000000000000000000000000000000000")
-            })
-            it("token vaults count is zero", async () => {
-                assert.equal(await implementation.totalTokenVaults.call(), 0)
+                assert.equal(await implementation.getTokenVaultFactoryPrototype.call(), "0x0000000000000000000000000000000000000000")
             })
             it.skip("fractionalizing external collections is not supported", async () => {
                 await expectRevert(
                     implementation.fractionalize(
                         implementation.address, 1, [
-                            settings.core.events[0].auction.deltaPrice,
-                            settings.core.events[0].auction.deltaSeconds,
-                            settings.core.events[0].auction.reservePrice,
-                            settings.core.events[0].auction.startingPrice,
-                            settings.core.events[0].auction.startingTs,
+                            settings.core.events[0].fractionalize.auctionSettings.deltaPrice,
+                            settings.core.events[0].fractionalize.auctionSettings.deltaSeconds,
+                            settings.core.events[0].fractionalize.auctionSettings.reservePrice,
+                            settings.core.events[0].fractionalize.auctionSettings.startingPrice,
+                            settings.core.events[0].fractionalize.auctionSettings.startingTs,
                         ], { from: master }
                     ), "not implemented"
                 )
@@ -161,14 +146,13 @@ contract("WittyPixels", ([curator, master, stranger, player, player2, patron]) =
             it("fractionalizing first token is not possible", async () => {
                 await expectRevert(
                     implementation.fractionalize(
-                        1,
-                        web3.eth.abi.encodeParameter(
+                        "0x0", web3.eth.abi.encodeParameter(
                             "uint256[5]", [
-                                "0x" + new BN(settings.core.events[0].auction.deltaPrice),
-                                settings.core.events[0].auction.deltaSeconds,
-                                "0x" + new BN(settings.core.events[0].auction.reservePrice),
-                                "0x" + new BN(settings.core.events[0].auction.startingPrice),
-                                settings.core.events[0].auction.startingTs,
+                                "0x" + new BN(settings.core.events[0].fractionalize.auctionSettings.deltaPrice),
+                                settings.core.events[0].fractionalize.auctionSettings.deltaSeconds,
+                                "0x" + new BN(settings.core.events[0].fractionalize.auctionSettings.reservePrice),
+                                "0x" + new BN(settings.core.events[0].fractionalize.auctionSettings.startingPrice),
+                                settings.core.events[0].fractionalize.auctionSettings.startingTs,
                             ]
                         ), { from: master }
                     ), "not initialized"
@@ -238,7 +222,7 @@ contract("WittyPixels", ([curator, master, stranger, player, player2, patron]) =
                 )
             })
         })
-        context("IWittyPixelsTokenVaultAuction", async () => {
+        context("ITokenVaultAuction", async () => {
             it("auctioning() reverts", async() => {
                 await expectRevert(
                     prototype.auctioning.call(),
@@ -264,18 +248,18 @@ contract("WittyPixels", ([curator, master, stranger, player, player2, patron]) =
                 )
             })
             it("setAuctionSettings(..) from master address reverts", async () => {
-                var deltaPriceBN = "0x" + utils.padLeft((new BN(settings.core.events[0].auction.deltaPrice)).toString(16), "0", 64)
-                var reservePriceBN = "0x" + utils.padLeft((new BN(settings.core.events[0].auction.reservePrice)).toString(16), "0", 64)
-                var startingPriceBN = "0x" + utils.padLeft((new BN(settings.core.events[0].auction.startingPrice)).toString(16), "0", 64)
+                var deltaPriceBN = "0x" + utils.padLeft((new BN(settings.core.events[0].fractionalize.auctionSettings.deltaPrice)).toString(16), "0", 64)
+                var reservePriceBN = "0x" + utils.padLeft((new BN(settings.core.events[0].fractionalize.auctionSettings.reservePrice)).toString(16), "0", 64)
+                var startingPriceBN = "0x" + utils.padLeft((new BN(settings.core.events[0].fractionalize.auctionSettings.startingPrice)).toString(16), "0", 64)
                 await expectRevert(
                     prototype.setAuctionSettings(
                         web3.eth.abi.encodeParameter(
                             "uint256[5]", [
                                 deltaPriceBN,
-                                settings.core.events[0].auction.deltaSeconds,
+                                settings.core.events[0].fractionalize.auctionSettings.deltaSeconds,
                                 reservePriceBN,
                                 startingPriceBN,
-                                settings.core.events[0].auction.startingTs,
+                                settings.core.events[0].fractionalize.auctionSettings.startingTs,
                             ]
                         ),
                         { from: master }
@@ -284,7 +268,7 @@ contract("WittyPixels", ([curator, master, stranger, player, player2, patron]) =
                 )
             })
         })
-        context("IWittyPixelsTokenVaultAuctionDutch", async () => {
+        context("ITokenVaultAuctionDutch", async () => {
             it("acquire() paying 50 ETH reverts", async() => {
                 await expectRevert(
                     prototype.acquire({ from: stranger, value: 50 * 10 ** 18 }),
@@ -363,8 +347,9 @@ contract("WittyPixels", ([curator, master, stranger, player, player2, patron]) =
             })
             it("stranger cannot upgrade proxy, ever", async () => {
                 implementation = await WittyPixelsToken.new(
-                    WitnetRequestImageDigest.address,
-                    WitnetRequestTokenStats.address,
+                    witnet.address,
+                    addresses.default.test.WitnetRequestTemplateImageDigest,
+                    addresses.default.test.WitnetRequestTemplateTokenStats,
                     true,
                     "0x0",
                 )
@@ -374,7 +359,7 @@ contract("WittyPixels", ([curator, master, stranger, player, player2, patron]) =
                 )
             })
             it("fails if trying to upgrade to something without same proxiableUUID()", async () => {
-                await expectRevert.unspecified(proxy.upgradeTo(WitnetRequestImageDigest.address, "0x", { from: master }))
+                await expectRevert.unspecified(proxy.upgradeTo(witnet.address, "0x", { from: master }))
             })
             it("fails if trying to upgrade to proxy address itself", async () => {
                 await expectRevert(
@@ -463,10 +448,10 @@ contract("WittyPixels", ([curator, master, stranger, player, player2, patron]) =
                 it("stranger cannot launch next token", async () => {
                     await expectRevert(
                         token.launch([
-                                settings.core.events[0].name,
-                                settings.core.events[0].venue,
-                                settings.core.events[0].startTs,
-                                settings.core.events[0].endTs
+                                settings.core.events[0].metadata.name,
+                                settings.core.events[0].metadata.venue,
+                                settings.core.events[0].metadata.startTs,
+                                settings.core.events[0].metadata.endTs
                             ],
                             { from: stranger }
                         ), "not the owner"
@@ -475,9 +460,9 @@ contract("WittyPixels", ([curator, master, stranger, player, player2, patron]) =
                 it("owner cannot launch event with bad timestamps", async () => {
                     await expectRevert(
                         token.launch([
-                                settings.core.events[0].name,
-                                settings.core.events[0].venue,
-                                settings.core.events[0].startTs,
+                                settings.core.events[0].metadata.name,
+                                settings.core.events[0].metadata.venue,
+                                settings.core.events[0].metadata.startTs,
                                 0
                             ],
                             { from: curator }
@@ -485,21 +470,26 @@ contract("WittyPixels", ([curator, master, stranger, player, player2, patron]) =
                     )
                     await expectRevert(
                         token.launch([
-                                settings.core.events[0].name,
-                                settings.core.events[0].venue,
-                                settings.core.events[0].endTs,
-                                settings.core.events[0].startTs,
+                                settings.core.events[0].metadata.name,
+                                settings.core.events[0].metadata.venue,
+                                settings.core.events[0].metadata.endTs,
+                                settings.core.events[0].metadata.startTs,
                             ],
                             { from: curator }
                         ), "bad timestamps"
                     )
                 })
                 it("owner cannot start minting", async() => {
+                    
                     await expectRevert(
-                        token.mint(
-                            1,
-                            "0x738a610e267ba49e7d22c96a5f59740e88a10ba8a942047052e57dc3e69c0a64",
-                            { from: curator }
+                        token.mint([
+                                settings.core.events[0].mint.witnetSLA.numWitnesses,
+                                settings.core.events[0].mint.witnetSLA.minConsensusPercentage,
+                                settings.core.events[0].mint.witnetSLA.witnessCollateral,
+                                settings.core.events[0].mint.witnetSLA.witnessReward,
+                                settings.core.events[0].mint.witnetSLA.minerCommitFee,
+                            ],
+                            { from: curator },
                         ), "bad mood"
                     )
                 })
@@ -507,18 +497,18 @@ contract("WittyPixels", ([curator, master, stranger, player, player2, patron]) =
             context("Upon launching:", async () => {
                 it("owner can launch next token with valid timestamps", async () => {
                     await token.launch([
-                            settings.core.events[0].name,
-                            settings.core.events[0].venue,
-                            settings.core.events[0].startTs,
-                            settings.core.events[0].endTs
+                            settings.core.events[0].metadata.name,
+                            settings.core.events[0].metadata.venue,
+                            settings.core.events[0].metadata.startTs,
+                            settings.core.events[0].metadata.endTs
                         ],
                         { from: curator }
                     )
                 })
                 it("owner can reset token's event in 'Launching' status", async () => {
                     await token.launch([
-                            settings.core.events[0].name,
-                            settings.core.events[0].venue,
+                            settings.core.events[0].metadata.name,
+                            settings.core.events[0].metadata.venue,
                             Math.round(Date.now() / 1000) - 86400,
                             Math.round(Date.now() / 1000) - 86400,
                         ],
@@ -532,7 +522,7 @@ contract("WittyPixels", ([curator, master, stranger, player, player2, patron]) =
                 })
                 it("getTokenMetadata(1) should contain event data only", async () => {
                     var metadata = await token.getTokenMetadata.call(1)
-                    assert.equal(metadata.theEvent.name, settings.core.events[0].name)
+                    assert.equal(metadata.theEvent.name, settings.core.events[0].metadata.name)
                 })
                 it("tokenURI(1) must still fail", async () => {
                     await expectRevert(
@@ -557,19 +547,26 @@ contract("WittyPixels", ([curator, master, stranger, player, player2, patron]) =
                 })
             })
             context("Upon minting:", async () => {
-                it("stranger cannot start minting", async () => {
+                it("strangers cannot start minting process", async () => {
                     await expectRevert(
-                        token.mint(
-                            1,
-                            "0x738a610e267ba49e7d22c96a5f59740e88a10ba8a942047052e57dc3e69c0a64",
-                            { from: stranger }
+                        token.mint([
+                                settings.core.events[0].mint.witnetSLA.numWitnesses,
+                                settings.core.events[0].mint.witnetSLA.minConsensusPercentage,
+                                settings.core.events[0].mint.witnetSLA.witnessCollateral,
+                                settings.core.events[0].mint.witnetSLA.witnessReward,
+                                settings.core.events[0].mint.witnetSLA.minerCommitFee,                            ],
+                            { from: stranger, value: 10 ** 18 }
                         ), "not the owner"
                     )
                 })
                 it("owner can start minting", async () => {
-                    await token.mint(
-                        1,
-                        "0x738a610e267ba49e7d22c96a5f59740e88a10ba8a942047052e57dc3e69c0a64", 
+                    await token.mint([
+                            settings.core.events[0].mint.witnetSLA.numWitnesses,
+                            settings.core.events[0].mint.witnetSLA.minConsensusPercentage,
+                            settings.core.events[0].mint.witnetSLA.witnessCollateral,
+                            settings.core.events[0].mint.witnetSLA.witnessReward,
+                            settings.core.events[0].mint.witnetSLA.minerCommitFee,
+                        ],
                         { from: curator, gas: 3000000, value: 10 ** 18 }
                     )
                 })
@@ -584,8 +581,8 @@ contract("WittyPixels", ([curator, master, stranger, player, player2, patron]) =
                     var metadata = await token.getTokenMetadata.call(1)
                     assert.notEqual(metadata.birthTs, 0)
                 })
-                it("getTokenWitnetRequests(1) should return valid WitnetRequestTemplate instances", async () => {
-                    var requests = await token.getTokenWitnetRequests.call(1)
+                it("getTokenWitnetQueries(1) should return valid WitnetRequestTemplate instances", async () => {
+                    var requests = await token.getTokenWitnetQueries.call(1)
                     witnetRequestImageDigest = requests[0]
                     witnetRequestTokenStats = requests[1]
                 })
@@ -595,15 +592,19 @@ contract("WittyPixels", ([curator, master, stranger, player, player2, patron]) =
                         "unknown token"
                     )
                 })
-                it("owner can re-start requests in 'Minting' status", async () => {
-                    await token.mint(
-                        1,
-                        "0x738a610e267ba49e7d22c96a5f59740e88a10ba8a942047052e57dc3e69c0a64",
-                        { from: curator, value: 10 ** 18 }
+                it("owner cannot re-start requests in 'Minting' status if former requests were not solved yet", async () => {
+                    await expectRevert(
+                        token.mint([
+                                settings.core.events[0].mint.witnetSLA.numWitnesses,
+                                settings.core.events[0].mint.witnetSLA.minConsensusPercentage,
+                                settings.core.events[0].mint.witnetSLA.witnessCollateral,
+                                settings.core.events[0].mint.witnetSLA.witnessReward,
+                                settings.core.events[0].mint.witnetSLA.minerCommitFee,
+                            ],
+                            { from: curator, value: 10 ** 18 }
+                        ),
+                        "awaiting Witnet responses"
                     )
-                    var requests = await token.getTokenWitnetRequests.call(1)
-                    assert.notEqual(requests[0], witnetRequestImageDigest)
-                    assert.notEqual(requests[1], witnetRequestTokenStats)
                 })
                 it("totalSupply() should still be 0", async () => {
                     assert.equal(await token.totalSupply.call(), 0)
@@ -615,10 +616,10 @@ contract("WittyPixels", ([curator, master, stranger, player, player2, patron]) =
                     await expectRevert(
                         token.launch(
                             [
-                                settings.core.events[0].name,
-                                settings.core.events[0].venue,
-                                settings.core.events[0].startTs,
-                                settings.core.events[0].endTs
+                                settings.core.events[0].metadata.name,
+                                settings.core.events[0].metadata.venue,
+                                settings.core.events[0].metadata.startTs,
+                                settings.core.events[0].metadata.endTs
                             ], { from: curator }
                         ), "bad mood"
                     )
@@ -626,8 +627,7 @@ contract("WittyPixels", ([curator, master, stranger, player, player2, patron]) =
                 it("owner cannot fractionalize while a token vault prototype is not set", async () => {
                     await expectRevert(
                         token.fractionalize(
-                            1,
-                            web3.eth.abi.encodeParameter(
+                            "0x0", web3.eth.abi.encodeParameter(
                                 "uint256[5]", [
                                     0,
                                     0,
@@ -642,25 +642,24 @@ contract("WittyPixels", ([curator, master, stranger, player, player2, patron]) =
                 })
                 it("stranger cannot set token vault prototype", async () => {
                     await expectRevert(
-                        token.setTokenVaultPrototype(prototype.address, { from: stranger}),
+                        token.setTokenVaultFactoryPrototype(prototype.address, { from: stranger}),
                         "not the owner"
                     )
                 })
                 it("fails if owner tries to set uncompliant token vault prototype", async () => {
                     await expectRevert(
-                        token.setTokenVaultPrototype(implementation.address, { from: curator }),
+                        token.setTokenVaultFactoryPrototype(implementation.address, { from: curator }),
                         "uncompliant"
                     )
                 })
                 it("owner can set a compliant token vault protoype", async () => {
-                    await token.setTokenVaultPrototype(prototype.address, { from: curator })
-                    assert.equal(prototype.address, await token.tokenVaultPrototype.call())
+                    await token.setTokenVaultFactoryPrototype(prototype.address, { from: curator })
+                    assert.equal(prototype.address, await token.getTokenVaultFactoryPrototype.call())
                 })
                 it("owner cannot fractionalize while Witnet data requests are not solved", async () => {
                     await expectRevert(
                         token.fractionalize(
-                            1,
-                            web3.eth.abi.encodeParameter(
+                            "0x0", web3.eth.abi.encodeParameter(
                                 "uint256[5]", [
                                     0,
                                     0,
@@ -670,107 +669,79 @@ contract("WittyPixels", ([curator, master, stranger, player, player2, patron]) =
                                 ]
                             ),
                             { from: curator }
-                        ), "no value yet"
+                        ), "awaiting response from Witnet"
                     )
                 })
             })
             context("Upon Witnet data requests being solved:", async () => {
                 context("with unexpected result types...", async () => {
                     before(async() => {
-                        var requests = await token.getTokenWitnetRequests.call(1)
-                        var witnetRequestImageDigest = await WitnetRequestTemplate.at(requests[0])
-                        var witnetRequestTokenStats = await WitnetRequestTemplate.at(requests[1])
-                        var imageDigestId = await witnetRequestImageDigest.lastAttemptId.call()
-                        var tokenStatsId = await witnetRequestTokenStats.lastAttemptId.call()
-                        // console.log("imageDigestId =>", imageDigestId)
-                        // console.log("tokenStats =>", tokenStatsId)
+                        var requests = await token.getTokenWitnetQueries.call(1)
                         await witnet.reportResult(
-                            imageDigestId,
+                            requests.imageDigestId,
                             "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
-                            "0x66737472696E67", // "string"
+                            "0x1904D2", // 1234
                             { from: master }
                         )
                         await witnet.reportResult(
-                            tokenStatsId,
+                            requests.tokenStatsId,
                             "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
                             // "0x8478423078646561646265656664656164626565666465616462656566646561646265656664656164626565666465616462656566646561646265656664656164626565661904D2187B193039",
                                 // [ "0xdeadbeef...", 1234, 123, 12345]
                             "0x88784064656164626565666465616462656566646561646265656664656164626565666465616462656566646561646265656664656164626565666465616462656566782E516D504B317333704E594C693945526971334244784B6134586F736757774652515579644855747A3459677071421901F41904D21903E81909291901591910E1",
                                 // [ "deadbeef...", "QmPK1s3pNYLi9ERiq3BDxKa4XosgWwFRQUydHUtz4YgpqB", 500, 174, 1000, 2345, 345, 4321]
                             { from: master }
-                        )
-                        // var digestValue = await witnetRequestImageDigest.lastValue.call()
-                        // var statsValue = await witnetRequestTokenStats.lastValue.call()    
-                        // assert.equal(digestValue[1], "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef")
-                        // assert.equal(statsValue[1], "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef")
-
-                        // console.log("witnet =>", witnet.address)
-                        // console.log("witnetRequestImageDigest.witnet =>", await witnetRequestImageDigest.witnet.call())
-                                            
-                        // digestValue = web3.eth.abi.decodeParameter("uint256", digestValue[0])
-                        // statsValue = web3.eth.abi.decodeParameter({
-                        //     "ERC721TokenStats": {
-                        //         "pixelsRoot": "bytes32",
-                        //         "totalPixels": "uint256", 
-                        //         "totalPlayers": "uint256", 
-                        //         "totalScans": "uint256" 
-                        //     }}, statsValue[0]
-                        // )
-                        // console.log("digestValue =>", digestValue)
-                        // console.log("statsValue =>", statsValue)
-                        
+                        )                        
                     })
                     it("fractionalizing fails with expected revert message", async () => {
-                        await expectRevert(
+                        await expectRevert.unspecified(
                             token.fractionalize(
-                                1,
-                                web3.eth.abi.encodeParameter(
+                                "0x0", web3.eth.abi.encodeParameter(
                                     "uint256[5]", [
-                                        0,//new BN(settings.core.events[0].auction.deltaPrice),
-                                        0,//new BN(settings.core.events[0].auction.deltaSeconds),
-                                        0,//new BN(settings.core.events[0].auction.reservePrice),
-                                        0,//new BN(settings.core.events[0].auction.startingPrice),
-                                        0,//new BN(settings.core.events[0].auction.startingTs),
+                                        0,
+                                        0,
+                                        0,
+                                        0,
+                                        0,
                                     ]
                                 ),
                                 { from: curator }
-                            ), "cannot deserialize image"
+                            )
                         )
                     })
                 })
                 context("with badly formed merkle root...", async () => {
                     before(async() => {
-                        await token.mint(
-                            1,
-                            "0x738a610e267ba49e7d22c96a5f59740e88a10ba8a942047052e57dc3e69c0a64", 
+                        await token.mint([
+                                settings.core.events[0].mint.witnetSLA.numWitnesses,
+                                settings.core.events[0].mint.witnetSLA.minConsensusPercentage,
+                                settings.core.events[0].mint.witnetSLA.witnessCollateral,
+                                settings.core.events[0].mint.witnetSLA.witnessReward,
+                                settings.core.events[0].mint.witnetSLA.minerCommitFee,
+                            ],
                             { from: curator, gas: 3000000, value: 10 ** 18 }
                         )
-                        var requests = await token.getTokenWitnetRequests.call(1)
-                        var witnetRequestImageDigest = await WitnetRequestTemplate.at(requests[0])
-                        var witnetRequestTokenStats = await WitnetRequestTemplate.at(requests[1])
-                        var imageDigestId = await witnetRequestImageDigest.lastAttemptId.call()
-                        var tokenStatsId = await witnetRequestTokenStats.lastAttemptId.call()
+                        var requests = await token.getTokenWitnetQueries.call(1)
                         await witnet.reportResult(
-                            imageDigestId,
+                            requests.imageDigestId,
                             "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
-                            "0x1A006691B7", // uint64(6721975)
+                            "0x78497368612D3235363A2034663732333333313438363232653461653536653963363564353761656534373138366364363931306361303830373537616237326363306336353066366262",
+                                // "sha-256: 4f72333148622e4ae56e9c65d57aee47186cd6910ca080757ab72cc0c650f6bb"
                             { from: master }
                         )
                         await witnet.reportResult(
-                            tokenStatsId,
+                            requests.tokenStatsId,
                             "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
                             //"0x8478423078646561646265656664656164626565666465616462656566646561646265656664656164626565666465616462656566646561646265656664656164626565661904D2187B193039",
-                                // [ "0xdeadbeef...", 1234, 123, 12345]
-                            "0x887842307864656164626565666465616462656566646561646265656664656164626565666465616462656566646561646265656664656164626565666465616462656566782E516D504B317333704E594C693945526971334244784B6134586F736757774652515579644855747A3459677071421901F41904D21903E81909291901591910E1",
-                                // [ "0xdeadbeef...", "QmPK1s3pNYLi9ERiq3BDxKa4XosgWwFRQUydHUtz4YgpqB", 500, 1234, 1000, 2345, 345, 4321]
+                            "0x871901f418ae78423078646161323061303433613064323931633266653266653531386433356236643437313133363332316437363065323964356434386564656261356237633563391901f4190929187c193039",
+                                // [ 500, 174, "0xdaa20a043a0d291c2fe2fe518d35b6d471136321d760e29d5d48edeba5b7c5c9", 500, 2345, 124, 12345 ]
                             { from: master }
                         )
                     })
                     it("fractionalizing fails with expected revert message", async () => {
                         await expectRevert(
                             token.fractionalize(
-                                1,
-                                web3.eth.abi.encodeParameter(
+                                "0x0", web3.eth.abi.encodeParameter(
                                     "uint256[5]", [
                                         0,
                                         0,
@@ -786,35 +757,35 @@ contract("WittyPixels", ([curator, master, stranger, player, player2, patron]) =
                 })
                 context("with valid results...", async () => {
                     before(async() => {
-                        await token.mint(
-                            1,
-                            "0x738a610e267ba49e7d22c96a5f59740e88a10ba8a942047052e57dc3e69c0a64", 
+                        await token.mint([
+                                settings.core.events[0].mint.witnetSLA.numWitnesses,
+                                settings.core.events[0].mint.witnetSLA.minConsensusPercentage,
+                                settings.core.events[0].mint.witnetSLA.witnessCollateral,
+                                settings.core.events[0].mint.witnetSLA.witnessReward,
+                                settings.core.events[0].mint.witnetSLA.minerCommitFee,
+                            ],
                             { from: curator, gas: 3000000, value: 10 ** 18 }
                         )
-                        var requests = await token.getTokenWitnetRequests.call(1)
-                        var witnetRequestImageDigest = await WitnetRequestTemplate.at(requests[0])
-                        var witnetRequestTokenStats = await WitnetRequestTemplate.at(requests[1])
-                        var imageDigestId = await witnetRequestImageDigest.lastAttemptId.call()
-                        var tokenStatsId = await witnetRequestTokenStats.lastAttemptId.call()
+                        var requests = await token.getTokenWitnetQueries.call(1)
                         await witnet.reportResult(
-                            imageDigestId,
+                            requests.imageDigestId,
                             "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
-                            "0x1A006691B7", // uint64(6721975)
+                            "0x78497368612D3235363A2034663732333333313438363232653461653536653963363564353761656534373138366364363931306361303830373537616237326363306336353066366262",
+                                // "sha-256: 4f72333148622e4ae56e9c65d57aee47186cd6910ca080757ab72cc0c650f6bb"
                             { from: master }
                         )
                         await witnet.reportResult(
-                            tokenStatsId,
+                            requests.tokenStatsId,
                             "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
-                            "0x88784064616132306130343361306432393163326665326665353138643335623664343731313336333231643736306532396435643438656465626135623763356339601901f418ae1901f4190929187c193039",
-                                // [ "daa20a043a0d291c2fe2fe518d35b6d471136321d760e29d5d48edeba5b7c5c9", "", 500, 174, 500, 2345, 124, 12345]
+                            "0x871901f418ae7840646161323061303433613064323931633266653266653531386433356236643437313133363332316437363065323964356434386564656261356237633563391901f4190929187c193039",
+                                // [ 500, 174, "daa20a043a0d291c2fe2fe518d35b6d471136321d760e29d5d48edeba5b7c5c9", 500, 2345, 124, 12345 ]
                             { from: master }
                         )
                     })
                     it("owner cannot fractionalize if providing invalid auction settings", async () => {
                         await expectRevert(
                             token.fractionalize(
-                                1,
-                                web3.eth.abi.encodeParameter(
+                                "0x0", web3.eth.abi.encodeParameter(
                                     "uint256[5]", [
                                         0,
                                         0,
@@ -827,45 +798,50 @@ contract("WittyPixels", ([curator, master, stranger, player, player2, patron]) =
                             ), "bad settings"
                         )
                     })
-                    it("stranger cannot fractionalize even if providing valid auction settings", async () => {
-                        await expectRevert(
-                            token.fractionalize(
-                                1,
-                                web3.eth.abi.encodeParameter(
-                                    "uint256[5]", [
-                                        "0x" + new BN(settings.core.events[0].auction.deltaPrice),
-                                        settings.core.events[0].auction.deltaSeconds,
-                                        "0x" + new BN(settings.core.events[0].auction.reservePrice),
-                                        "0x" + new BN(settings.core.events[0].auction.startingPrice),
-                                        settings.core.events[0].auction.startingTs,
-                                    ]
-                                ),
-                                { from: stranger }
-                            ), "not the owner"
-                        )
-                    })
-                    it("owner can fractionalize if providing valid auction settings", async () => {
-                        var deltaPriceBN = "0x" + utils.padLeft((new BN(settings.core.events[0].auction.deltaPrice)).toString(16), "0", 64)
-                        var reservePriceBN = "0x" + utils.padLeft((new BN(settings.core.events[0].auction.reservePrice)).toString(16), "0", 64)
-                        var startingPriceBN = "0x" + utils.padLeft((new BN(settings.core.events[0].auction.startingPrice)).toString(16), "0", 64)
+                    it("stranger can fractionalize if providing valid auction settings", async () => {
+                        var deltaPriceBN = "0x" + utils.padLeft((new BN(settings.core.events[0].fractionalize.auctionSettings.deltaPrice)).toString(16), "0", 64)
+                        var reservePriceBN = "0x" + utils.padLeft((new BN(settings.core.events[0].fractionalize.auctionSettings.reservePrice)).toString(16), "0", 64)
+                        var startingPriceBN = "0x" + utils.padLeft((new BN(settings.core.events[0].fractionalize.auctionSettings.startingPrice)).toString(16), "0", 64)
                         var tx = await token.fractionalize(
-                            1,
-                            web3.eth.abi.encodeParameter(
+                            "0x0", web3.eth.abi.encodeParameter(
                                 "uint256[5]", [
                                     deltaPriceBN,
-                                    settings.core.events[0].auction.deltaSeconds,
+                                    settings.core.events[0].fractionalize.auctionSettings.deltaSeconds,
                                     reservePriceBN,
                                     startingPriceBN,
-                                    settings.core.events[0].auction.startingTs,
+                                    settings.core.events[0].fractionalize.auctionSettings.startingTs,
                                 ]
                             ),
                             { from: curator }
                         )
                         var logs = tx.logs.filter(log => log.event === "Fractionalized")
                         assert.equal(logs.length, 1, "'Fractionalized' was not emitted")
-                        // console.log("tokenVault =>", logs[0].args.tokenVault)
                         tokenVault = await WittyPixelsTokenVault.at(logs[0].args.tokenVault)
-                        // console.log("tokenVault =>", tokenVault.address)
+                        assert.equal(
+                            await token.owner.call(),
+                            await tokenVault.curator.call(),
+                            "token vault curatorship should have been transferred to collection's owner"
+                        )
+                    })
+                    it("token cannot be fractionalized more than once, not even by the owner", async () => {
+                        var deltaPriceBN = "0x" + utils.padLeft((new BN(settings.core.events[0].fractionalize.auctionSettings.deltaPrice)).toString(16), "0", 64)
+                        var reservePriceBN = "0x" + utils.padLeft((new BN(settings.core.events[0].fractionalize.auctionSettings.reservePrice)).toString(16), "0", 64)
+                        var startingPriceBN = "0x" + utils.padLeft((new BN(settings.core.events[0].fractionalize.auctionSettings.startingPrice)).toString(16), "0", 64)
+                        await expectRevert(
+                            token.fractionalize(
+                                "0x0", web3.eth.abi.encodeParameter(
+                                    "uint256[5]", [
+                                        deltaPriceBN,
+                                        settings.core.events[0].fractionalize.auctionSettings.deltaSeconds,
+                                        reservePriceBN,
+                                        startingPriceBN,
+                                        settings.core.events[0].fractionalize.auctionSettings.startingTs,
+                                    ]
+                                ),
+                                { from: curator }
+                            ), 
+                            "bad mood"
+                        )
                     })
                 })
             })
@@ -874,14 +850,13 @@ contract("WittyPixels", ([curator, master, stranger, player, player2, patron]) =
                 it("owner cannot fractionalize the same token again", async () => {
                     await expectRevert(
                         token.fractionalize(
-                            1,
-                            web3.eth.abi.encodeParameter(
+                            "0x0", web3.eth.abi.encodeParameter(
                                 "uint256[5]", [
-                                    "0x" + new BN(settings.core.events[0].auction.deltaPrice),
-                                    settings.core.events[0].auction.deltaSeconds,
-                                    "0x" + new BN(settings.core.events[0].auction.reservePrice),
-                                    "0x" + new BN(settings.core.events[0].auction.startingPrice),
-                                    settings.core.events[0].auction.startingTs,
+                                    "0x" + new BN(settings.core.events[0].fractionalize.auctionSettings.deltaPrice),
+                                    settings.core.events[0].fractionalize.auctionSettings.deltaSeconds,
+                                    "0x" + new BN(settings.core.events[0].fractionalize.auctionSettings.reservePrice),
+                                    "0x" + new BN(settings.core.events[0].fractionalize.auctionSettings.startingPrice),
+                                    settings.core.events[0].fractionalize.auctionSettings.startingTs,
                                 ]
                             ),
                             { from: stranger }
@@ -901,7 +876,7 @@ contract("WittyPixels", ([curator, master, stranger, player, player2, patron]) =
                     var metadata = await token.getTokenMetadata.call(1)
                     assert.equal(metadata.theStats.totalPixels, 2345)
                     assert.equal(
-                        metadata.theStats.authorshipsRoot,
+                        metadata.theStats.canvasRoot,
                         "0xdaa20a043a0d291c2fe2fe518d35b6d471136321d760e29d5d48edeba5b7c5c9"
                     )
                 })
@@ -921,7 +896,6 @@ contract("WittyPixels", ([curator, master, stranger, player, player2, patron]) =
                     var cloned = await tokenVault.cloned.call()
                     var initialized = await tokenVault.initialized.call()
                     var self = await tokenVault.self.call()
-                    await tokenVault.version.call()
                     await tokenVault.name.call()
                     var symbol = await tokenVault.symbol.call()
                     var tokenCurator = await tokenVault.curator.call()
@@ -931,11 +905,8 @@ contract("WittyPixels", ([curator, master, stranger, player, player2, patron]) =
                     var nextPriceTimestamp = await tokenVault.getNextPriceTimestamp.call()
                     var info = await tokenVault.getInfo.call()
                     var authorsCount = await tokenVault.getAuthorsCount.call()
-                    var jackpotsCount = await tokenVault.getJackpotsCount.call()
-                    var randomized = await tokenVault.randomized.call()
                     var auctioning = await tokenVault.auctioning.call()
-                    await tokenVault.getAuctionSettings.call()                    
-                    await tokenVault.settings.call()                    
+                    await tokenVault.getAuctionSettings.call()                  
                     assert.equal(cloned, true, "not cloned")
                     assert.equal(initialized, true, "not initialized")
                     assert.equal(self, prototype.address, "unexpected self")
@@ -944,14 +915,12 @@ contract("WittyPixels", ([curator, master, stranger, player, player2, patron]) =
                     assert.equal(totalPixels.toString(), "174", "bad total pixels")
                     assert.equal(totalSupply.toString(), "174000000000000000000", "bad total supply")
                     assert.equal(price, "32000000000000000000", "unexpected initial price")
-                    assert.equal(nextPriceTimestamp.toString(), settings.core.events[0].auction.startingTs, "bad auction start timestamp")
+                    assert.equal(nextPriceTimestamp.toString(), settings.core.events[0].fractionalize.auctionSettings.startingTs, "bad auction start timestamp")
                     assert.equal(info.status.toString(), "0", "vault not in 'Awaiting status")
                     assert.equal(info.stats.totalPixels, totalPixels, "bad vault info.stats.totalPixels")
                     assert.equal(info.currentPrice.toString(), price.toString(), "bad vault info.currentPrice")
                     assert.equal(info.nextPriceTs.toString(), nextPriceTimestamp.toString(), "bad vault info.nextPriceTs")
                     assert.equal(authorsCount.toString(), "0", "bad authors count")
-                    assert.equal(jackpotsCount.toString(), "0", "bad jackpots count")
-                    assert.equal(randomized, false)
                     assert.equal(auctioning, false)
                 })
             })
@@ -990,10 +959,10 @@ contract("WittyPixels", ([curator, master, stranger, player, player2, patron]) =
 it("curator can change auction settings", async () => {
     const data = await web3.eth.abi.encodeParameter(
         "uint256[5]", [
-            settings.core.events[0].auction.deltaPrice,
+            settings.core.events[0].fractionalize.auctionSettings.deltaPrice,
             30, // seconds
-            settings.core.events[0].auction.reservePrice,
-            settings.core.events[0].auction.startingPrice,
+            settings.core.events[0].fractionalize.auctionSettings.reservePrice,
+            settings.core.events[0].fractionalize.auctionSettings.startingPrice,
             Math.floor(Date.now() / 1000)
         ]
     )
@@ -1212,8 +1181,8 @@ it("curator can change auction settings", async () => {
                     })
                     it("getWalletInfo(player) returns expected values", async () => {
                         var walletInfo = await tokenVault.getWalletInfo.call(player)
-                        assert.equal(walletInfo[1], "0")
-                        assert.equal(walletInfo[2], "23")
+                        assert.equal(walletInfo[2], "0")
+                        assert.equal(walletInfo[3], "23")
                     })
                 })
                 context("playerIndex: 3", async () => {
@@ -1272,24 +1241,24 @@ it("curator can change auction settings", async () => {
                     })
                     it("getWalletInfo(player) returns expected values", async () => {
                         var walletInfo = await tokenVault.getWalletInfo.call(player)
-                        assert.equal(walletInfo[1], "0")
-                        assert.equal(walletInfo[2], "100")
+                        assert.equal(walletInfo[2], "0")
+                        assert.equal(walletInfo[3], "100")
                     })
                 })
                 context("after some redemptions...", async () => {
-                    it.skip("getAuctionSettings() returns expected values", async () => {
+                    it("getAuctionSettings() returns expected values", async () => {
                         const raw = await tokenVault.getAuctionSettings.call()
                         const params = web3.eth.abi.decodeParameter("uint256[5]", raw)
-                        assert.equal(params[1], settings.core.events[0].auction.deltaSeconds.toString())
-                        assert.equal(params[3], settings.core.events[0].auction.startingPrice)
+                        assert.equal(params[1], "30")
+                        assert.equal(params[3], settings.core.events[0].fractionalize.auctionSettings.startingPrice)
                     })
                     it("stranger cannot change auction settings", async () =>{
                         const data = await web3.eth.abi.encodeParameter(
                             "uint256[5]", [
-                                settings.core.events[0].auction.deltaPrice,
+                                settings.core.events[0].fractionalize.auctionSettings.deltaPrice,
                                 30, // seconds
-                                settings.core.events[0].auction.reservePrice,
-                                settings.core.events[0].auction.startingPrice,
+                                settings.core.events[0].fractionalize.auctionSettings.reservePrice,
+                                settings.core.events[0].fractionalize.auctionSettings.startingPrice,
                                 Math.floor(Date.now() / 1000)
                             ]
                         )
@@ -1301,10 +1270,10 @@ it("curator can change auction settings", async () => {
                     it.skip("curator can change auction settings", async () => {
                         const data = await web3.eth.abi.encodeParameter(
                             "uint256[5]", [
-                                settings.core.events[0].auction.deltaPrice,
+                                settings.core.events[0].fractionalize.auctionSettings.deltaPrice,
                                 30, // seconds
-                                settings.core.events[0].auction.reservePrice,
-                                settings.core.events[0].auction.startingPrice,
+                                settings.core.events[0].fractionalize.auctionSettings.reservePrice,
+                                settings.core.events[0].fractionalize.auctionSettings.startingPrice,
                                 Math.floor(Date.now() / 1000)
                             ]
                         )
@@ -1413,6 +1382,12 @@ it("curator can change auction settings", async () => {
                         const afterBalance = await web3.eth.getBalance(patron)
                         assert(beforeBalance - afterBalance < (finalPrice * 2))
                     })
+                    it("nft #1 changes status to 'Acquired'", async () => {
+                        assert.equal(await token.getTokenStatusString.call(1), "Acquired")
+                    })
+                    it("nft #1 ownership transferred to vault buyer", async () => {
+                        assert.equal(await token.ownerOf.call(1), patron)
+                    })
                 })
             })
             context("On 'Acquired' status:", async () => {
@@ -1492,8 +1467,8 @@ it("curator can change auction settings", async () => {
                     })
                     it("getWalletInfo(player2) returns expected values", async () => {
                         var walletInfo = await tokenVault.getWalletInfo.call(player2)
-                        assert.notEqual(walletInfo[1], "0")
-                        assert.equal(walletInfo[2], "69")
+                        assert.notEqual(walletInfo[2], "0")
+                        assert.equal(walletInfo[3], "69")
                     })
                 })
                 context("withdrawal interactions...", async() => {
@@ -1526,12 +1501,17 @@ it("curator can change auction settings", async () => {
                         const expectedBalance = finalPrice * missingPixels / totalPixels;
                         const actualBalance = await web3.eth.getBalance(tokenVault.address)
                         assert.equal(actualBalance.toString().substring(0, 16), expectedBalance.toString().substring(0, 16))
+                        assert.equal(
+                            actualBalance.toString().substring(0, 16),
+                            expectedBalance.toString().substring(0, 16)
+                        )
                     })
                     it("legacy pixels for all players are preserved", async () => {
                         assert.equal((await tokenVault.pixelsOf.call(player)).toString(), "100")
                         assert.equal((await tokenVault.pixelsOf.call(player2)).toString(), "69")
                     })
                     it("getting range of authors works", async () => {
+                        var range = await tokenVault.getAuthorsRange.call(0, 10)
                         assert.equal(range.addrs.length, 2)
                         assert.equal(range.pixels.length, 2)
                         assert.equal(range.addrs[0], player)
@@ -1543,7 +1523,5 @@ it("curator can change auction settings", async () => {
             })
         })   
     })
-    
-    
 
 })
