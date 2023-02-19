@@ -35,10 +35,19 @@ interface IWittyPixelsToken {
     /// @notice Returns WittyPixelsTokenVault instance bound to the given token.
     /// @dev Reverts if the token has not yet been fractionalized.
     function getTokenVault(uint256 tokenId) external view returns (ITokenVaultWitnet);
-
-    /// @notice Returns Identifiers of Witnet queries involved in the minting process.
+    
+    /// @notice Returns Identifiers of Witnet queries  being involved in the minting process.
     /// @dev Returns zero addresses if the token is yet in 'Unknown' or 'Launched' status.
     function getTokenWitnetQueries(uint256 tokenId) external view returns (WittyPixelsLib.ERC721TokenWitnetQueries memory);
+
+    /// @notice Returns addresses of WitnetRequest contracts containing the actual data requests
+    /// @notice that will be solved by the Witnet oracle in the minting process.
+    /// @dev May change if baseURI is changed. 
+    function getWitnetRequests()
+        external view returns (
+            WitnetRequest imageDigestRequest,
+            WitnetRequest tokenStatsRequest
+        );
     
     /// @notice Returns number of pixels within the WittyPixels Canvas of given token.
     function pixelsOf(uint256 tokenId) external view returns (uint256);

@@ -245,7 +245,7 @@ contract WittyPixelsToken
                 // Revert if the Witnet response was previous to when minting started:
                 require(_witnetResponse.timestamp >= __token.birthTs, "WittyPixelsToken: anachronic 'token-stats'");
             }
-            // Process Witnet response to 'witnetTokenStats:
+            // Process Witnet response to 'tokenStatsRequest:
             __token.theStats = _witnetResult.value.toERC721TokenStats();
         }
         
@@ -398,6 +398,21 @@ contract WittyPixelsToken
         returns (WittyPixelsLib.ERC721TokenWitnetQueries memory)
     {
         return __wpx721().tokenWitnetQueries[_tokenId];
+    }
+
+    /// @notice Returns addresses of WitnetRequest contracts containing the actual data requests
+    /// @notice that will be solved by the Witnet oracle in the minting process.
+    /// @dev May change if baseURI is changed. 
+    function getWitnetRequests()
+        override external view 
+        initialized
+        returns (
+            WitnetRequest imageDigestRequest,
+            WitnetRequest tokenStatsRequest
+        )
+    {
+        imageDigestRequest = __wpx721().imageDigestRequest;
+        tokenStatsRequest = __wpx721().tokenStatsRequest;
     }
 
     /// @notice Returns image URI of given token.
@@ -553,21 +568,21 @@ contract WittyPixelsToken
         {
             __token.baseURI = _currentBaseURI;
             __token.birthTs = block.timestamp;
-            __token.tokenStatsWitnetRadHash = __wpx721().witnetTokenStats.radHash();
+            __token.tokenStatsWitnetRadHash = __wpx721().tokenStatsRequest.radHash();
         }
 
         uint _totalUsedFunds;
         {
             // Ask Witnet to confirm the token's image URI actually exists:
             (__witnetQueries.imageDigestId, _totalUsedFunds) = _witnetPostRequest(
-                __wpx721().witnetImageDigest.modifySLA(_witnetSLA)
+                __wpx721().imageDigestRequest.modifySLA(_witnetSLA)
             );
         }
         {
             uint _usedFunds;
             // Ask Witnet to retrieve token's metadata stats from the token base uri provider:            
             (__witnetQueries.tokenStatsId, _usedFunds) = _witnetPostRequest(
-                __wpx721().witnetTokenStats.modifySLA(_witnetSLA)
+                __wpx721().tokenStatsRequest.modifySLA(_witnetSLA)
             );
             _totalUsedFunds += _usedFunds;
         }
@@ -642,8 +657,8 @@ contract WittyPixelsToken
             string[][] memory _args = new string[][](1);
             _args[0] = new string[](1);
             _args[0][0] = _baseuri;
-            __wpx721().witnetImageDigest = imageDigestRequestTemplate.settleArgs(_args);
-            __wpx721().witnetTokenStats = tokenStatsRequestTemplate.settleArgs(_args);
+            __wpx721().imageDigestRequest = imageDigestRequestTemplate.settleArgs(_args);
+            __wpx721().tokenStatsRequest = tokenStatsRequestTemplate.settleArgs(_args);
         }
     }
 

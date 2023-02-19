@@ -38,8 +38,8 @@ library WittyPixelsLib {
         mapping (uint256 => IWittyPixelsTokenVault) vaults;
 
         // --- WittyPixelsToken
-        WitnetRequest witnetImageDigest;
-        WitnetRequest witnetTokenStats;
+        WitnetRequest imageDigestRequest;
+        WitnetRequest tokenStatsRequest;
         mapping (uint256 => ERC721TokenWitnetQueries) tokenWitnetQueries;
     }
 
