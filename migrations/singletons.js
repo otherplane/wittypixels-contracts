@@ -1,6 +1,10 @@
 module.exports = {
-  WittyPixelsTokenProxy: {
+  WittyPixelsToken: {
     gas: 1000000,
-    salt: 26398238,
+    salt: 155926823,
   },
+  WittyPixelsTokenVaultPrototype: {
+    gas: 4000000,
+    salt: 5319710,
+  }
 }

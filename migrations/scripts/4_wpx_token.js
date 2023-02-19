@@ -37,13 +37,19 @@ module.exports = async function (deployer, network, [, from]) {
   }
 
   var token
-  if (utils.isNullAddress(addresses[ecosystem][network]?.WittyPixelsToken)) {
+  if (utils.isNullAddress(addresses[ecosystem][network]?.WittyPixelsTokenImplementation)) {
     var wrbAddress
     if (isDryRun) {
       const wrb = artifacts.require("WitnetRequestBoardTrustableDefault")
       wrbAddress = wrb.address
     } else {
-      wrbAddress = addresses[ecosystem][network].WitnetRequestBoard
+      try {
+        var witnetAddresses = require("witnet-solidity-bridge/migrations/witnet.addresses")
+        wrbAddress = witnetAddresses[ecosystem][network].WitnetRequestBoard
+      } catch {
+        console.error("Fatal: Witnet Foundation addresses were not provided!")
+        process.exit(1)
+      }
     }
     await deployer.link(WittyPixelsLib, WittyPixelsToken);
     await deployer.deploy(
@@ -56,12 +62,12 @@ module.exports = async function (deployer, network, [, from]) {
       { from }
     )
     token = await WittyPixelsToken.deployed()
-    addresses[ecosystem][network].WittyPixelsToken = token.address
+    addresses[ecosystem][network].WittyPixelsTokenImplementation = token.address
     if (!isDryRun) {
       utils.saveAddresses(addresses)
     }
   } else {
-    token = await WittyPixelsToken.at(addresses[ecosystem][network].WittyPixelsToken)
+    token = await WittyPixelsToken.at(addresses[ecosystem][network].WittyPixelsTokenImplementation)
     utils.traceHeader("Skipping 'WittyPixelsToken'")
     console.info("  ", "> contract address:", token.address)
     console.info()
@@ -70,17 +76,17 @@ module.exports = async function (deployer, network, [, from]) {
   if (network !== "test") {
     const factory = await Create2Factory.deployed()    
     var proxy
-    if (utils.isNullAddress(addresses[ecosystem][network]?.WittyPixelsTokenProxy)) {
+    if (utils.isNullAddress(addresses[ecosystem][network]?.WittyPixelsToken)) {
       if(
         factory && !utils.isNullAddress(factory.address)
-          && singletons?.WittyPixelsTokenProxy
+          && singletons?.WittyPixelsToken
       ) {
         // Deploy the proxy via a singleton factory and a salt...
         const bytecode = WitnetProxy.toJSON().bytecode
-        const salt = singletons.WittyPixelsTokenProxy?.salt 
+        const salt = singletons.WittyPixelsToken?.salt 
           ? "0x" + ethUtils.setLengthLeft(
               ethUtils.toBuffer(
-                singletons.WittyPixelsTokenProxy.salt
+                singletons.WittyPixelsToken.salt
               ), 32
             ).toString("hex")
           : "0x0"
@@ -88,16 +94,16 @@ module.exports = async function (deployer, network, [, from]) {
         const proxyAddr = await factory.determineAddr.call(bytecode, salt, { from })
         if ((await web3.eth.getCode(proxyAddr)).length <= 3) {
           // deploy instance only if not found in current network:
-          utils.traceHeader(`Singleton inception of 'WittyPixelsTokenProxy':`)
+          utils.traceHeader(`Singleton inception of 'WittyPixelsToken':`)
           const balance = await web3.eth.getBalance(from)
-          const gas = singletons.WittyPixelsTokenProxy.gas || 10 ** 6
+          const gas = singletons.WittyPixelsToken.gas || 10 ** 6
           const tx = await factory.deploy(bytecode, salt, { from, gas })
           utils.traceTx(
             tx.receipt,
             web3.utils.fromWei((balance - await web3.eth.getBalance(from)).toString())
           )
         } else {
-          utils.traceHeader(`Singleton 'WittyPixelsTokenProxy':`)
+          utils.traceHeader(`Singleton 'WittyPixelsToken':`)
         }
         proxy = await WitnetProxy.at(proxyAddr)
         console.info("  ", "> proxy address:       ", proxyAddr)
@@ -109,20 +115,20 @@ module.exports = async function (deployer, network, [, from]) {
         proxy = await WitnetProxy.deployed()
       }
       // update addresses file      
-      addresses[ecosystem][network].WittyPixelsTokenProxy = proxy.address
+      addresses[ecosystem][network].WittyPixelsToken = proxy.address
       if (!isDryRun) {
         utils.saveAddresses(addresses)
       }
     } else {
-      proxy = await WitnetProxy.at(addresses[ecosystem][network].WittyPixelsTokenProxy)
-      utils.traceHeader("Skipping 'WittyPixelsTokenProxy'")
+      proxy = await WitnetProxy.at(addresses[ecosystem][network].WittyPixelsToken)
+      utils.traceHeader("Skipping 'WittyPixelsToken'")
       console.info("  ", "> proxy address:", proxy.address)
       console.info()
     }
 
     var implementation = await proxy.implementation.call({ from })
     if (implementation.toLowerCase() !== token.address.toLowerCase()) {
-      const header = `Upgrading WittyPixelsTokenProxy at ${proxy.address}...`
+      const header = `Upgrading 'WittyPixelsToken' at ${proxy.address}...`
       console.info()
       console.info("  ", header)
       console.info("  ", "-".repeat(header.length))

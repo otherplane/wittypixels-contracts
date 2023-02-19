@@ -49,6 +49,7 @@ module.exports = async function (deployer, network, [, from]) {
         template?.resultDataMaxSize || 0,
         { from }
       )
+      // console.log("tx.logs =>", tx.logs)
       tx.logs = tx.logs.filter(log => log.event === 'WitnetRequestTemplateBuilt')
       console.info("  ", "> transaction hash:", tx.receipt.transactionHash)
       console.info("  ", "> transaction gas: ", tx.receipt.gasUsed)

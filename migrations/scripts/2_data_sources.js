@@ -75,8 +75,8 @@ module.exports = async function (deployer, network, [, from]) {
       source.requestScript || "0x80",
       { from }
     )
-    // register the data source was not yet registered
-    if (dataSourceNotYetRegistered(witnetRegistry, hash)) {
+    // register the data source if it was not yet registered
+    if (dataSourceNotYetRegistered(witnetRegistry, hash) === true) {
       const tx = await witnetRegistry.verifyDataSource(
         await source.requestMethod || 1,
         source.requestSchema || "",
@@ -118,7 +118,7 @@ module.exports = async function (deployer, network, [, from]) {
       { from }
     )
     // register the reducer was not yet registered
-    if (radonReducerNotYetRegistered(witnetRegistry, hash)) {
+    if (radonReducerNotYetRegistered(witnetRegistry, hash) === true) {
       const tx = await witnetRegistry.verifyRadonReducer([
           reducer.opcode,
           reducer.filters,
@@ -155,7 +155,7 @@ function getRequestMethodString(method) {
 
 async function dataSourceNotYetRegistered(registry, hash) {
   try {
-    await registry.lookupDataSource.call(hash)
+    await registry.lookupDataSource.call(hash, { from: '' })
     return false
   } catch {
     return true
@@ -164,7 +164,7 @@ async function dataSourceNotYetRegistered(registry, hash) {
 
 async function radonReducerNotYetRegistered(registry, hash) {
   try {
-    await registry.lookupRadonReducer.call(hash)
+    await registry.lookupRadonReducer.call(hash, { from: '' })
     return false
   } catch {
     return true

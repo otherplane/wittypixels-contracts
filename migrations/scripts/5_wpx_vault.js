@@ -1,3 +1,5 @@
+const ethUtils = require('ethereumjs-util');
+
 const addresses = require("../addresses")
 const singletons = require("../singletons")
 const utils = require("../../scripts/utils")
@@ -18,16 +20,15 @@ module.exports = async function (deployer, network, [, from]) {
   var vault
   if (utils.isNullAddress(addresses[ecosystem][network]?.WittyPixelsTokenVaultPrototype)) {
     const factory = await Create2Factory.deployed()
-    console.log("factory.address =>", factory.address)
     if (
       factory && !utils.isNullAddress(factory.address)
-        && singletons?.wittyPixelsTokenVaultPrototype
+        && singletons?.WittyPixelsTokenVaultPrototype
     ) {
       const bytecode = WittyPixelsTokenVault.toJSON().bytecode
-      const salt = singletons.WittyPixelsTokenVault?.salt
+      const salt = singletons.WittyPixelsTokenVaultPrototype?.salt
         ? "0x" + ethUtils.setLengthLeft(
             ethUtils.toBuffer(
-              singletons.WittyPixelsTokenVault.salt
+              singletons.WittyPixelsTokenVaultPrototype.salt
             ), 32
           ).toString("hex")
         : "0x0"
@@ -37,7 +38,7 @@ module.exports = async function (deployer, network, [, from]) {
         // deploy new instance only if not found current network:
         utils.traceHeader(`Singleton incepton of 'WittyPixelsTokenVaultPrototype':`)
         const balance = await web3.eth.getBalance(from)
-        const gas = singletons?.wittyPixelsTokenVaultPrototype?.gas || 5 * 10 ** 6
+        const gas = singletons?.WittyPixelsTokenVaultPrototype?.gas || 5 * 10 ** 6
         const tx = await factory.deploy(bytecode, salt, { from, gas })
         utils.traceTx(
           tx.receipt,
@@ -65,12 +66,12 @@ module.exports = async function (deployer, network, [, from]) {
   } else {
     vault = await WittyPixelsTokenVault.at(addresses[ecosystem][network].WittyPixelsTokenVaultPrototype)
     utils.traceHeader("Skipping 'WittyPixelsTokenVaultPrototype'")
-    console.info("  ", "> contract address:", vault.address)
+    console.info("  ", "> prototype address:", vault.address)
     console.info()
   }
 
   if (network !== "test") {
-    var token = await WittyPixelsToken.at(addresses[ecosystem][network].WittyPixelsTokenProxy)
+    var token = await WittyPixelsToken.at(addresses[ecosystem][network].WittyPixelsToken)
     var prototype = await token.getTokenVaultFactoryPrototype.call({ from })
     if (prototype.toLowerCase() !== vault.address.toLowerCase()) {
       const header = `Setting WittyPixelsTokenProxy's prototype...`

@@ -30,9 +30,9 @@ module.exports = async function () {
         }
     })
     try {
-        from = addresses[ecosystem][network].Create2Factory
+        from = from || addresses[ecosystem][network].Create2Factory
     } catch {
-        console.error(`Create2Factory must have been previously deployed on network '${network}'.\n`)
+        console.error(` Create2Factory must have been previously deployed on network '${network}'.\n`)
         console.info("Usage:\n")
         console.info("  --artifact => Truffle artifact name (default: WitnetProxy)")
         console.info("  --hits     => Number of vanity hits to look for (default: 10)")
@@ -42,9 +42,9 @@ module.exports = async function () {
         process.exit(1)
     }    
     const bytecode = artifact.toJSON().bytecode
+    console.log("Bytecode:  ", artifact.toJSON().bytecode)
     console.log("Artifact:  ", artifact.contractName)
     console.log("From:      ", from)
-    console.log("Bytecode:  ", artifact.toJSON().bytecode)
     console.log("Hits:      ", hits)
     console.log("Offset:    ", offset)
     console.log("Target:    ", target)
