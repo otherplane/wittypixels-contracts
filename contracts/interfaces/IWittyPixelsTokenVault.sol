@@ -69,5 +69,6 @@ abstract contract IWittyPixelsTokenVault
     function pixelsOf(address) virtual external view returns (uint256);
 
     /// @notice Returns total number of finalized pixels within the WittyPixelsLib canvas.
-    function totalPixels() virtual external view returns (uint256);   
+    function totalPixels() virtual external view returns (uint256);
+
 }

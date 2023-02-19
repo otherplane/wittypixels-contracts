@@ -38,10 +38,6 @@ contract WittyPixelsTokenVault
         _;
     }
 
-    constructor (bytes32 _version)
-        WittyPixelsClonableBase(_version)
-    {}
-
     receive() external payable {}
 
     function setCurator(address newCurator)
@@ -51,6 +47,15 @@ contract WittyPixelsTokenVault
         assert(newCurator != address(0));
         __wpx20().curator = newCurator;
     }
+
+    function version()
+        virtual override
+        external view
+        returns (string memory)
+    {
+        return WittyPixelsClonableBase(address(__wpx20().parentToken)).version();
+    }
+
 
     // ================================================================================================================
     // --- Overrides IERC20Upgradeable interface ----------------------------------------------------------------------

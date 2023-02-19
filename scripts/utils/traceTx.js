@@ -1,9 +1,9 @@
 module.exports = function (receipt, totalCost) {
-  console.log("  ", "> transaction hash:\t", receipt.transactionHash)
-  console.log("  ", "> block number:\t", receipt.blockNumber)
-  console.log("  ", "> gas used:\t\t", receipt.cumulativeGasUsed)
+  console.log("  ", "> block number:     ", receipt.blockNumber)
+  console.log("  ", "> transaction hash: ", receipt.transactionHash)
+  console.log("  ", "> transaction gas:  ", receipt.gasUsed)
   if (totalCost) {
-    console.log("  ", "> total cost:\t", totalCost, "ETH")
+    console.log("  ", "> total cost:       ", totalCost, "ETH")
   }
   console.log()
 }

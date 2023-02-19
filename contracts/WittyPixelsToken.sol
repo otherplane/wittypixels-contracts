@@ -186,10 +186,17 @@ contract WittyPixelsToken
     /// @dev Token must be in 'Minting' status and involved Witnet requests successfully solved.
     /// @dev Once Witnet requests involved in minting process are solved, anyone may proceed withç
     /// @dev fractionalization of next token. Curatorship of the vault will be transferred to the owner, though.
+    /// @param _tokenVaultSalt Salt to be used when deterministically cloning current token vault prototype.
     /// @param _tokenVaultSettings Extra settings to be passed when initializing the token vault contract.
-    function fractionalize(bytes memory _tokenVaultSettings)
-        external
-        tokenInStatus(__wpx721().totalSupply + 1, WittyPixelsLib.ERC721TokenStatus.Minting)
+    function fractionalize(
+            bytes32 _tokenVaultSalt,
+            bytes memory _tokenVaultSettings
+        )
+        virtual external
+        tokenInStatus(
+            __wpx721().totalSupply + 1,
+            WittyPixelsLib.ERC721TokenStatus.Minting
+        )
         returns (ITokenVault)
     {
         uint256 _tokenId = __wpx721().totalSupply + 1;
@@ -243,24 +250,31 @@ contract WittyPixelsToken
         }
         
         // Clone the token vault prototype and initialize the cloned instance:
-        string memory _erc20Name = string(abi.encodePacked(
-            name(),
-            bytes(" #"),
-            _tokenId.toString()
-        ));
-        IWittyPixelsTokenVault _tokenVault = IWittyPixelsTokenVault(address(
-            __wpx721().tokenVaultPrototype.cloneAndInitialize(abi.encode(
+        IWittyPixelsTokenVault _tokenVault;
+        {
+            string memory _tokenVaultName = string(abi.encodePacked(
+                name(),
+                bytes(" #"),
+                _tokenId.toString()
+            ));
+            bytes memory _tokenVaultInitData = abi.encode(
                 WittyPixelsLib.TokenVaultInitParams({
                     curator: owner(),
-                    name: _erc20Name,
+                    name: _tokenVaultName,
                     symbol: symbol(),
                     settings: _tokenVaultSettings,
                     token: address(this),
                     tokenId: _tokenId,
                     tokenPixels: __token.theStats.canvasPixels
                 })
-            ))
-        ));
+            );
+            _tokenVault = IWittyPixelsTokenVault(address(
+                __wpx721().tokenVaultPrototype.cloneDeterministicAndInitialize(
+                    _tokenVaultSalt,
+                    _tokenVaultInitData
+                )
+            ));
+        }
 
         // Store token vault contract:
         __wpx721().vaults[_tokenId] = _tokenVault;

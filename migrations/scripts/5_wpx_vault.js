@@ -1,6 +1,8 @@
 const addresses = require("../addresses")
-const package = require ("../../package")
+const singletons = require("../singletons")
 const utils = require("../../scripts/utils")
+
+const Create2Factory = artifacts.require("Create2Factory")
 
 const WittyPixelsToken = artifacts.require("WittyPixelsToken")
 const WittyPixelsTokenVault = artifacts.require("WittyPixelsTokenVault")
@@ -15,11 +17,46 @@ module.exports = async function (deployer, network, [, from]) {
 
   var vault
   if (utils.isNullAddress(addresses[ecosystem][network]?.WittyPixelsTokenVaultPrototype)) {
-    await deployer.deploy(
-      WittyPixelsTokenVault,
-      utils.fromAscii(package.version),
-      { from }
-    )
+    const factory = await Create2Factory.deployed()
+    console.log("factory.address =>", factory.address)
+    if (
+      factory && !utils.isNullAddress(factory.address)
+        && singletons?.wittyPixelsTokenVaultPrototype
+    ) {
+      const bytecode = WittyPixelsTokenVault.toJSON().bytecode
+      const salt = singletons.WittyPixelsTokenVault?.salt
+        ? "0x" + ethUtils.setLengthLeft(
+            ethUtils.toBuffer(
+              singletons.WittyPixelsTokenVault.salt
+            ), 32
+          ).toString("hex")
+        : "0x0"
+      ;
+      const prototypeAddr = await factory.determineAddr.call(bytecode, salt, { from })
+      if ((await web3.eth.getCode(prototypeAddr)).length <= 3) {
+        // deploy new instance only if not found current network:
+        utils.traceHeader(`Singleton incepton of 'WittyPixelsTokenVaultPrototype':`)
+        const balance = await web3.eth.getBalance(from)
+        const gas = singletons?.wittyPixelsTokenVaultPrototype?.gas || 5 * 10 ** 6
+        const tx = await factory.deploy(bytecode, salt, { from, gas })
+        utils.traceTx(
+          tx.receipt,
+          web3.utils.fromWei((balance - await web3.eth.getBalance(from)).toString())
+        )
+      } else {
+        utils.traceHeader(`Singleton 'WittyPixelsTokenVaultPrototype':`)
+      }
+      WittyPixelsTokenVault.address = prototypeAddr
+      console.info("  ", "> prototype address:       ", prototypeAddr)
+      console.info("  ", "> prototype codehash:      ", web3.utils.soliditySha3(await web3.eth.getCode(prototypeAddr)))
+      console.info("  ", "> prototype inception salt:", salt)
+    } else {
+      // Deploy no singleton prototype ...
+      await deployer.deploy(
+        WittyPixelsTokenVault,
+        { from }
+      )
+    }
     vault = await WittyPixelsTokenVault.deployed()
     addresses[ecosystem][network].WittyPixelsTokenVaultPrototype = vault.address
     if (!isDryRun) {
@@ -42,7 +79,7 @@ module.exports = async function (deployer, network, [, from]) {
       console.info("  ", "-".repeat(header.length))
       console.info()
       console.info("   > old vault prototype:", prototype)
-      console.info("   > new vault prototype:", vault.address, `(v${await vault.version.call({ from })})`)
+      console.info("   > new vault prototype:", vault.address)
       const tx = await token.setTokenVaultFactoryPrototype(vault.address, { from })
       console.info("   => transaction hash :", tx.receipt.transactionHash)
       console.info("   => transaction gas  :", tx.receipt.gasUsed)
