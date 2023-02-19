@@ -9,24 +9,31 @@ module.exports = {
     },
     events: [
       {
-        name: "ETHDenver 2023",
-        venue: "National Western $SPORK Castle",
-        startTs: 1677193200 + 7 * 3600,          // Thu, 24 February 2023 0:00 GMT-7
-        endTs:   1677866400 + 7 * 3600,          // Fri, 3 March 2023 18:00 GMT-7
-        auction: {
-          deltaPrice:       "50000000000000000", //  0.05 ETH
-          deltaSeconds:                    3600, //     1 hour
-          reservePrice:   "1000000000000000000", //  1.00 ETH
-          startingPrice: "32000000000000000000", // 32.00 ETH
-          startingTs:     1677974400 + 7 * 3600, // Sun, 5 March 2023 0:00 GMT-7
+        metadata: {
+          name: "ETHDenver 2023",
+          venue: "National Western $SPORK Castle",
+          startTs: 1677193200 + 7 * 3600,          // Thu, 24 February 2023 0:00 GMT-7
+          endTs:   1677866400 + 7 * 3600,          // Fri, 3 March 2023 18:00 GMT-7
         },
-        witnetSLA: {
-          numWitnesses: 16,
-          minConsensusPercentage: 75,  // %
-          minerCommitFee: "100000000", // 0.1 WIT
-          witnessReward: "1000000000", // 1.0 WIT
-          witnessCollateral: "15000000000", // 15.0 WIT
-        }
+        mint: {
+          witnetSLA: {
+            numWitnesses: 16,
+            minConsensusPercentage: 75,  // %
+            minerCommitFee: "100000000", // 0.1 WIT
+            witnessReward: "1000000000", // 1.0 WIT
+            witnessCollateral: "15000000000", // 15.0 WIT
+          },
+        },
+        fractionalize: {
+          auctionSettings: {
+            deltaPrice:       "50000000000000000", //  0.05 ETH
+            deltaSeconds:                    3600, //     1 hour
+            reservePrice:   "1000000000000000000", //  1.00 ETH
+            startingPrice: "32000000000000000000", // 32.00 ETH
+            startingTs:     1677974400 + 7 * 3600, // Sun, 5 March 2023 0:00 GMT-7
+          },
+          salt: "0",
+        },
       },
     ],
   },  
