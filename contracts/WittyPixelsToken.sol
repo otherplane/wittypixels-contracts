@@ -13,10 +13,13 @@ import "witnet-solidity-bridge/contracts/impls/boards/trustable/WitnetRequestBoa
 import "witnet-solidity-bridge/contracts/libs/WitnetLib.sol";
 import "witnet-solidity-bridge/contracts/libs/WitnetEncodingLib.sol";
 
-// Witnet build dependency:
+// Witnet compilation dependencies:
 import "witnet-solidity-bridge/contracts/UsingWitnet.sol";
+import "witnet-solidity-bridge/contracts/apps/WitnetRequestFactory.sol";
+import "witnet-solidity-bridge/contracts/libs/WitnetLib.sol";
 
 // WittyPixels interfaces:
+import "./WittyPixelsLib.sol";
 import "./interfaces/ITokenVaultFactory.sol";
 import "./interfaces/IWittyPixelsToken.sol";
 import "./interfaces/IWittyPixelsTokenAdmin.sol";
@@ -48,8 +51,8 @@ contract WittyPixelsToken
         0xa1c65a69721a75d8ec79c686c8573bd06e7f0c400997cbe153064301cbc480d5;
 
     WitnetRequestTemplate immutable public imageDigestRequestTemplate;
-    WitnetRequestTemplate immutable public tokenStatsRequestTemplate;
-
+    WitnetRequestTemplate immutable public valuesArrayRequestTemplate;
+    
     /// @notice A new token has been fractionalized from this factory.
     event Fractionalized(
         address indexed from,   // owner of the token being fractionalized
@@ -84,12 +87,11 @@ contract WittyPixelsToken
 
     constructor(
             WitnetRequestBoard _witnetRequestBoard,
-            WitnetRequestTemplate _imageDigestRequestTemplate,
-            WitnetRequestTemplate _tokenStatsRequestTemplate,
+            WitnetRequestFactory _witnetRequestFactory,
             bool _upgradable,
             bytes32 _version
         )
-        UsingWitnet(_witnetRequestBoard)
+        UsingWitnet(WitnetRequestBoard(_witnetRequestBoard))
         WittyPixelsUpgradeableBase(
             _upgradable,
             _version,
@@ -97,19 +99,13 @@ contract WittyPixelsToken
         )
     {
         require(
-            address(_imageDigestRequestTemplate) != address(0)
-                && _imageDigestRequestTemplate.class() == type(WitnetRequestTemplate).interfaceId
-                && _imageDigestRequestTemplate.parameterized(),
-            "WittyPixelsToken: invalid image-digest request template"
+            address(_witnetRequestFactory).supportsInterface(type(IWitnetRequestFactory).interfaceId),
+            "WittyPixelsToken: uncompliant WitnetRequestFactory"
         );
-        require(
-            address(_tokenStatsRequestTemplate) != address(0)
-                && _tokenStatsRequestTemplate.class() == type(WitnetRequestTemplate).interfaceId
-                && _tokenStatsRequestTemplate.parameterized(),
-            "WittyPixelsToken: invalid token-stats request template"
-        );
-        imageDigestRequestTemplate = _imageDigestRequestTemplate;
-        tokenStatsRequestTemplate = _tokenStatsRequestTemplate;
+        (
+            imageDigestRequestTemplate,
+            valuesArrayRequestTemplate
+        ) = WittyPixelsLib.buildHttpRequestTemplates(_witnetRequestFactory);
     }
 
 
@@ -389,30 +385,27 @@ contract WittyPixelsToken
         return __wpx721().vaults[_tokenId];
     }
 
-    /// @notice Returns Identifiers of Witnet queries involved in the minting process.
+    /// @notice Returns Identifiers of Witnet queries involved in the minting of given token.
     /// @dev Returns zero addresses if the token is yet in 'Unknown' or 'Launched' status.
     function getTokenWitnetQueries(uint256 _tokenId)
-        external view
-        override
+        virtual override
+        public view
         initialized
-        returns (WittyPixelsLib.ERC721TokenWitnetQueries memory)
+        returns (WittyPixels.ERC721TokenWitnetQueries memory)
     {
         return __wpx721().tokenWitnetQueries[_tokenId];
     }
 
-    /// @notice Returns addresses of WitnetRequest contracts containing the actual data requests
-    /// @notice that will be solved by the Witnet oracle in the minting process.
-    /// @dev May change if baseURI is changed. 
-    function getWitnetRequests()
-        override external view 
+    /// @notice Returns Witnet data requests involved in the the minting of given token.
+    /// @dev Returns zero addresses if the token is yet in 'Unknown' or 'Launched' status.
+    function getTokenWitnetRequests(uint256 _tokenId)
+        virtual override
+        external view
         initialized
-        returns (
-            WitnetRequest imageDigestRequest,
-            WitnetRequest tokenStatsRequest
-        )
+        returns (WittyPixels.ERC721TokenWitnetRequests memory)
+
     {
-        imageDigestRequest = __wpx721().imageDigestRequest;
-        tokenStatsRequest = __wpx721().tokenStatsRequest;
+        return __wpx721().tokenWitnetRequests[_tokenId];
     }
 
     /// @notice Returns image URI of given token.
@@ -539,7 +532,7 @@ contract WittyPixelsToken
         nonReentrant
     {
         uint256 _tokenId = __wpx721().totalSupply + 1;
-        WittyPixelsLib.ERC721TokenStatus _status = getTokenStatus(_tokenId);
+        string memory _baseuri = __wpx721().baseURI;
         require(
             _status == WittyPixelsLib.ERC721TokenStatus.Launching
                 || _status == WittyPixelsLib.ERC721TokenStatus.Minting,
@@ -637,7 +630,6 @@ contract WittyPixelsToken
             _initdata,
             (WittyPixelsLib.TokenInitParams)
         );
-        __setBaseURI(_params.baseURI);
         __ERC721_init(
             _params.name,
             _params.symbol
@@ -646,20 +638,13 @@ contract WittyPixelsToken
         __ReentrancyGuard_init();
         __proxiable().proxy = address(this);
         __proxiable().implementation = base();
+        __setBaseURI(_params.baseURI);
     }
 
     function __setBaseURI(string memory _baseuri)
         virtual internal
     {
         __wpx721().baseURI = WittyPixelsLib.checkBaseURI(_baseuri);
-        {
-            // re-settle parameterized witnet request templates into actual witnet requests
-            string[][] memory _args = new string[][](1);
-            _args[0] = new string[](1);
-            _args[0][0] = _baseuri;
-            __wpx721().imageDigestRequest = imageDigestRequestTemplate.settleArgs(_args);
-            __wpx721().tokenStatsRequest = tokenStatsRequestTemplate.settleArgs(_args);
-        }
     }
 
     function _verifyPrototypeCompliance(address _prototype)

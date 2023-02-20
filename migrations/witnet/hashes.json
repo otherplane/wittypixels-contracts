@@ -1,9 +1,0 @@
-{
-    "reducers": {
-        "mode-no-filters": "0x7fd784182e4ee25820fef9dd2f438836a658dabba24e32a494dca9695e631e0e"
-    },
-    "sources": {
-        "wpx-image-digest": "0x6719e5ff80bd4da6c1b941a53f7f45e52bcc2ea8c74029b254facb55dac1bf1d",
-        "wpx-token-stats": "0x568fee5c3070a830943a5144e7acd1a5a402d96f6b6242b6e3912d13bba98b52"
-    }
-}

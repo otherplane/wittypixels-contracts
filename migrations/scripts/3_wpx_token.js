@@ -7,8 +7,9 @@ const singletons = require("../singletons")
 const utils = require("../../scripts/utils")
 
 const Create2Factory = artifacts.require("Create2Factory")
-
 const WitnetProxy = artifacts.require("WitnetProxy")
+const WitnetRequestBoard = artifacts.require("WitnetRequestBoard")
+const WitnetRequestFactory = artifacts.require("WitnetRequestFactory")
 const WittyPixelsLib = artifacts.require("WittyPixelsLib")
 const WittyPixelsToken = artifacts.require("WittyPixelsToken")
 
@@ -38,28 +39,14 @@ module.exports = async function (deployer, network, [, from]) {
 
   var token
   if (utils.isNullAddress(addresses[ecosystem][network]?.WittyPixelsTokenImplementation)) {
-    var wrbAddress
-    if (isDryRun) {
-      const wrb = artifacts.require("WitnetRequestBoardTrustableDefault")
-      wrbAddress = wrb.address
-    } else {
-      try {
-        var witnetAddresses = require("witnet-solidity-bridge/migrations/witnet.addresses")
-        wrbAddress = witnetAddresses[ecosystem][network].WitnetRequestBoard
-      } catch {
-        console.error("Fatal: Witnet Foundation addresses were not provided!")
-        process.exit(1)
-      }
-    }
     await deployer.link(WittyPixelsLib, WittyPixelsToken);
     await deployer.deploy(
       WittyPixelsToken,
-      wrbAddress,
-      addresses[ecosystem][network].WitnetRequestTemplateImageDigest,
-      addresses[ecosystem][network].WitnetRequestTemplateTokenStats,
+      WitnetRequestBoard.address,
+      WitnetRequestFactory.address,
       settings.core.collection.upgradable,
       utils.fromAscii(package.version),
-      { from }
+      { from, gas: 6721975 }
     )
     token = await WittyPixelsToken.deployed()
     addresses[ecosystem][network].WittyPixelsTokenImplementation = token.address
@@ -105,10 +92,10 @@ module.exports = async function (deployer, network, [, from]) {
         } else {
           utils.traceHeader(`Singleton 'WittyPixelsToken':`)
         }
-        proxy = await WitnetProxy.at(proxyAddr)
         console.info("  ", "> proxy address:       ", proxyAddr)
         console.info("  ", "> proxy codehash:      ", web3.utils.soliditySha3(await web3.eth.getCode(proxyAddr)))        
         console.info("  ", "> proxy inception salt:", salt)
+        proxy = await WitnetProxy.at(proxyAddr)
       } else {
         // Deploy no singleton proxy ...
         await deployer.deploy(WitnetProxy, { from })
@@ -125,6 +112,7 @@ module.exports = async function (deployer, network, [, from]) {
       console.info("  ", "> proxy address:", proxy.address)
       console.info()
     }
+    WittyPixelsToken.address = proxy.address
 
     var implementation = await proxy.implementation.call({ from })
     if (implementation.toLowerCase() !== token.address.toLowerCase()) {
@@ -140,15 +128,17 @@ module.exports = async function (deployer, network, [, from]) {
       }      
       try {
         const tx = await proxy.upgradeTo(
-          token.address,        
-          web3.eth.abi.encodeParameter(
-            "string[3]", [
-              settings.core.collection.baseURI,
-              settings.core.collection.name,
-              settings.core.collection.symbol
-            ]
-          ),
-          { from }
+          token.address, (
+            implementation === "0x0000000000000000000000000000000000000000"
+              ? web3.eth.abi.encodeParameter(
+                  "string[3]", [
+                    settings.core.collection.baseURI,
+                    settings.core.collection.name,
+                    settings.core.collection.symbol
+                  ]
+                )
+              : "0x"  
+          ), { from }
         )
         console.info("   => transaction hash :", tx.receipt.transactionHash)
         console.info("   => transaction gas  :", tx.receipt.gasUsed)

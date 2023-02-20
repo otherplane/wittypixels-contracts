@@ -5,7 +5,6 @@ const singletons = require("../singletons")
 const utils = require("../../scripts/utils")
 
 const Create2Factory = artifacts.require("Create2Factory")
-
 const WittyPixelsToken = artifacts.require("WittyPixelsToken")
 const WittyPixelsTokenVault = artifacts.require("WittyPixelsTokenVault")
 
@@ -59,6 +58,7 @@ module.exports = async function (deployer, network, [, from]) {
       )
     }
     vault = await WittyPixelsTokenVault.deployed()
+    // update addresses file 
     addresses[ecosystem][network].WittyPixelsTokenVaultPrototype = vault.address
     if (!isDryRun) {
       utils.saveAddresses(addresses)
@@ -71,7 +71,7 @@ module.exports = async function (deployer, network, [, from]) {
   }
 
   if (network !== "test") {
-    var token = await WittyPixelsToken.at(addresses[ecosystem][network].WittyPixelsToken)
+    var token = await WittyPixelsToken.at(WittyPixelsToken.address)
     var prototype = await token.getTokenVaultFactoryPrototype.call({ from })
     if (prototype.toLowerCase() !== vault.address.toLowerCase()) {
       const header = `Setting WittyPixelsTokenProxy's prototype...`

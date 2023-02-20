@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "../libs/WittyPixelsLib.sol";
+import "../WittyPixels.sol";
 
 interface IWittyPixelsToken {
 
@@ -18,7 +18,7 @@ interface IWittyPixelsToken {
     /// --- WittyPixels token specific methods ------------------------------------------------------------------------
 
     /// @notice Returns WittyPixels token metadata of given token.
-    function getTokenMetadata(uint256 tokenId) external view returns (WittyPixelsLib.ERC721Token memory);
+    function getTokenMetadata(uint256 tokenId) external view returns (WittyPixels.ERC721Token memory);
 
     /// @notice Returns status of given WittyPixels token.
     /// @dev Possible values:
@@ -27,7 +27,7 @@ interface IWittyPixelsToken {
     /// @dev - 2 => Minting: the token is being minted, awaiting for external data to be retrieved by the Witnet Oracle.
     /// @dev - 3 => Fracionalized: the token has been minted and its ownership transfered to a WittyPixelsTokenVault contract.
     /// @dev - 4 => Acquired: token's ownership has been acquired and belongs to the WittyPixelsTokenVault no more. 
-    function getTokenStatus(uint256 tokenId) external view returns (WittyPixelsLib.ERC721TokenStatus);
+    function getTokenStatus(uint256 tokenId) external view returns (WittyPixels.ERC721TokenStatus);
     
     /// @notice Returns literal string representing current status of given WittyPixels token.
     function getTokenStatusString(uint256 tokenId) external view returns (string memory);
@@ -36,18 +36,13 @@ interface IWittyPixelsToken {
     /// @dev Reverts if the token has not yet been fractionalized.
     function getTokenVault(uint256 tokenId) external view returns (ITokenVaultWitnet);
     
-    /// @notice Returns Identifiers of Witnet queries  being involved in the minting process.
-    /// @dev Returns zero addresses if the token is yet in 'Unknown' or 'Launched' status.
-    function getTokenWitnetQueries(uint256 tokenId) external view returns (WittyPixelsLib.ERC721TokenWitnetQueries memory);
+    /// @notice Returns the identifiers of Witnet queries involved in the minting of given token.
+    /// @dev Returns zeros if the token is yet in 'Unknown' or 'Launched' status.
+    function getTokenWitnetQueries(uint256 tokenId) external view returns (WittyPixels.ERC721TokenWitnetQueries memory);
 
-    /// @notice Returns addresses of WitnetRequest contracts containing the actual data requests
-    /// @notice that will be solved by the Witnet oracle in the minting process.
-    /// @dev May change if baseURI is changed. 
-    function getWitnetRequests()
-        external view returns (
-            WitnetRequest imageDigestRequest,
-            WitnetRequest tokenStatsRequest
-        );
+    /// @notice Returns Witnet data requests involved in the the minting of given token.
+    /// @dev Returns zero addresses if the token is yet in 'Unknown' or 'Launched' status.
+    function getTokenWitnetRequests(uint256 _tokenId) external view returns (WittyPixels.ERC721TokenWitnetRequests memory);
     
     /// @notice Returns number of pixels within the WittyPixels Canvas of given token.
     function pixelsOf(uint256 tokenId) external view returns (uint256);

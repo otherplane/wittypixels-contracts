@@ -1,5 +1,6 @@
 const addresses = require("../addresses")
 const utils = require("../../scripts/utils")
+
 const Create2Factory = artifacts.require("Create2Factory")
 
 module.exports = async function (deployer, network, [, from]) {
@@ -18,7 +19,9 @@ module.exports = async function (deployer, network, [, from]) {
     await deployer.deploy(Create2Factory, { from })    
     factory = await Create2Factory.deployed()
     addresses[ecosystem][network].Create2Factory = factory.address
-    utils.saveAddresses(addresses)
+    if (!isDryRun) {
+      utils.saveAddresses(addresses)
+    }
   } else {
     factory = await Create2Factory.at(addresses[ecosystem][network].Create2Factory)
     Create2Factory.address = factory.address

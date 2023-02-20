@@ -7,7 +7,7 @@ import "../libs/WittyPixelsLib.sol";
 interface IWittyPixelsTokenAdmin {
     
     event Launched(uint256 tokenId, WittyPixelsLib.ERC721TokenEvent theEvent);
-    event Minting(uint256 tokenId, string imageURI, WitnetV2.RadonSLA witnetSLA);
+    event Minting(uint256 tokenId, string baseURI, WitnetV2.RadonSLA witnetSLA);
 
     event NewTokenSponsor(uint256 tokenId, uint256 index, address indexed addr);
 

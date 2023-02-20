@@ -52,7 +52,7 @@ abstract contract IWittyPixelsTokenVault
 
     /// @notice Gets accounting info regarding given address.
     /// @return wpxBalance Current ERC20 balance.
-    /// @return wpxShare10000 NFT ownership percentage based on current ERC20 balance, multiplied by a 100.
+    /// @return wpxShare10000 NFT ownership percentage based on current ERC20 balance, multiplied by 100.
     /// @return withdrawableWeis ETH/wei amount that can be potentially withdrawn from this address.
     /// @return soulboundPixels Soulbound pixels contributed from this wallet address, if any.    
     function getWalletInfo(address) virtual external view returns (

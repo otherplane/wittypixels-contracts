@@ -2,16 +2,125 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/math/Math.sol";
-
-import "witnet-solidity-bridge/contracts/requests/WitnetRequest.sol";
-import "witnet-solidity-bridge/contracts/libs/WitnetV2.sol";
-
+import "witnet-solidity-bridge/contracts/apps/WitnetRequestFactory.sol";
 import "../interfaces/IWittyPixelsTokenVault.sol";
+
+/// @title  Witty Pixels - Library containting EVM data model and multiple helper functions
+/// @author Otherplane Labs Ltd., 2022
+/// @dev    Deployable library.
 
 library WittyPixelsLib {
 
     using WitnetCBOR for WitnetCBOR.CBOR;
 
+    /// @dev Helper function for building the HTTP/GET parameterized requests
+    /// @dev that will be solved by the Witnet decentralized oracle every time
+    /// @dev a new token of the ERC721 collection is minted.
+    function buildHttpRequests(WitnetRequestFactory factory)
+        public
+        returns (
+            WitnetRequestTemplate imageDigestRequestTemplate,
+            WitnetRequestTemplate tokenStatsRequestTemplate
+        )
+    {
+        IWitnetBytecodes registry = factory.registry();
+        
+        bytes32 httpGetImageDigest;
+        bytes32 httpGetTokenStats;
+        bytes32 reducerModeNoFilters;
+
+        /// Verify that need witnet radon artifacts are actually valid and known by the factory:
+        {
+            httpGetImageDigest = registry.verifyDataSource(
+                /* requestMethod */    WitnetV2.DataRequestMethods.HttpGet,
+                /* requestSchema */    "",
+                /* requestAuthority */ "\\0\\", // => will be substituted w/ WittyPixesLib.tokenImageURI(,) on every new mint
+                /* requestPath */      "",
+                /* requestQuery */     "digest=sha-256",
+                /* requestBody */      "",
+                /* requestHeader */    new string[2][](0),
+                /* requestScript */    hex"811874"
+                                        // <= WitnetScript([ Witnet.TYPES.STRING ]).length()
+            );
+            httpGetTokenStats = registry.verifyDataSource(
+                /* requestMethod    */ WitnetV2.DataRequestMethods.HttpGet,
+                /* requestSchema    */ "",
+                /* requestAuthority */ "\\0\\", // => will be substituted w/ WittyPixesLib.tokenStatsURI(,) on every new mint
+                /* requestPath      */ "",
+                /* requestQuery     */ "",
+                /* requestBody      */ "",
+                /* requestHeader    */ new string[2][](0),
+                /* requestScript    */ hex"8218771869"
+                                        // <= WitnetScript([ Witnet.TYPES.STRING ]).parseJSONMap().valuesAsArray()
+            );
+            reducerModeNoFilters = registry.verifyRadonReducer(
+                WitnetV2.RadonReducer({
+                    opcode: WitnetV2.RadonReducerOpcodes.Mode,
+                    filters: new WitnetV2.RadonFilter[](0),
+                    script: hex""
+                })
+            );
+        }
+        /// Use WitnetRequestFactory for building actual witnet request templates
+        /// that will be parameterized w/ specific SLA valus on every new mint:  
+        {
+            bytes32[] memory retrievals = new bytes32[](1);
+            {
+                retrievals[0] = httpGetImageDigest;
+                imageDigestRequestTemplate = factory.buildRequestTemplate(
+                    /* retrieval templates */ retrievals,
+                    /* aggregation reducer */ reducerModeNoFilters,
+                    /* witnessing reducer  */ reducerModeNoFilters,
+                    /* (reserved) */ 0
+                );
+            }
+            {
+                retrievals[0] = httpGetTokenStats;
+                tokenStatsRequestTemplate = factory.buildRequestTemplate(
+                    /* retrieval templates */ retrievals,
+                    /* aggregation reducer */ reducerModeNoFilters,
+                    /* witnessing reducer  */ reducerModeNoFilters,
+                    /* (reserved) */ 0
+                );
+            }
+        }
+    }
+
+    /// @dev Deserialize a CBOR-encoded data request requestl from Witnet
+    /// @dev into a Solidity string.
+    function toString(WitnetCBOR.CBOR memory cbor)
+        public pure
+        returns (string memory)
+    {
+        return cbor.readString();
+    }
+
+    /// @dev Deserialize a CBOR-encoded data request result from Witnet 
+    /// @dev into a WittyPixelsLib.ERC721TokenStats structure
+    function toERC721TokenStats(WitnetCBOR.CBOR memory cbor)
+        public pure
+        returns (ERC721TokenStats memory)
+    {
+        WitnetCBOR.CBOR[] memory fields = cbor.readArray();
+        if (fields.length >= 7) {
+            return ERC721TokenStats({
+                canvasHeight: fields[0].readUint(),
+                canvasPixels: fields[1].readUint(),
+                canvasRoot:   toBytes32(fromHex(fields[2].readString())),
+                canvasWidth:  fields[3].readUint(),
+                totalPixels:  fields[4].readUint(),
+                totalPlayers: fields[5].readUint(),
+                totalScans:   fields[6].readUint()
+            });
+        } else {
+            revert("WittyPixelsLib: missing fields");
+        }
+    }
+
+
+    /// ===============================================================================================================
+    /// --- WITTYPIXELS DATA MODEL ------------------------------------------------------------------------------------
+    
     bytes32 internal constant WPX_TOKEN_SLOTHASH =
         /* keccak256("art.wittypixels.token") */
         0xa1c65a69721a75d8ec79c686c8573bd06e7f0c400997cbe153064301cbc480d5;
@@ -145,221 +254,6 @@ library WittyPixelsLib {
         uint256 tokenStatsId;
     }
 
-    function toString(WitnetCBOR.CBOR memory cbor)
-        public pure
-        returns (string memory)
-    {
-        return cbor.readString();
-    }
-
-    function toERC721TokenStats(WitnetCBOR.CBOR memory cbor)
-        public pure
-        returns (ERC721TokenStats memory)
-    {
-        WitnetCBOR.CBOR[] memory fields = cbor.readArray();
-        if (fields.length >= 7) {
-            return ERC721TokenStats({
-                canvasHeight: fields[0].readUint(),
-                canvasPixels: fields[1].readUint(),
-                canvasRoot:   toBytes32(fromHex(fields[2].readString())),
-                canvasWidth:  fields[3].readUint(),
-                totalPixels:  fields[4].readUint(),
-                totalPlayers: fields[5].readUint(),
-                totalScans:   fields[6].readUint()
-            });
-        } else {
-            revert("WittyPixelsLib: missing fields");
-        }
-    }
-
-    function toJSON(
-            ERC721Token memory self,
-            uint256 tokenId
-        )
-        public pure
-        returns (string memory)
-    {
-        string memory _tokenIdString = toString(tokenId);
-        string memory _name = string(abi.encodePacked(
-            "\"name\": \"WittyPixels.art #", _tokenIdString, "\","
-        ));
-        string memory _description = string(abi.encodePacked(
-            "\"description\": \"",
-            _loadJsonDescription(self),
-            "\","
-        ));
-        string memory _externalUrl = string(abi.encodePacked(
-            "\"external_url\": \"", tokenMetadataURI(tokenId, self.baseURI), "\","
-        ));
-        string memory _image = string(abi.encodePacked(
-            "\"image\": \"", tokenImageURI(tokenId, self.baseURI), "\","
-        ));
-        string memory _attributes = string(abi.encodePacked(
-            "\"attributes\": [",
-            _loadJsonAttributes(self),
-            "]"
-        ));
-        return string(abi.encodePacked(
-            "{", _name, _description, _externalUrl, _image, _attributes, "}"
-        ));
-    }
-
-    function _loadJsonAttributes(ERC721Token memory self)
-        private pure
-        returns (string memory)
-    {
-        string memory _eventName = string(abi.encodePacked(
-            "{",
-                "\"trait_type\": \"Event Name\",",
-                "\"value\": \"", self.theEvent.name, "\"",
-            "},"
-        ));
-        string memory _eventVenue = string(abi.encodePacked(
-            "{",
-                "\"trait_type\": \"Event Venue\",",
-                "\"value\": \"", self.theEvent.venue, "\"",
-            "},"
-        ));
-        string memory _eventStartDate = string(abi.encodePacked(
-             "{",
-                "\"display_type\": \"date\",",
-                "\"trait_type\": \"Event Start Date\",",
-                "\"value\": ", toString(self.theEvent.startTs),
-            "},"
-        ));
-        string memory _eventEndDate = string(abi.encodePacked(
-             "{",
-                "\"display_type\": \"date\",",
-                "\"trait_type\": \"Event End Date\",",
-                "\"value\": ", toString(self.theEvent.endTs),
-            "},"
-        ));
-        string memory _authorshipRoot = string(abi.encodePacked(
-            "{",
-                "\"trait_type\": \"Authorship's Root\",",
-                "\"value\": \"", toHexString(self.theStats.canvasRoot), "\"",
-            "},"
-        ));
-        
-        string memory _totalPlayers = string(abi.encodePacked(
-            "{", 
-                "\"trait_type\": \"Total Players\",",
-                "\"value\": ", toString(self.theStats.totalPlayers),
-            "},"
-        ));
-        string memory _totalScans = string(abi.encodePacked(
-            "{", 
-                "\"trait_type\": \"Total Scans\",",
-                "\"value\": ", toString(self.theStats.totalScans),
-            "}"
-        ));
-        return string(abi.encodePacked(
-            _eventName,
-            _eventVenue,
-            _eventStartDate,
-            _eventEndDate,
-            _authorshipRoot,
-            _loadJsonCanvasAttributes(self),
-            _totalPlayers,
-            _totalScans
-        ));
-    }
-
-    function _loadJsonCanvasAttributes(ERC721Token memory self)
-        private pure
-        returns (string memory)
-    {
-        string memory _canvasDate = string(abi.encodePacked(
-             "{",
-                "\"display_type\": \"date\",",
-                "\"trait_type\": \"Canvas Date\",",
-                "\"value\": ", toString(self.birthTs),
-            "},"
-        ));
-        string memory _canvasDigest = string(abi.encodePacked(
-            "{",
-                "\"trait_type\": \"Canvas Digest\",",
-                "\"value\": \"", self.imageDigest, "\"",
-            "},"
-        ));        
-        string memory _canvasHeight = string(abi.encodePacked(
-             "{",
-                "\"display_type\": \"number\",",
-                "\"trait_type\": \"Canvas Height\",",
-                "\"value\": ", toString(self.theStats.canvasHeight),
-            "},"
-        ));    
-        string memory _canvasWidth = string(abi.encodePacked(
-             "{",
-                "\"display_type\": \"number\",",
-                "\"trait_type\": \"Canvas Width\",",
-                "\"value\": ", toString(self.theStats.canvasWidth),
-            "},"
-        ));
-        string memory _canvasPixels = string(abi.encodePacked(
-            "{", 
-                "\"trait_type\": \"Canvas Pixels\",",
-                "\"value\": ", toString(self.theStats.canvasPixels),
-            "},"
-        ));
-        string memory _canvasOverpaint;
-        if (
-            self.theStats.totalPixels > 0
-                && self.theStats.totalPixels > self.theStats.canvasPixels
-        ) {
-            uint _ratio = (self.theStats.totalPixels - self.theStats.canvasPixels);
-            _ratio *= 10 ** 6;
-            _ratio /= self.theStats.totalPixels;
-            _ratio /= 10 ** 4;
-            _canvasOverpaint = string(abi.encodePacked(
-                "{",
-                    "\"display_type\": \"boost_percentage\",",
-                    "\"trait_type\": \"Canvas Overpaint\",",
-                    "\"value\": ", toString(_ratio),
-                "},"
-            ));
-        }
-        return string(abi.encodePacked(
-            _canvasDate,
-            _canvasDigest,
-            _canvasHeight,            
-            _canvasWidth,
-            _canvasPixels,
-            _canvasOverpaint
-        ));
-    }
-
-    function _loadJsonDescription(ERC721Token memory self)
-        private pure
-        returns (string memory)
-    {
-        string memory _totalPlayersString = toString(self.theStats.totalPlayers);
-        string memory _radHashHexString = toHexString(self.tokenStatsWitnetRadHash);
-        return string(abi.encodePacked(
-            "WittyPixelsTM collaborative art canvas drawn by ", _totalPlayersString,
-            " attendees during '<b>", self.theEvent.name, "</b>' in ", self.theEvent.venue, 
-            ". This token was fractionalized and secured by the [Witnet multichain",
-            " oracle](https://witnet.io). Historical WittyPixelsTM game info and",
-            " authorship's root during '", self.theEvent.name, "'",
-            " can be audited on [Witnet's block explorer](https://witnet.network/",
-            _radHashHexString, ")."
-        ));
-    }
-
-    function checkBaseURI(string memory uri)
-        internal pure
-        returns (string memory)
-    {
-        require((
-            bytes(uri).length > 0
-                && bytes(uri)[
-                    bytes(uri).length - 1
-                ] == bytes1("/")
-            ), "WittyPixelsLib: bad uri"
-        );
-        return uri;
-    }
-
     function tokenImageURI(uint256 tokenId, string memory baseURI)
         internal pure
         returns (string memory)
@@ -391,6 +285,57 @@ library WittyPixelsLib {
             "stats/",
             toString(tokenId)
         ));
+    }
+
+    /// @dev Returns JSON string containing the metadata of given tokenId
+    /// @dev following an OpenSea-compatible schema.
+    function toJSON(
+            ERC721Token memory self,
+            uint256 tokenId
+        )
+        public pure
+        returns (string memory)
+    {
+        string memory _name = string(abi.encodePacked(
+            "\"name\": \"", self.theEvent.name, "\","
+        ));
+        string memory _description = string(abi.encodePacked(
+            "\"description\": \"",
+            _loadJsonDescription(self, tokenId),
+            "\","
+        ));
+        string memory _externalUrl = string(abi.encodePacked(
+            "\"external_url\": \"", tokenMetadataURI(tokenId, self.baseURI), "\","
+        ));
+        string memory _image = string(abi.encodePacked(
+            "\"image\": \"", tokenImageURI(tokenId, self.baseURI), "\","
+        ));
+        string memory _attributes = string(abi.encodePacked(
+            "\"attributes\": [",
+            _loadJsonAttributes(self),
+            "]"
+        ));
+        return string(abi.encodePacked(
+            "{", _name, _description, _externalUrl, _image, _attributes, "}"
+        ));
+    }
+
+
+    /// ===============================================================================================================
+    /// --- WittyPixelsLib internal helper functions ------------------------------------------------------------------
+    
+    function checkBaseURI(string memory uri)
+        internal pure
+        returns (string memory)
+    {
+        require((
+            bytes(uri).length > 0
+                && bytes(uri)[
+                    bytes(uri).length - 1
+                ] == bytes1("/")
+            ), "WittyPixelsLib: bad uri"
+        );
+        return uri;
     }
 
     function fromHex(string memory s)
@@ -558,6 +503,153 @@ library WittyPixelsLib {
             value >>= 4;
         }
         return string(buffer);
+    }
+
+
+    // ================================================================================================================
+    // --- WittyPixelsLib private methods ----------------------------------------------------------------------------
+
+    function _loadJsonAttributes(ERC721Token memory self)
+        private pure
+        returns (string memory)
+    {
+        string memory _eventName = string(abi.encodePacked(
+            "{",
+                "\"trait_type\": \"Event Name\",",
+                "\"value\": \"", self.theEvent.name, "\"",
+            "},"
+        ));
+        string memory _eventVenue = string(abi.encodePacked(
+            "{",
+                "\"trait_type\": \"Event Venue\",",
+                "\"value\": \"", self.theEvent.venue, "\"",
+            "},"
+        ));
+        string memory _eventStartDate = string(abi.encodePacked(
+             "{",
+                "\"display_type\": \"date\",",
+                "\"trait_type\": \"Event Start Date\",",
+                "\"value\": ", toString(self.theEvent.startTs),
+            "},"
+        ));
+        string memory _eventEndDate = string(abi.encodePacked(
+             "{",
+                "\"display_type\": \"date\",",
+                "\"trait_type\": \"Event End Date\",",
+                "\"value\": ", toString(self.theEvent.endTs),
+            "},"
+        ));
+        string memory _authorshipRoot = string(abi.encodePacked(
+            "{",
+                "\"trait_type\": \"Authorship's Root\",",
+                "\"value\": \"", toHexString(self.theStats.canvasRoot), "\"",
+            "},"
+        ));
+        
+        string memory _totalPlayers = string(abi.encodePacked(
+            "{", 
+                "\"trait_type\": \"Total Players\",",
+                "\"value\": ", toString(self.theStats.totalPlayers),
+            "},"
+        ));
+        string memory _totalScans = string(abi.encodePacked(
+            "{", 
+                "\"trait_type\": \"Total Scans\",",
+                "\"value\": ", toString(self.theStats.totalScans),
+            "}"
+        ));
+        return string(abi.encodePacked(
+            _eventName,
+            _eventVenue,
+            _eventStartDate,
+            _eventEndDate,
+            _authorshipRoot,
+            _loadJsonCanvasAttributes(self),
+            _totalPlayers,
+            _totalScans
+        ));
+    }
+
+    function _loadJsonCanvasAttributes(ERC721Token memory self)
+        private pure
+        returns (string memory)
+    {
+        string memory _canvasDate = string(abi.encodePacked(
+             "{",
+                "\"display_type\": \"date\",",
+                "\"trait_type\": \"Canvas Date\",",
+                "\"value\": ", toString(self.birthTs),
+            "},"
+        ));
+        string memory _canvasDigest = string(abi.encodePacked(
+            "{",
+                "\"trait_type\": \"Canvas Digest\",",
+                "\"value\": \"", self.imageDigest, "\"",
+            "},"
+        ));        
+        string memory _canvasHeight = string(abi.encodePacked(
+             "{",
+                "\"display_type\": \"number\",",
+                "\"trait_type\": \"Canvas Height\",",
+                "\"value\": ", toString(self.theStats.canvasHeight),
+            "},"
+        ));    
+        string memory _canvasWidth = string(abi.encodePacked(
+             "{",
+                "\"display_type\": \"number\",",
+                "\"trait_type\": \"Canvas Width\",",
+                "\"value\": ", toString(self.theStats.canvasWidth),
+            "},"
+        ));
+        string memory _canvasPixels = string(abi.encodePacked(
+            "{", 
+                "\"trait_type\": \"Canvas Pixels\",",
+                "\"value\": ", toString(self.theStats.canvasPixels),
+            "},"
+        ));
+        string memory _canvasOverpaint;
+        if (
+            self.theStats.totalPixels > 0
+                && self.theStats.totalPixels > self.theStats.canvasPixels
+        ) {
+            uint _ratio = (self.theStats.totalPixels - self.theStats.canvasPixels);
+            _ratio *= 10 ** 6;
+            _ratio /= self.theStats.totalPixels;
+            _ratio /= 10 ** 4;
+            _canvasOverpaint = string(abi.encodePacked(
+                "{",
+                    "\"display_type\": \"boost_percentage\",",
+                    "\"trait_type\": \"Canvas Overpaint\",",
+                    "\"value\": ", toString(_ratio),
+                "},"
+            ));
+        }
+        return string(abi.encodePacked(
+            _canvasDate,
+            _canvasDigest,
+            _canvasHeight,            
+            _canvasWidth,
+            _canvasPixels,
+            _canvasOverpaint
+        ));
+    }
+
+    function _loadJsonDescription(ERC721Token memory self, uint256 tokenId)
+        private pure
+        returns (string memory)
+    {
+        string memory _tokenIdStr = toString(tokenId);
+        string memory _totalPlayersString = toString(self.theStats.totalPlayers);
+        string memory _radHashHexString = toHexString(self.tokenStatsWitnetRadHash);
+        return string(abi.encodePacked(
+            "WittyPixelsTM collaborative art canvas #", _tokenIdStr, " drawn by ", _totalPlayersString,
+            " attendees during '<b>", self.theEvent.name, "</b>' in ", self.theEvent.venue, 
+            ". This token was fractionalized and secured by the [Witnet multichain",
+            " oracle](https://witnet.io). Historical WittyPixelsTM game info and",
+            " authorship's root during '", self.theEvent.name, "'",
+            " can be audited on [Witnet's block explorer](https://witnet.network/",
+            _radHashHexString, ")."
+        ));
     }
 
     function _hash(bytes32 a, bytes32 b)
