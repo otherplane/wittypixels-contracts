@@ -10,7 +10,6 @@ import "witnet-solidity-bridge/contracts/apps/WitnetRequestFactory.sol";
 import "witnet-solidity-bridge/contracts/impls/WitnetProxy.sol";
 import "witnet-solidity-bridge/contracts/impls/bytecodes/WitnetBytecodes.sol";
 import "witnet-solidity-bridge/contracts/impls/boards/trustable/WitnetRequestBoardTrustableDefault.sol";
-import "witnet-solidity-bridge/contracts/libs/WitnetLib.sol";
 import "witnet-solidity-bridge/contracts/libs/WitnetEncodingLib.sol";
 
 // Witnet compilation dependencies:
@@ -26,7 +25,7 @@ import "./interfaces/IWittyPixelsTokenAdmin.sol";
 
 import "./patterns/WittyPixelsUpgradeableBase.sol";
 
-/// @title  Witty Pixels NFT - ERC721 token contract
+/// @title  WittyPixels NFT - ERC721 token contract
 /// @author Otherplane Labs Ltd., 2022
 /// @dev    This contract needs to be proxified.
 contract WittyPixelsToken
@@ -44,7 +43,7 @@ contract WittyPixelsToken
     using WittyPixelsLib for bytes32[];
     using WittyPixelsLib for uint256;
     using WittyPixelsLib for WitnetCBOR.CBOR;
-    using WittyPixelsLib for WittyPixelsLib.ERC721Token;
+    using WittyPixelsLib for WittyPixels.ERC721Token;
 
     bytes32 public constant SLOTHASH =
         /* keccak256("art.wittypixels.token") */
@@ -77,7 +76,7 @@ contract WittyPixelsToken
         _;
     }
 
-    modifier tokenInStatus(uint256 _tokenId, WittyPixelsLib.ERC721TokenStatus _status) {
+    modifier tokenInStatus(uint256 _tokenId, WittyPixels.ERC721TokenStatus _status) {
         require(
             getTokenStatus(_tokenId) == _status,
             "WittyPixelsToken: bad mood"
@@ -191,7 +190,7 @@ contract WittyPixelsToken
         virtual external
         tokenInStatus(
             __wpx721().totalSupply + 1,
-            WittyPixelsLib.ERC721TokenStatus.Minting
+            WittyPixels.ERC721TokenStatus.Minting
         )
         returns (ITokenVault)
     {
@@ -203,8 +202,8 @@ contract WittyPixelsToken
             "WittyPixelsToken: no token vault prototype"
         );
 
-        WittyPixelsLib.ERC721Token storage __token = __wpx721().items[_tokenId];
-        WittyPixelsLib.ERC721TokenWitnetQueries storage __witnetQueries = __wpx721().tokenWitnetQueries[_tokenId];
+        WittyPixels.ERC721Token storage __token = __wpx721().items[_tokenId];
+        WittyPixels.ERC721TokenWitnetQueries storage __witnetQueries = __wpx721().tokenWitnetQueries[_tokenId];
         {
             // Revert if any of the witnet queries was not yet solved
             if (
@@ -254,7 +253,7 @@ contract WittyPixelsToken
                 _tokenId.toString()
             ));
             bytes memory _tokenVaultInitData = abi.encode(
-                WittyPixelsLib.TokenVaultInitParams({
+                WittyPixels.TokenVaultInitParams({
                     curator: owner(),
                     name: _tokenVaultName,
                     symbol: symbol(),
@@ -320,7 +319,7 @@ contract WittyPixelsToken
     function getTokenStatus(uint256 _tokenId)
         override public view
         initialized
-        returns (WittyPixelsLib.ERC721TokenStatus)
+        returns (WittyPixels.ERC721TokenStatus)
     {
         if (_tokenId <= __wpx721().totalSupply) {
             IWittyPixelsTokenVault _tokenVault = __wpx721().vaults[_tokenId];
@@ -328,18 +327,18 @@ contract WittyPixelsToken
                 address(_tokenVault) != address(0)
                     && ownerOf(_tokenId) != address(__wpx721().vaults[_tokenId])
             ) {
-                return WittyPixelsLib.ERC721TokenStatus.Acquired;
+                return WittyPixels.ERC721TokenStatus.Acquired;
             } else {
-                return WittyPixelsLib.ERC721TokenStatus.Fractionalized;
+                return WittyPixels.ERC721TokenStatus.Fractionalized;
             }
         } else {
-            WittyPixelsLib.ERC721Token storage __token = __wpx721().items[_tokenId];
+            WittyPixels.ERC721Token storage __token = __wpx721().items[_tokenId];
             if (__token.birthTs > 0) {
-                return WittyPixelsLib.ERC721TokenStatus.Minting;
+                return WittyPixels.ERC721TokenStatus.Minting;
             } else if (bytes(__token.theEvent.name).length > 0) {
-                return WittyPixelsLib.ERC721TokenStatus.Launching;
+                return WittyPixels.ERC721TokenStatus.Launching;
             } else {
-                return WittyPixelsLib.ERC721TokenStatus.Void;
+                return WittyPixels.ERC721TokenStatus.Void;
             }
         }
     }
@@ -350,14 +349,14 @@ contract WittyPixelsToken
         initialized
         returns (string memory)
     {
-        WittyPixelsLib.ERC721TokenStatus _status = getTokenStatus(_tokenId);
-        if (_status == WittyPixelsLib.ERC721TokenStatus.Acquired) {
+        WittyPixels.ERC721TokenStatus _status = getTokenStatus(_tokenId);
+        if (_status == WittyPixels.ERC721TokenStatus.Acquired) {
             return "Acquired";
-        } else if (_status == WittyPixelsLib.ERC721TokenStatus.Fractionalized) {
+        } else if (_status == WittyPixels.ERC721TokenStatus.Fractionalized) {
             return "Fractionalized";
-        } else if (_status == WittyPixelsLib.ERC721TokenStatus.Minting) {
+        } else if (_status == WittyPixels.ERC721TokenStatus.Minting) {
             return "Minting";
-        } else if (_status == WittyPixelsLib.ERC721TokenStatus.Launching) {
+        } else if (_status == WittyPixels.ERC721TokenStatus.Launching) {
             return "Launching";
         } else {
             return "Void";
@@ -369,7 +368,7 @@ contract WittyPixelsToken
         external view
         override
         initialized
-        returns (WittyPixelsLib.ERC721Token memory)
+        returns (WittyPixels.ERC721Token memory)
     {
         return __wpx721().items[_tokenId];
     }
@@ -415,13 +414,13 @@ contract WittyPixelsToken
         initialized
         returns (string memory)
     {
-        WittyPixelsLib.ERC721TokenStatus _tokenStatus = getTokenStatus(_tokenId);
-        if (_tokenStatus == WittyPixelsLib.ERC721TokenStatus.Void) {
+        WittyPixels.ERC721TokenStatus _tokenStatus = getTokenStatus(_tokenId);
+        if (_tokenStatus == WittyPixels.ERC721TokenStatus.Void) {
             return string(hex"");
         } else {
             return WittyPixelsLib.tokenImageURI(
                 _tokenId,
-                _tokenStatus == WittyPixelsLib.ERC721TokenStatus.Launching
+                _tokenStatus == WittyPixels.ERC721TokenStatus.Launching
                     ? baseURI()
                     : __wpx721().items[_tokenId].baseURI
             );
@@ -487,7 +486,7 @@ contract WittyPixelsToken
         tokenExists(_tokenId)
         returns (bool)
     {
-        WittyPixelsLib.ERC721Token storage __token = __wpx721().items[_tokenId];
+        WittyPixels.ERC721Token storage __token = __wpx721().items[_tokenId];
         return (
             _proof.merkle(keccak256(abi.encode(
                 _playerIndex,
@@ -500,16 +499,16 @@ contract WittyPixelsToken
     // ================================================================================================================
     // --- Implementation of 'IWittyPixelsTokenAdmin' -----------------------------------------------------------------
 
-    function launch(WittyPixelsLib.ERC721TokenEvent calldata _theEvent)
+    function launch(WittyPixels.ERC721TokenEvent calldata _theEvent)
         override external
         onlyOwner
         returns (uint256 _tokenId)
     {
         _tokenId = __wpx721().totalSupply + 1;
-        WittyPixelsLib.ERC721TokenStatus _status = getTokenStatus(_tokenId);
+        WittyPixels.ERC721TokenStatus _status = getTokenStatus(_tokenId);
         require(
-            _status == WittyPixelsLib.ERC721TokenStatus.Void
-                || _status == WittyPixelsLib.ERC721TokenStatus.Launching,
+            _status == WittyPixels.ERC721TokenStatus.Void
+                || _status == WittyPixels.ERC721TokenStatus.Launching,
             "WittyPixelsToken: bad mood"
         );
         // Check the event data:
@@ -533,18 +532,20 @@ contract WittyPixelsToken
     {
         uint256 _tokenId = __wpx721().totalSupply + 1;
         string memory _baseuri = __wpx721().baseURI;
+
+        WittyPixels.ERC721TokenStatus _status = getTokenStatus(_tokenId);
         require(
-            _status == WittyPixelsLib.ERC721TokenStatus.Launching
-                || _status == WittyPixelsLib.ERC721TokenStatus.Minting,
+            _status == WittyPixels.ERC721TokenStatus.Launching
+                || _status == WittyPixels.ERC721TokenStatus.Minting,
             "WittyPixelsToken: bad mood"
         );        
-        WittyPixelsLib.ERC721Token storage __token = __wpx721().items[_tokenId];
+        WittyPixels.ERC721Token storage __token = __wpx721().items[_tokenId];
         require(
             block.timestamp >= __token.theEvent.endTs,
             "WittyPixelsToken: the event is not over yet"
         );
 
-        WittyPixelsLib.ERC721TokenWitnetQueries storage __witnetQueries = __wpx721().tokenWitnetQueries[_tokenId];
+        WittyPixels.ERC721TokenWitnetQueries storage __witnetQueries = __wpx721().tokenWitnetQueries[_tokenId];
         if (__witnetQueries.imageDigestId > 0) {
             // Revert if both queries from previous minting attempt were not yet solved
             if (
@@ -553,29 +554,36 @@ contract WittyPixelsToken
             ) {
                 revert("WittyPixelsToken: awaiting Witnet responses");
             }
+        } else {
+            // Settle witnet request on the first minting attempt:
+            string[][] memory _args = new string[][](1);
+            _args[0] = new string[](1);
+            _args[0][0] = WittyPixelsLib.tokenImageURI(_tokenId, _baseuri);
+            __wpx721().tokenWitnetRequests[_tokenId] = WittyPixels.ERC721TokenWitnetRequests({
+                imageDigest: imageDigestRequestTemplate.settleArgs(_args),
+                tokenStats: valuesArrayRequestTemplate.settleArgs(_args)
+            });
         }
+        WittyPixels.ERC721TokenWitnetRequests storage __witnetRequests = __wpx721().tokenWitnetRequests[_tokenId];
         
-        // Set the token's base uri and inception timestamp
-        string memory _currentBaseURI = __wpx721().baseURI;
-        string memory _imageuri = WittyPixelsLib.tokenImageURI(_tokenId, _currentBaseURI);
         {
-            __token.baseURI = _currentBaseURI;
+            // Set the token's base uri and inception timestamp
+            __token.baseURI = _baseuri;
             __token.birthTs = block.timestamp;
-            __token.tokenStatsWitnetRadHash = __wpx721().tokenStatsRequest.radHash();
+            __token.tokenStatsWitnetRadHash = __witnetRequests.tokenStats.radHash();
         }
-
         uint _totalUsedFunds;
         {
             // Ask Witnet to confirm the token's image URI actually exists:
             (__witnetQueries.imageDigestId, _totalUsedFunds) = _witnetPostRequest(
-                __wpx721().imageDigestRequest.modifySLA(_witnetSLA)
+                __witnetRequests.imageDigest.modifySLA(_witnetSLA)
             );
         }
         {
             uint _usedFunds;
             // Ask Witnet to retrieve token's metadata stats from the token base uri provider:            
             (__witnetQueries.tokenStatsId, _usedFunds) = _witnetPostRequest(
-                __wpx721().tokenStatsRequest.modifySLA(_witnetSLA)
+                __witnetRequests.tokenStats.modifySLA(_witnetSLA)
             );
             _totalUsedFunds += _usedFunds;
         }
@@ -586,7 +594,7 @@ contract WittyPixelsToken
         }
         
         // Emit event:
-        emit Minting(_tokenId, _imageuri, _witnetSLA);
+        emit Minting(_tokenId, _baseuri, _witnetSLA);
     }
 
     /// @notice Sets collection's base URI.
@@ -626,9 +634,9 @@ contract WittyPixelsToken
         // a proxy contract is upgraded.
 
         // read and set ERC721 initialization parameters
-        WittyPixelsLib.TokenInitParams memory _params = abi.decode(
+        WittyPixels.TokenInitParams memory _params = abi.decode(
             _initdata,
-            (WittyPixelsLib.TokenInitParams)
+            (WittyPixels.TokenInitParams)
         );
         __ERC721_init(
             _params.name,
@@ -659,7 +667,7 @@ contract WittyPixelsToken
 
     function __wpx721()
         internal pure
-        returns (WittyPixelsLib.TokenStorage storage ptr)
+        returns (WittyPixels.TokenStorage storage ptr)
     {
         assembly {
             ptr.slot := SLOTHASH

@@ -5,11 +5,14 @@ import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 
+import "./WittyPixelsLib.sol";
 import "./interfaces/IWittyPixelsToken.sol";
 import "./interfaces/IWittyPixelsTokenVault.sol";
-
 import "./patterns/WittyPixelsClonableBase.sol";
 
+/// @title  WittyPixels NFT - ERC20 token vault contract
+/// @author Otherplane Labs Ltd., 2022
+/// @dev    This contract needs to be cloned and initialized.
 contract WittyPixelsTokenVault
     is
         ERC20Upgradeable,
@@ -145,9 +148,9 @@ contract WittyPixelsTokenVault
         nonReentrant
     {
         // deserialize deeds data:
-        WittyPixelsLib.TokenVaultOwnershipDeeds memory _deeds = abi.decode(
+        WittyPixels.TokenVaultOwnershipDeeds memory _deeds = abi.decode(
             _deedsdata,
-            (WittyPixelsLib.TokenVaultOwnershipDeeds)
+            (WittyPixels.TokenVaultOwnershipDeeds)
         );
 
         // verify player's pixels proof:
@@ -207,7 +210,7 @@ contract WittyPixelsTokenVault
         if (_deeds.playerPixels > 0) {
             __wpx20().legacyPixels[_deeds.playerAddress] = _currentPixels + _deeds.playerPixels;    
         }
-        __wpx20().players[_deeds.playerIndex] = WittyPixelsLib.TokenVaultPlayerInfo({
+        __wpx20().players[_deeds.playerIndex] = WittyPixels.TokenVaultPlayerInfo({
             addr: _deeds.playerAddress,
             pixels: _deeds.playerPixels
         });
@@ -381,7 +384,7 @@ contract WittyPixelsTokenVault
         wasInitialized
         returns (address, uint256)
     {
-        WittyPixelsLib.TokenVaultPlayerInfo storage __info = __wpx20().players[index];
+        WittyPixels.TokenVaultPlayerInfo storage __info = __wpx20().players[index];
         return (
             __info.addr,
             __info.pixels
@@ -586,9 +589,9 @@ contract WittyPixelsTokenVault
         super.__initialize(_initBytes);
 
         // decode and validate initialization parameters:
-        WittyPixelsLib.TokenVaultInitParams memory _params = abi.decode(
+        WittyPixels.TokenVaultInitParams memory _params = abi.decode(
             _initBytes,
-            (WittyPixelsLib.TokenVaultInitParams)
+            (WittyPixels.TokenVaultInitParams)
         );
         require(
             _params.curator != address(0),
@@ -650,7 +653,7 @@ contract WittyPixelsTokenVault
 
     function __wpx20()
         internal pure
-        returns (WittyPixelsLib.TokenVaultStorage storage ptr)
+        returns (WittyPixels.TokenVaultStorage storage ptr)
     {
         assembly {
             ptr.slot := SLOTHASH

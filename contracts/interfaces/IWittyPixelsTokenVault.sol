@@ -68,7 +68,7 @@ abstract contract IWittyPixelsTokenVault
     /// her share if the parent NFT token ever gets acquired. 
     function pixelsOf(address) virtual external view returns (uint256);
 
-    /// @notice Returns total number of finalized pixels within the WittyPixelsLib canvas.
+    /// @notice Returns total number of finalized pixels within the WittyPixels canvas.
     function totalPixels() virtual external view returns (uint256);
 
 }

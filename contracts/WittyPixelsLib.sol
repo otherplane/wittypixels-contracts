@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/utils/math/Math.sol";
+import "./WittyPixels.sol";
 import "witnet-solidity-bridge/contracts/apps/WitnetRequestFactory.sol";
-import "../interfaces/IWittyPixelsTokenVault.sol";
 
-/// @title  Witty Pixels - Library containting EVM data model and multiple helper functions
+/// @title  WittyPixelsLib - Library containing helper methods.
 /// @author Otherplane Labs Ltd., 2022
 /// @dev    Deployable library.
 
@@ -13,20 +12,23 @@ library WittyPixelsLib {
 
     using WitnetCBOR for WitnetCBOR.CBOR;
 
+    /// ===============================================================================================================
+    /// --- WittyPixelsLib public helper functions --------------------------------------------------------------------
+
     /// @dev Helper function for building the HTTP/GET parameterized requests
     /// @dev that will be solved by the Witnet decentralized oracle every time
     /// @dev a new token of the ERC721 collection is minted.
-    function buildHttpRequests(WitnetRequestFactory factory)
+    function buildHttpRequestTemplates(WitnetRequestFactory factory)
         public
         returns (
             WitnetRequestTemplate imageDigestRequestTemplate,
-            WitnetRequestTemplate tokenStatsRequestTemplate
+            WitnetRequestTemplate valuesArrayRequestTemplate
         )
     {
         IWitnetBytecodes registry = factory.registry();
         
         bytes32 httpGetImageDigest;
-        bytes32 httpGetTokenStats;
+        bytes32 httpGetValuesArray;
         bytes32 reducerModeNoFilters;
 
         /// Verify that need witnet radon artifacts are actually valid and known by the factory:
@@ -34,7 +36,7 @@ library WittyPixelsLib {
             httpGetImageDigest = registry.verifyDataSource(
                 /* requestMethod */    WitnetV2.DataRequestMethods.HttpGet,
                 /* requestSchema */    "",
-                /* requestAuthority */ "\\0\\", // => will be substituted w/ WittyPixesLib.tokenImageURI(,) on every new mint
+                /* requestAuthority */ "\\0\\", // => will be substituted w/ WittyPixelsLib.tokenImageURI(,) on next mint
                 /* requestPath */      "",
                 /* requestQuery */     "digest=sha-256",
                 /* requestBody */      "",
@@ -42,10 +44,10 @@ library WittyPixelsLib {
                 /* requestScript */    hex"811874"
                                         // <= WitnetScript([ Witnet.TYPES.STRING ]).length()
             );
-            httpGetTokenStats = registry.verifyDataSource(
+            httpGetValuesArray = registry.verifyDataSource(
                 /* requestMethod    */ WitnetV2.DataRequestMethods.HttpGet,
                 /* requestSchema    */ "",
-                /* requestAuthority */ "\\0\\", // => will be substituted w/ WittyPixesLib.tokenStatsURI(,) on every new mint
+                /* requestAuthority */ "\\0\\", // => will be substituted w/ WittyPixelsLib.tokenStatsURI(,) on every new mint
                 /* requestPath      */ "",
                 /* requestQuery     */ "",
                 /* requestBody      */ "",
@@ -75,8 +77,8 @@ library WittyPixelsLib {
                 );
             }
             {
-                retrievals[0] = httpGetTokenStats;
-                tokenStatsRequestTemplate = factory.buildRequestTemplate(
+                retrievals[0] = httpGetValuesArray;
+                valuesArrayRequestTemplate = factory.buildRequestTemplate(
                     /* retrieval templates */ retrievals,
                     /* aggregation reducer */ reducerModeNoFilters,
                     /* witnessing reducer  */ reducerModeNoFilters,
@@ -96,14 +98,14 @@ library WittyPixelsLib {
     }
 
     /// @dev Deserialize a CBOR-encoded data request result from Witnet 
-    /// @dev into a WittyPixelsLib.ERC721TokenStats structure
+    /// @dev into a WittyPixels.ERC721TokenStats structure
     function toERC721TokenStats(WitnetCBOR.CBOR memory cbor)
         public pure
-        returns (ERC721TokenStats memory)
+        returns (WittyPixels.ERC721TokenStats memory)
     {
         WitnetCBOR.CBOR[] memory fields = cbor.readArray();
         if (fields.length >= 7) {
-            return ERC721TokenStats({
+            return WittyPixels.ERC721TokenStats({
                 canvasHeight: fields[0].readUint(),
                 canvasPixels: fields[1].readUint(),
                 canvasRoot:   toBytes32(fromHex(fields[2].readString())),
@@ -117,142 +119,42 @@ library WittyPixelsLib {
         }
     }
 
+    /// @dev Returns JSON string containing the metadata of given tokenId
+    /// @dev following an OpenSea-compatible schema.
+    function toJSON(
+            WittyPixels.ERC721Token memory self,
+            uint256 tokenId
+        )
+        public pure
+        returns (string memory)
+    {
+        string memory _name = string(abi.encodePacked(
+            "\"name\": \"", self.theEvent.name, "\","
+        ));
+        string memory _description = string(abi.encodePacked(
+            "\"description\": \"",
+            _loadJsonDescription(self, tokenId),
+            "\","
+        ));
+        string memory _externalUrl = string(abi.encodePacked(
+            "\"external_url\": \"", tokenMetadataURI(tokenId, self.baseURI), "\","
+        ));
+        string memory _image = string(abi.encodePacked(
+            "\"image\": \"", tokenImageURI(tokenId, self.baseURI), "\","
+        ));
+        string memory _attributes = string(abi.encodePacked(
+            "\"attributes\": [",
+            _loadJsonAttributes(self),
+            "]"
+        ));
+        return string(abi.encodePacked(
+            "{", _name, _description, _externalUrl, _image, _attributes, "}"
+        ));
+    }
+    
 
     /// ===============================================================================================================
-    /// --- WITTYPIXELS DATA MODEL ------------------------------------------------------------------------------------
-    
-    bytes32 internal constant WPX_TOKEN_SLOTHASH =
-        /* keccak256("art.wittypixels.token") */
-        0xa1c65a69721a75d8ec79c686c8573bd06e7f0c400997cbe153064301cbc480d5;
-    
-    bytes32 internal constant WPX_TOKEN_VAULT_SLOTHASH =
-        /* keccak256("art.wittypixels.token.vault") */
-        0x3c39a4bcf91d618a40909e659271a0d850789843a1b2ede0bffa31cd98ff6976;
-
-    struct TokenInitParams {
-        string baseURI;
-        string name;
-        string symbol;
-    }
-
-    struct TokenStorage {
-        // --- ERC721
-        string  baseURI;
-        uint256 totalSupply;
-        mapping (uint256 => ERC721Token) items;
-        
-        // --- ITokenVaultFactory
-        IWittyPixelsTokenVault tokenVaultPrototype;
-        uint256 totalTokenVaults;
-        mapping (uint256 => IWittyPixelsTokenVault) vaults;
-
-        // --- WittyPixelsToken
-        WitnetRequest imageDigestRequest;
-        WitnetRequest tokenStatsRequest;
-        mapping (uint256 => ERC721TokenWitnetQueries) tokenWitnetQueries;
-    }
-
-    struct TokenVaultOwnershipDeeds {
-        address parentToken;
-        uint256 parentTokenId;
-        address playerAddress;
-        uint256 playerIndex;
-        uint256 playerPixels;
-        bytes32[] playerPixelsProof;
-        bytes signature;
-    }
-
-    struct TokenVaultInitParams {
-        address curator;
-        string  name;
-        bytes   settings;
-        string  symbol;
-        address token;
-        uint256 tokenId;
-        uint256 tokenPixels;
-    }
-
-    struct TokenVaultStorage {
-        // --- IERC1633
-        address parentToken;
-        uint256 parentTokenId;
-
-        // --- IWittyPixelsTokenVault
-        address curator;
-        uint256 finalPrice;
-        
-        ITokenVaultAuctionDutch.Settings settings;
-        IWittyPixelsTokenVault.Stats stats;
-        
-        address[] authors;
-        mapping (address => uint256) legacyPixels;
-        mapping (address => bool) redeemed;
-        mapping (uint256 => TokenVaultPlayerInfo) players;
-    }
-
-    struct TokenVaultJackpotWinner {
-        bool awarded;
-        bool claimed;
-        uint256 index;
-    }
-
-    struct TokenVaultPlayerInfo {
-        address addr;
-        uint256 pixels;
-    }
-
-    enum ERC721TokenStatus {
-        Void,
-        Launching,
-        Minting,
-        Fractionalized,
-        Acquired
-    }
-
-    struct ERC721Token {
-        string  baseURI;
-        uint256 birthTs;        
-        string  imageDigest;
-        bytes32 imageDigestWitnetTxHash;         
-        bytes32 tokenStatsWitnetRadHash;
-        ERC721TokenEvent theEvent;
-        ERC721TokenStats theStats;
-    }
-    
-    struct ERC721TokenEvent {
-        string  name;
-        string  venue;
-        uint256 startTs;
-        uint256 endTs;
-    }
-
-    struct ERC721TokenStats {
-        uint256 canvasHeight;
-        uint256 canvasPixels;
-        bytes32 canvasRoot;
-        uint256 canvasWidth;
-        uint256 totalPixels;
-        uint256 totalPlayers;
-        uint256 totalScans;
-    }
-
-    struct ERC721TokenSponsors {
-        address[] addresses;
-        uint256 totalJackpots;        
-        mapping (address => ERC721TokenJackpot) jackpots;
-    }
-
-    struct ERC721TokenJackpot {
-        bool authorized;
-        address winner;
-        uint256 value;
-        string text;
-    }
-    
-    struct ERC721TokenWitnetQueries {
-        uint256 imageDigestId;
-        uint256 tokenStatsId;
-    }
+    /// --- WittyPixels internal helper functions ---------------------------------------------------------------------
 
     function tokenImageURI(uint256 tokenId, string memory baseURI)
         internal pure
@@ -286,43 +188,6 @@ library WittyPixelsLib {
             toString(tokenId)
         ));
     }
-
-    /// @dev Returns JSON string containing the metadata of given tokenId
-    /// @dev following an OpenSea-compatible schema.
-    function toJSON(
-            ERC721Token memory self,
-            uint256 tokenId
-        )
-        public pure
-        returns (string memory)
-    {
-        string memory _name = string(abi.encodePacked(
-            "\"name\": \"", self.theEvent.name, "\","
-        ));
-        string memory _description = string(abi.encodePacked(
-            "\"description\": \"",
-            _loadJsonDescription(self, tokenId),
-            "\","
-        ));
-        string memory _externalUrl = string(abi.encodePacked(
-            "\"external_url\": \"", tokenMetadataURI(tokenId, self.baseURI), "\","
-        ));
-        string memory _image = string(abi.encodePacked(
-            "\"image\": \"", tokenImageURI(tokenId, self.baseURI), "\","
-        ));
-        string memory _attributes = string(abi.encodePacked(
-            "\"attributes\": [",
-            _loadJsonAttributes(self),
-            "]"
-        ));
-        return string(abi.encodePacked(
-            "{", _name, _description, _externalUrl, _image, _attributes, "}"
-        ));
-    }
-
-
-    /// ===============================================================================================================
-    /// --- WittyPixelsLib internal helper functions ------------------------------------------------------------------
     
     function checkBaseURI(string memory uri)
         internal pure
@@ -509,7 +374,7 @@ library WittyPixelsLib {
     // ================================================================================================================
     // --- WittyPixelsLib private methods ----------------------------------------------------------------------------
 
-    function _loadJsonAttributes(ERC721Token memory self)
+    function _loadJsonAttributes(WittyPixels.ERC721Token memory self)
         private pure
         returns (string memory)
     {
@@ -570,7 +435,7 @@ library WittyPixelsLib {
         ));
     }
 
-    function _loadJsonCanvasAttributes(ERC721Token memory self)
+    function _loadJsonCanvasAttributes(WittyPixels.ERC721Token memory self)
         private pure
         returns (string memory)
     {
@@ -634,7 +499,7 @@ library WittyPixelsLib {
         ));
     }
 
-    function _loadJsonDescription(ERC721Token memory self, uint256 tokenId)
+    function _loadJsonDescription(WittyPixels.ERC721Token memory self, uint256 tokenId)
         private pure
         returns (string memory)
     {
@@ -688,4 +553,6 @@ library WittyPixelsLib {
             }
         }
     }
+
+
 }
