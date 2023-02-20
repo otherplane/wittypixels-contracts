@@ -2,24 +2,11 @@
     "polygon": {
         "polygon.goerli": {
             "Create2Factory": "0x1B99e3b8d5981D829E1C9a7f520B33515E7133d1",
-            "WitnetRequestTemplateImageDigest": "0x4d28B857f43ed13a047490e679f6db8EA18b0Ee2",
-            "WitnetRequestTemplateTokenStats": "0x32A1D3311f3BE33669130e33A45170ea85D8Fd99",
-            "WittyPixelsLib": "0xCafBcB72bF0Fa34aD4e3A114A25cde848e5Af051",
+            "WittyPixelsLib": "0x19A802f8ac3D216B1A7F460520b2eDaB5D6263b5",
             "WittyPixelsToken": "0xc0FFee029589de1082f8e14d7809F27f452e5191",
-            "WittyPixelsTokenImplementation": "0xDBEde16033E3c1c77dDe2c5599DA8CaEC2714250",
+            "WittyPixelsTokenImplementation": "0x2BC74dD8d80BD0c0926602eCA9763C1a7240c43c",
             "WittyPixelsTokenVaultPrototype": "0x8888884BaD5fa081cAe2Ef6A06F87B527426E63E"
         }
     },
-    "default": {
-        "develop": {
-            "Create2Factory": "0x15FF8Cb1E36F91015aFB4EA89a339e5dF598370b",
-            "WitnetRequestTemplateImageDigest": "0xf50B604f8b3898e8cF1BF73F23FD8cE1baB76b79",
-            "WitnetRequestTemplateTokenStats": "0xd8E0d2bcd874601B4bC249dc1433550ea58c5E31"
-        },
-        "test": {
-            "WitnetRequestTemplateImageDigest": "0x0a8f43d58F101c7ef515ef58419b05C416cF5A5B",
-            "WitnetRequestTemplateTokenStats": "0x2906E044B280f500916952266B27b18DCc2db229",
-            "Create2Factory": "0xb9A219631Aed55eBC3D998f17C3840B7eC39C0cc"
-        }
-    }
+    "default": {}
 }
