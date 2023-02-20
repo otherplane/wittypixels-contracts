@@ -6,7 +6,7 @@ const addresses = require("../migrations/addresses")
 const WitnetBytecodes = artifacts.require("WitnetBytecodes")
 const WitnetProxy = artifacts.require("WitnetProxy")
 const WitnetRequestBoard = artifacts.require("WitnetRequestBoardTrustableDefault")
-
+const WitnetRequestFactory = artifacts.require("WitnetRequestFactory")
 const WittyPixelsToken = artifacts.require("WittyPixelsToken")
 const WittyPixelsTokenVault = artifacts.require("WittyPixelsTokenVault")
 
@@ -17,6 +17,7 @@ contract("WittyPixels", ([curator, master, stranger, player, player2, patron]) =
     var backend, backendWallet
     var bytecodes
     var implementation
+    var factory
     var prototype
     var proxy    
     var token
@@ -28,6 +29,7 @@ contract("WittyPixels", ([curator, master, stranger, player, player2, patron]) =
         implementation = await WittyPixelsToken.deployed()
         prototype = await WittyPixelsTokenVault.deployed()
         witnet = await WitnetRequestBoard.deployed()
+        factory = await WitnetRequestFactory.deployed()
         proxy = await WitnetProxy.new({ from: master })
         token = await WittyPixelsToken.at(proxy.address)
         backendWallet = await web3.eth.accounts.privateKeyToAccount(
@@ -348,8 +350,7 @@ contract("WittyPixels", ([curator, master, stranger, player, player2, patron]) =
             it("stranger cannot upgrade proxy, ever", async () => {
                 implementation = await WittyPixelsToken.new(
                     witnet.address,
-                    addresses.default.test.WitnetRequestTemplateImageDigest,
-                    addresses.default.test.WitnetRequestTemplateTokenStats,
+                    factory.address,
                     true,
                     "0x0",
                 )
@@ -1500,7 +1501,9 @@ it("curator can change auction settings", async () => {
                         const missingPixels = totalPixels - info.stats.redeemedPixels
                         const expectedBalance = finalPrice * missingPixels / totalPixels;
                         const actualBalance = await web3.eth.getBalance(tokenVault.address)
-                        assert.equal(actualBalance.toString().substring(0, 16), expectedBalance.toString().substring(0, 16))
+                        console.log(finalPrice.toString())
+                        console.log(expectedBalance.toString())
+                        console.log(actualBalance.toString())
                         assert.equal(
                             actualBalance.toString().substring(0, 16),
                             expectedBalance.toString().substring(0, 16)
