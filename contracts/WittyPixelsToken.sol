@@ -499,6 +499,8 @@ contract WittyPixelsToken
     // ================================================================================================================
     // --- Implementation of 'IWittyPixelsTokenAdmin' -----------------------------------------------------------------
 
+    /// @notice Settle next token's event related metadata.
+    /// @param _theEvent Event metadata, including name, venut, starting and ending timestamps.
     function launch(WittyPixels.ERC721TokenEvent calldata _theEvent)
         override external
         onlyOwner
@@ -525,6 +527,8 @@ contract WittyPixelsToken
         __wpx721().items[_tokenId].theEvent = _theEvent;
     }
     
+    /// @notice Mint next WittyPixelsTM token: one new token id per ERC721TokenEvent where WittyPixelsTM is played.
+    /// @param _witnetSLA Witnessing SLA parameters of underlying data requests to be solved by the Witnet oracle.
     function mint(WitnetV2.RadonSLA calldata _witnetSLA)
         override external payable
         onlyOwner
@@ -606,8 +610,7 @@ contract WittyPixelsToken
         __setBaseURI(_uri);
     }
 
-    /// @notice Vault logic contract to be used in next calls to `fractionalize(..)`. 
-    /// @dev Prototype ownership needs to have been previously transferred to this contract.
+    /// @notice Sets token vault contract to be used as prototype in following mints.
     function setTokenVaultFactoryPrototype(address _prototype)
         external
         override

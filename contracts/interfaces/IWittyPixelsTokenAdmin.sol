@@ -9,8 +9,8 @@ interface IWittyPixelsTokenAdmin {
     event Launched(uint256 tokenId, WittyPixels.ERC721TokenEvent theEvent);
     event Minting(uint256 tokenId, string baseURI, WitnetV2.RadonSLA witnetSLA);
 
-    event NewTokenSponsor(uint256 tokenId, uint256 index, address indexed addr);
-
+    /// @notice Settle next token's event related metadata.
+    /// @param theEvent Event metadata, including name, venut, starting and ending timestamps.
     function launch(WittyPixels.ERC721TokenEvent calldata theEvent) external returns (uint256 tokenId);
     
     /// @notice Mint next WittyPixelsTM token: one new token id per ERC721TokenEvent where WittyPixelsTM is played.
@@ -21,6 +21,5 @@ interface IWittyPixelsTokenAdmin {
     function setBaseURI(string calldata baseURI) external;
 
     /// @notice Sets token vault contract to be used as prototype in following mints.
-    /// @dev Prototype ownership needs to have been previously transferred to this contract.
     function setTokenVaultFactoryPrototype(address prototype) external;    
 }
