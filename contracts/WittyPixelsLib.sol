@@ -16,7 +16,7 @@ library WittyPixelsLib {
     /// --- WittyPixelsLib public helper functions --------------------------------------------------------------------
 
     /// @dev Helper function for building the HTTP/GET parameterized requests
-    /// @dev that will be solved by the Witnet decentralized oracle every time
+    /// @dev that will be requested to the Witnet decentralized oracle every time
     /// @dev a new token of the ERC721 collection is minted.
     function buildHttpRequestTemplates(WitnetRequestFactory factory)
         public
@@ -36,24 +36,24 @@ library WittyPixelsLib {
             httpGetImageDigest = registry.verifyDataSource(
                 /* requestMethod */    WitnetV2.DataRequestMethods.HttpGet,
                 /* requestSchema */    "",
-                /* requestAuthority */ "\\0\\", // => will be substituted w/ WittyPixelsLib.tokenImageURI(,) on next mint
-                /* requestPath */      "",
+                /* requestAuthority */ "\\0\\",         // => will be substituted w/ WittyPixelsLib.baseURI() on next mint
+                /* requestPath */      "image/\\1\\",   // => will by substituted w/ tokenId on next mint
                 /* requestQuery */     "digest=sha-256",
                 /* requestBody */      "",
                 /* requestHeader */    new string[2][](0),
-                /* requestScript */    hex"811874"
-                                        // <= WitnetScript([ Witnet.TYPES.STRING ]).length()
+                /* requestScript */    hex"80"
+                                       // <= WitnetScript([ Witnet.TYPES.STRING ])
             );
             httpGetValuesArray = registry.verifyDataSource(
                 /* requestMethod    */ WitnetV2.DataRequestMethods.HttpGet,
                 /* requestSchema    */ "",
-                /* requestAuthority */ "\\0\\", // => will be substituted w/ WittyPixelsLib.tokenStatsURI(,) on every new mint
-                /* requestPath      */ "",
+                /* requestAuthority */ "\\0\\",         // => will be substituted w/ WittyPixelsLib.baseURI() on every new mint
+                /* requestPath      */ "stats/\\1\\",   // => will by substituted w/ tokenId on next mint
                 /* requestQuery     */ "",
                 /* requestBody      */ "",
                 /* requestHeader    */ new string[2][](0),
                 /* requestScript    */ hex"8218771869"
-                                        // <= WitnetScript([ Witnet.TYPES.STRING ]).parseJSONMap().valuesAsArray()
+                                       // <= WitnetScript([ Witnet.TYPES.STRING ]).parseJSONMap().valuesAsArray()
             );
             reducerModeNoFilters = registry.verifyRadonReducer(
                 WitnetV2.RadonReducer({
@@ -162,7 +162,7 @@ library WittyPixelsLib {
     {
         return string(abi.encodePacked(
             baseURI,
-            "image/",
+            "/image/",
             toString(tokenId)
         ));
     }
@@ -173,7 +173,7 @@ library WittyPixelsLib {
     {
         return string(abi.encodePacked(
             baseURI,
-            "metadata/",
+            "/metadata/",
             toString(tokenId)
         ));
     }
@@ -184,7 +184,7 @@ library WittyPixelsLib {
     {
         return string(abi.encodePacked(
             baseURI,
-            "stats/",
+            "/stats/",
             toString(tokenId)
         ));
     }
@@ -197,7 +197,7 @@ library WittyPixelsLib {
             bytes(uri).length > 0
                 && bytes(uri)[
                     bytes(uri).length - 1
-                ] == bytes1("/")
+                ] != bytes1("/")
             ), "WittyPixelsLib: bad uri"
         );
         return uri;

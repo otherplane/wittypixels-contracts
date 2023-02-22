@@ -2,7 +2,7 @@ const { merge } = require("lodash")
 module.exports = {
   core: {
     collection: {
-      baseURI: "https://api.wittypixels.art/",
+      baseURI: "https://api.wittypixels.art",
       name: "WittyPixels.art",
       symbol: "WPX",
       upgradable: true,

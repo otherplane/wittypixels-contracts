@@ -222,8 +222,12 @@ contract WittyPixelsToken
                 // Revert if the Witnet response was previous to when minting started:
                 require(_witnetResponse.timestamp >= __token.birthTs, "WittyPixelsToken: anachronic 'image-digest'");
             }
-            // Process Witnet response to 'image-digest':
-            __token.imageDigest = _witnetResult.value.toString();
+            // Try to deserialize Witnet response to 'image-digest':
+            try _witnetResult.value.toString() returns (string memory _imageDigest) {
+                __token.imageDigest = _imageDigest;
+            } catch {
+                revert("WittyPixelsToken: cannot read image digest");
+            }
             __token.imageDigestWitnetTxHash = _witnetResponse.drTxHash;
         }
         {
@@ -236,8 +240,14 @@ contract WittyPixelsToken
                 // Revert if the Witnet response was previous to when minting started:
                 require(_witnetResponse.timestamp >= __token.birthTs, "WittyPixelsToken: anachronic 'token-stats'");
             }
-            // Process Witnet response to 'tokenStatsRequest:
-            __token.theStats = _witnetResult.value.toERC721TokenStats();
+            // Try to deserialize Witnet response to 'token-stats':
+            try _witnetResult.value.toERC721TokenStats()
+                returns (WittyPixels.ERC721TokenStats memory _tokenStats)
+            {
+                __token.theStats = _tokenStats;
+            } catch {
+                revert("WittyPixelsToken: cannot read token stats");
+            }
         }
         
         // Clone the token vault prototype and initialize the cloned instance:
@@ -555,10 +565,11 @@ contract WittyPixelsToken
                 revert("WittyPixelsToken: awaiting Witnet responses");
             }
         } else {
-            // Settle witnet request on the first minting attempt:
+            // Settle witnet requests only on the first minting attempt:
             string[][] memory _args = new string[][](1);
-            _args[0] = new string[](1);
-            _args[0][0] = WittyPixelsLib.tokenImageURI(_tokenId, _baseuri);
+            _args[0] = new string[](2);
+            _args[0][0] = _baseuri;
+            _args[0][1] = _tokenId.toString();
             __wpx721().tokenWitnetRequests[_tokenId] = WittyPixels.ERC721TokenWitnetRequests({
                 imageDigest: imageDigestRequestTemplate.settleArgs(_args),
                 tokenStats: valuesArrayRequestTemplate.settleArgs(_args)
