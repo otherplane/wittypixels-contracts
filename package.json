@@ -16,6 +16,7 @@
     "lint": "yarn fmt:sol! && yarn fmt:js!",
     "migrate": "truffle migrate",
     "wpx:launch": "truffle migrate --migrations_directory ./migrations/ops/launch --network",
+    "wpx:mint": "truffle migrate --migrations_directory ./migrations/ops/mint --network",
     "test": "truffle test"
   },
   "keywords": [],
