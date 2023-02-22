@@ -15,7 +15,6 @@ import "witnet-solidity-bridge/contracts/libs/WitnetEncodingLib.sol";
 // Witnet compilation dependencies:
 import "witnet-solidity-bridge/contracts/UsingWitnet.sol";
 import "witnet-solidity-bridge/contracts/apps/WitnetRequestFactory.sol";
-import "witnet-solidity-bridge/contracts/libs/WitnetLib.sol";
 
 // WittyPixels interfaces:
 import "./WittyPixelsLib.sol";
@@ -38,12 +37,11 @@ contract WittyPixelsToken
         UsingWitnet
 {
     using ERC165Checker for address;
-    using WitnetLib for Witnet.Result;
     using WittyPixelsLib for bytes;
     using WittyPixelsLib for bytes32[];
     using WittyPixelsLib for uint256;
-    using WittyPixelsLib for WitnetCBOR.CBOR;
     using WittyPixelsLib for WittyPixels.ERC721Token;
+    using WittyPixelsLib for WittyPixels.TokenStorage;
 
     WitnetRequestTemplate immutable public imageDigestRequestTemplate;
     WitnetRequestTemplate immutable public valuesArrayRequestTemplate;
@@ -188,7 +186,7 @@ contract WittyPixelsToken
             __wpx721().totalSupply + 1,
             WittyPixels.ERC721TokenStatus.Minting
         )
-        returns (ITokenVault)
+        returns (ITokenVault _tokenVault)
     {
         uint256 _tokenId = __wpx721().totalSupply + 1;
 
@@ -198,87 +196,50 @@ contract WittyPixelsToken
             "WittyPixelsToken: no token vault prototype"
         );
 
-        WittyPixels.ERC721Token storage __token = __wpx721().items[_tokenId];
-        WittyPixels.ERC721TokenWitnetQueries storage __witnetQueries = __wpx721().tokenWitnetQueries[_tokenId];
-        {
-            // Revert if any of the witnet queries was not yet solved
-            if (
-                !_witnetCheckResultAvailability(__witnetQueries.imageDigestId)
-                    || !_witnetCheckResultAvailability(__witnetQueries.tokenStatsId)
-            ) {
-                revert("WittyPixelsToken: awaiting response from Witnet");
+        // Try to deserialize results to http/data queries, as provied from Witnet,
+        // and update token's metadata storage:
+        try __wpx721().fetchWitnetResults(witnet, _tokenId) {
+            // Upon success, clone the token vault prototype 
+            // that will fractioanlized the minted token:
+            {
+                string memory _tokenVaultName = string(abi.encodePacked(
+                    name(),
+                    bytes(" #"),
+                    _tokenId.toString()
+                ));
+                bytes memory _tokenVaultInitData = abi.encode(
+                    WittyPixels.TokenVaultInitParams({
+                        curator: owner(),
+                        name: _tokenVaultName,
+                        symbol: symbol(),
+                        settings: _tokenVaultSettings,
+                        token: address(this),
+                        tokenId: _tokenId,
+                        tokenPixels: __wpx721().items[_tokenId].theStats.canvasPixels
+                    })
+                );
+                _tokenVault = ITokenVault(address(
+                    __wpx721().tokenVaultPrototype.cloneDeterministicAndInitialize(
+                        _tokenVaultSalt,
+                        _tokenVaultInitData
+                    )
+                ));
             }
         }
-
-        Witnet.Response memory _witnetResponse;
-        Witnet.Result memory _witnetResult;
-        {
-            // Read response to 'image-digest' query, and free storage from the Witnet Request Board:
-            _witnetResponse = _witnetDeleteQuery(__witnetQueries.imageDigestId);
-            _witnetResult = WitnetLib.resultFromCborBytes(_witnetResponse.cborBytes);
-            {
-                // Revert if the Witnet query failed:
-                require(_witnetResult.success, "WittyPixelsToken: 'image-digest' failed");
-                // Revert if the Witnet response was previous to when minting started:
-                require(_witnetResponse.timestamp >= __token.birthTs, "WittyPixelsToken: anachronic 'image-digest'");
-            }
-            // Try to deserialize Witnet response to 'image-digest':
-            try _witnetResult.value.toString() returns (string memory _imageDigest) {
-                __token.imageDigest = _imageDigest;
-            } catch {
-                revert("WittyPixelsToken: cannot read image digest");
-            }
-            __token.imageDigestWitnetTxHash = _witnetResponse.drTxHash;
-        }
-        {
-            // Read response to 'token-stats' query, and free storage from the Witnet Request Board:
-            _witnetResponse = _witnetDeleteQuery(__witnetQueries.tokenStatsId);
-            _witnetResult = WitnetLib.resultFromCborBytes(_witnetResponse.cborBytes);
-            {
-                // Revert if the Witnet query failed:
-                require(_witnetResult.success, "WittyPixelsToken: 'token-stats' failed");
-                // Revert if the Witnet response was previous to when minting started:
-                require(_witnetResponse.timestamp >= __token.birthTs, "WittyPixelsToken: anachronic 'token-stats'");
-            }
-            // Try to deserialize Witnet response to 'token-stats':
-            try _witnetResult.value.toERC721TokenStats()
-                returns (WittyPixels.ERC721TokenStats memory _tokenStats)
-            {
-                __token.theStats = _tokenStats;
-            } catch {
-                revert("WittyPixelsToken: cannot read token stats");
-            }
-        }
-        
-        // Clone the token vault prototype and initialize the cloned instance:
-        IWittyPixelsTokenVault _tokenVault;
-        {
-            string memory _tokenVaultName = string(abi.encodePacked(
-                name(),
-                bytes(" #"),
-                _tokenId.toString()
-            ));
-            bytes memory _tokenVaultInitData = abi.encode(
-                WittyPixels.TokenVaultInitParams({
-                    curator: owner(),
-                    name: _tokenVaultName,
-                    symbol: symbol(),
-                    settings: _tokenVaultSettings,
-                    token: address(this),
-                    tokenId: _tokenId,
-                    tokenPixels: __token.theStats.canvasPixels
-                })
+        catch Error(string memory _reason) {
+            revert(
+                string(abi.encodePacked(
+                    "WittyPixelsToken: ",
+                    bytes(_reason)
+                ))
             );
-            _tokenVault = IWittyPixelsTokenVault(address(
-                __wpx721().tokenVaultPrototype.cloneDeterministicAndInitialize(
-                    _tokenVaultSalt,
-                    _tokenVaultInitData
-                )
-            ));
+        }
+        catch {
+            revert("WittyPixelsToken: unable to read http/results");
         }
 
         // Store token vault contract:
-        __wpx721().vaults[_tokenId] = _tokenVault;
+        __wpx721().vaults[_tokenId] = IWittyPixelsTokenVault(address(_tokenVault));
         __wpx721().totalTokenVaults ++;
 
         // Mint the actual ERC-721 token and set the just created vault contract as first owner ever:
@@ -289,8 +250,6 @@ contract WittyPixelsToken
 
         // Emits event
         emit Fractionalized(msg.sender, address(this), _tokenId, address(_tokenVault));
-
-        return ITokenVault(address(_tokenVault));
     }
 
     /// @notice Returns token vault prototype being instantiated when fractionalizing. 
@@ -313,6 +272,42 @@ contract WittyPixelsToken
         returns (string memory)
     {
         return __wpx721().baseURI;
+    }
+
+    /// @notice Returns image URI of given token.
+    function imageURI(uint256 _tokenId)
+        override external view 
+        initialized
+        returns (string memory)
+    {
+        WittyPixels.ERC721TokenStatus _tokenStatus = getTokenStatus(_tokenId);
+        if (_tokenStatus == WittyPixels.ERC721TokenStatus.Void) {
+            return string(hex"");
+        } else {
+            return WittyPixelsLib.tokenImageURI(
+                _tokenId,
+                _tokenStatus == WittyPixels.ERC721TokenStatus.Launching
+                    ? baseURI()
+                    : __wpx721().items[_tokenId].baseURI
+            );
+        }
+    }
+
+    /// @notice Serialize token ERC721Token to JSON string.
+    function metadata(uint256 _tokenId)
+        external view override
+        tokenExists(_tokenId)
+        returns (string memory)
+    {
+        return __wpx721().items[_tokenId].toJSON(_tokenId);
+    }
+    /// @notice Returns WittyPixels token metadata of given token.
+    function getTokenMetadata(uint256 _tokenId)
+        override external view
+        initialized
+        returns (WittyPixels.ERC721Token memory)
+    {
+        return __wpx721().items[_tokenId];
     }
 
     /// @notice Returns status of given WittyPixels token.
@@ -368,16 +363,6 @@ contract WittyPixelsToken
             return "Void";
         }
     }
-
-    /// @notice Returns WittyPixels token metadata of given token.
-    function getTokenMetadata(uint256 _tokenId)
-        external view
-        override
-        initialized
-        returns (WittyPixels.ERC721Token memory)
-    {
-        return __wpx721().items[_tokenId];
-    }
     
     /// @notice Returns WittyPixelsTokenVault instance bound to the given token.
     /// @dev Reverts if the token has not yet been fractionalized.
@@ -411,36 +396,6 @@ contract WittyPixelsToken
 
     {
         return __wpx721().tokenWitnetRequests[_tokenId];
-    }
-
-    /// @notice Returns image URI of given token.
-    function imageURI(uint256 _tokenId)
-        override
-        external view 
-        initialized
-        returns (string memory)
-    {
-        WittyPixels.ERC721TokenStatus _tokenStatus = getTokenStatus(_tokenId);
-        if (_tokenStatus == WittyPixels.ERC721TokenStatus.Void) {
-            return string(hex"");
-        } else {
-            return WittyPixelsLib.tokenImageURI(
-                _tokenId,
-                _tokenStatus == WittyPixels.ERC721TokenStatus.Launching
-                    ? baseURI()
-                    : __wpx721().items[_tokenId].baseURI
-            );
-        }
-    }
-
-    /// @notice Serialize token ERC721Token to JSON string.
-    function metadata(uint256 _tokenId)
-        external view 
-        override
-        tokenExists(_tokenId)
-        returns (string memory)
-    {
-        return __wpx721().items[_tokenId].toJSON(_tokenId);
     }
 
     /// @notice Returns number of pixels within the WittyPixels Canvas of given token.
@@ -575,15 +530,9 @@ contract WittyPixelsToken
                 tokenStats: valuesArrayRequestTemplate.settleArgs(_args)
             });
         }
-        WittyPixels.ERC721TokenWitnetRequests storage __witnetRequests = __wpx721().tokenWitnetRequests[_tokenId];
         
-        {
-            // Set the token's base uri and inception timestamp
-            __token.baseURI = _baseuri;
-            __token.birthTs = block.timestamp;
-            __token.tokenStatsWitnetRadHash = __witnetRequests.tokenStats.radHash();
-        }
         uint _totalUsedFunds;
+        WittyPixels.ERC721TokenWitnetRequests storage __witnetRequests = __wpx721().tokenWitnetRequests[_tokenId];
         {
             // Ask Witnet to confirm the token's image URI actually exists:
             (__witnetQueries.imageDigestId, _totalUsedFunds) = _witnetPostRequest(
@@ -598,6 +547,12 @@ contract WittyPixelsToken
             );
             _totalUsedFunds += _usedFunds;
         }
+
+        // Set the token's base uri, inception timestamp 
+        // and the token stats' audit history radHash from Witnet:
+        __token.baseURI = _baseuri;
+        __token.birthTs = block.timestamp;
+        __token.tokenStatsWitnetRadHash = __witnetRequests.tokenStats.radHash();
 
         // Transfer back unused funds, if any:
         if (_totalUsedFunds < msg.value) {

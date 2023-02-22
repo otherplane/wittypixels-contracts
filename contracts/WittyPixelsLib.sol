@@ -2,22 +2,27 @@
 pragma solidity ^0.8.0;
 
 import "./WittyPixels.sol";
-import "witnet-solidity-bridge/contracts/apps/WitnetRequestFactory.sol";
 
-/// @title  WittyPixelsLib - Library containing helper methods.
-/// @author Otherplane Labs Ltd., 2022
-/// @dev    Deployable library.
+import "witnet-solidity-bridge/contracts/WitnetRequestBoard.sol";
+import "witnet-solidity-bridge/contracts/apps/WitnetRequestFactory.sol";
+import "witnet-solidity-bridge/contracts/libs/WitnetLib.sol";
+
+/// @title  WittyPixelsLib - Deployable library containing helper methods.
+/// @author Otherplane Labs Ltd., 2023
 
 library WittyPixelsLib {
 
     using WitnetCBOR for WitnetCBOR.CBOR;
+    using WitnetLib for Witnet.Result;
+    using WittyPixelsLib for WitnetRequestBoard;
 
     /// ===============================================================================================================
-    /// --- WittyPixelsLib public helper functions --------------------------------------------------------------------
+    /// --- Witnet-related helper functions ---------------------------------------------------------------------------
 
     /// @dev Helper function for building the HTTP/GET parameterized requests
-    /// @dev that will be requested to the Witnet decentralized oracle every time
-    /// @dev a new token of the ERC721 collection is minted.
+    /// @dev from which specific data requests will be created and sent
+    /// @dev to the Witnet decentralized oracle every time a new token of
+    /// @dev athe ERC721 collection is minted.
     function buildHttpRequestTemplates(WitnetRequestFactory factory)
         public
         returns (
@@ -88,19 +93,98 @@ library WittyPixelsLib {
         }
     }
 
-    /// @dev Deserialize a CBOR-encoded data request requestl from Witnet
-    /// @dev into a Solidity string.
-    function toString(WitnetCBOR.CBOR memory cbor)
-        public pure
-        returns (string memory)
+    /// @notice Checks availability of Witnet responses to http/data queries, trying
+    /// @notice to deserialize Witnet results into valid token metadata.
+    /// @notice into a Solidity string.
+    /// @dev Reverts should any of the http/requests failed, or if not able to deserialize result data.
+    function fetchWitnetResults(
+            WittyPixels.TokenStorage storage self, 
+            WitnetRequestBoard witnet, 
+            uint256 tokenId
+        )
+        public
     {
-        return cbor.readString();
+        WittyPixels.ERC721Token storage __token = self.items[tokenId];
+        WittyPixels.ERC721TokenWitnetQueries storage __witnetQueries = self.tokenWitnetQueries[tokenId];
+        // Revert if any of the witnet queries was not yet solved
+        {
+            if (
+                !witnet.checkResultAvailability(__witnetQueries.imageDigestId)
+                    || !witnet.checkResultAvailability(__witnetQueries.tokenStatsId)
+            ) {
+                revert("awaiting response from Witnet");
+            }
+        }
+        Witnet.Response memory _witnetResponse; Witnet.Result memory _witnetResult;
+        // Try to read response to 'image-digest' query, 
+        // while freeing some storage from the Witnet Request Board:
+        {
+            _witnetResponse = witnet.fetchResponse(__witnetQueries.imageDigestId);
+            _witnetResult = WitnetLib.resultFromCborBytes(_witnetResponse.cborBytes);
+            {
+                // Revert if the Witnet query failed:
+                require(
+                    _witnetResult.success,
+                    "'image-digest' query failed"
+                );
+                // Revert if the Witnet response was previous to when minting started:
+                require(
+                    _witnetResponse.timestamp >= __token.birthTs,
+                    "anachronic 'image-digest' result"
+                );
+            }
+            // Deserialize http/response to 'image-digest':
+            __token.imageDigest = _witnetResult.value.readString();
+            __token.imageDigestWitnetTxHash = _witnetResponse.drTxHash;
+        }
+        // Try to read response to 'token-stats' query, 
+        // while freeing some storage from the Witnet Request Board:
+        {
+            _witnetResponse = witnet.fetchResponse(__witnetQueries.tokenStatsId);
+            _witnetResult = WitnetLib.resultFromCborBytes(_witnetResponse.cborBytes);
+            {
+                // Revert if the Witnet query failed:
+                require(
+                    _witnetResult.success,
+                    "'token-stats' query failed"
+                );
+                // Revert if the Witnet response was previous to when minting started:
+                require(
+                    _witnetResponse.timestamp >= __token.birthTs, 
+                    "anachronic 'token-stats' result");
+            }
+            // Try to deserialize Witnet response to 'token-stats':
+            __token.theStats = toERC721TokenStats(_witnetResult.value);
+        }
+    }
+
+    /// @dev Check if a some previsouly posted request has been solved and reported from Witnet.
+    function checkResultAvailability(
+            WitnetRequestBoard witnet,
+            uint256 witnetQueryId
+        )
+        internal view
+        returns (bool)
+    {
+        return witnet.getQueryStatus(witnetQueryId) == Witnet.QueryStatus.Reported;
+    }
+
+    /// @dev Retrieves copy of all response data related to a previously posted request, 
+    /// @dev removing the whole query from storage.
+    function fetchResponse(
+            WitnetRequestBoard witnet,
+            uint256 witnetQueryId
+        )
+        internal
+        returns (Witnet.Response memory)
+    {
+        return witnet.deleteQuery(witnetQueryId);
     }
 
     /// @dev Deserialize a CBOR-encoded data request result from Witnet 
     /// @dev into a WittyPixels.ERC721TokenStats structure
     function toERC721TokenStats(WitnetCBOR.CBOR memory cbor)
-        public pure
+        internal pure
         returns (WittyPixels.ERC721TokenStats memory)
     {
         WitnetCBOR.CBOR[] memory fields = cbor.readArray();
@@ -118,6 +202,10 @@ library WittyPixelsLib {
             revert("WittyPixelsLib: missing fields");
         }
     }
+    
+
+    /// ===============================================================================================================
+    /// --- WittyPixels-related helper methods ------------------------------------------------------------------------
 
     /// @dev Returns JSON string containing the metadata of given tokenId
     /// @dev following an OpenSea-compatible schema.
@@ -151,10 +239,6 @@ library WittyPixelsLib {
             "{", _name, _description, _externalUrl, _image, _attributes, "}"
         ));
     }
-    
-
-    /// ===============================================================================================================
-    /// --- WittyPixels internal helper functions ---------------------------------------------------------------------
 
     function tokenImageURI(uint256 tokenId, string memory baseURI)
         internal pure
@@ -553,6 +637,5 @@ library WittyPixelsLib {
             }
         }
     }
-
 
 }

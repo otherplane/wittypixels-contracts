@@ -315,7 +315,7 @@ contract("WittyPixels", ([curator, master, stranger, player, player2, patron]) =
                         implementation.address,
                         web3.eth.abi.encodeParameter(
                             "string[3]", [
-                                "https://wittypixels.art",
+                                "https://wittypixels.art/",
                                 settings.core.collection.name,
                                 settings.core.collection.symbol
                             ]
