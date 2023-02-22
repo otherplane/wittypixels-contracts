@@ -21,10 +21,6 @@ contract WittyPixelsTokenVault
 {
     using ERC165Checker for address;
 
-    bytes32 public constant SLOTHASH =
-        /* keccak256("art.wittypixels.token.vault") */
-        0x3c39a4bcf91d618a40909e659271a0d850789843a1b2ede0bffa31cd98ff6976;
-    
     modifier notAcquiredYet {
         require(
             !acquired(),
@@ -654,8 +650,9 @@ contract WittyPixelsTokenVault
         internal pure
         returns (WittyPixels.TokenVaultStorage storage ptr)
     {
+        bytes32 slothash = WittyPixels.WPX_TOKEN_VAULT_SLOTHASH;
         assembly {
-            ptr.slot := SLOTHASH
+            ptr.slot := slothash
         }
     }
 }

@@ -45,10 +45,6 @@ contract WittyPixelsToken
     using WittyPixelsLib for WitnetCBOR.CBOR;
     using WittyPixelsLib for WittyPixels.ERC721Token;
 
-    bytes32 public constant SLOTHASH =
-        /* keccak256("art.wittypixels.token") */
-        0xa1c65a69721a75d8ec79c686c8573bd06e7f0c400997cbe153064301cbc480d5;
-
     WitnetRequestTemplate immutable public imageDigestRequestTemplate;
     WitnetRequestTemplate immutable public valuesArrayRequestTemplate;
     
@@ -672,8 +668,9 @@ contract WittyPixelsToken
         internal pure
         returns (WittyPixels.TokenStorage storage ptr)
     {
+        bytes32 slothash = WittyPixels.WPX_TOKEN_SLOTHASH;
         assembly {
-            ptr.slot := SLOTHASH
+            ptr.slot := slothash
         }
     }
 }
