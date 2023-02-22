@@ -2,10 +2,10 @@
     "polygon": {
         "polygon.goerli": {
             "Create2Factory": "0x1B99e3b8d5981D829E1C9a7f520B33515E7133d1",
-            "WittyPixelsLib": "0x6DfCC701a1a566617b1A2afd86073EdEf79B8f05",
+            "WittyPixelsLib": "0xa29100A96c03aB49B1F788E88D4892b1A51FFb7A",
             "WittyPixelsToken": "0xc0FFee029589de1082f8e14d7809F27f452e5191",
-            "WittyPixelsTokenImplementation": "0x12B91e18Bf541e135621DbA93Ee70c3e1525EB1c",
-            "WittyPixelsTokenVaultPrototype": "0x888884F6Ac87D5c1eb224A49Dd147286cC81c252"
+            "WittyPixelsTokenImplementation": "0x1fe189df941616eabb863134B62Ee37868c198A9",
+            "WittyPixelsTokenVaultPrototype": "0xD225dDF3D700f81fd79d0FD587a6BA774021DdfE"
         }
     },
     "default": {}
