@@ -11,7 +11,11 @@ interface IWittyPixelsTokenAdmin {
 
     /// @notice Settle next token's event related metadata.
     /// @param theEvent Event metadata, including name, venut, starting and ending timestamps.
-    function launch(WittyPixels.ERC721TokenEvent calldata theEvent) external returns (uint256 tokenId);
+    /// @param theCharity Charity metadata, if any. Charity address and percentage > 0 must be provided.
+    function launch(
+            WittyPixels.ERC721TokenEvent calldata theEvent,
+            WittyPixels.ERC721TokenCharity calldata theCharity
+        ) external returns (uint256 tokenId);
     
     /// @notice Mint next WittyPixelsTM token: one new token id per ERC721TokenEvent where WittyPixelsTM is played.
     /// @param witnetSLA Witnessing SLA parameters of underlying data requests to be solved by the Witnet oracle.

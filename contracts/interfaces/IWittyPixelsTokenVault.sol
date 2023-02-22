@@ -9,12 +9,15 @@ abstract contract IWittyPixelsTokenVault
         ITokenVaultWitnet,
         ITokenVaultAuctionDutch
 {
+    event Donation(address from, address charity, uint256 value);
+
     struct Stats {
         uint256 redeemedPixels;
         uint256 redeemedPlayers;
         uint256 totalPixels;
         uint256 totalTransfers;
         uint256 totalWithdrawals;
+        uint256 ethSoFarDonated;
     }
 
     enum Status {
@@ -42,6 +45,16 @@ abstract contract IWittyPixelsTokenVault
             uint256 nextPriceTimestamp
         );
 
+    /// @notice Returns Charity information related to this token vault contract.
+    /// @return wallet The Charity EVM address where donations will be transferred to.
+    /// @return percentage Percentage of the final price that will be eventually donated to the Charity wallet.
+    /// @return ethSoFarDonated Cumuled amount of ETH that has been so far donated to the Charity wallet.
+    function getCharityInfo() virtual external view returns (
+            address wallet,
+            uint8   percentage,
+            uint256 ethSoFarDonated
+        );
+
     /// @notice Gets info regarding a formerly verified player, given its index. 
     /// @return playerAddress Address from which the token's ownership was redeemed. Zero if this player hasn't redeemed ownership yet.
     /// @return redeemedPixels Number of pixels formerly redemeed by given player. 
@@ -50,15 +63,19 @@ abstract contract IWittyPixelsTokenVault
             uint256 redeemedPixels
         );
 
+    /// @notice Returns set of meters reflecting number of pixels, players, ERC20 transfers, withdrawals, 
+    /// @notice and totally donated funds up to now.
+    function getStats() virtual external view returns (Stats memory stats);
+
     /// @notice Gets accounting info regarding given address.
     /// @return wpxBalance Current ERC20 balance.
     /// @return wpxShare10000 NFT ownership percentage based on current ERC20 balance, multiplied by 100.
-    /// @return withdrawableWeis ETH/wei amount that can be potentially withdrawn from this address.
+    /// @return ethWithdrawable ETH/wei amount that can be potentially withdrawn from this address.
     /// @return soulboundPixels Soulbound pixels contributed from this wallet address, if any.    
     function getWalletInfo(address) virtual external view returns (
             uint256 wpxBalance,
             uint256 wpxShare10000,
-            uint256 withdrawableWeis,
+            uint256 ethWithdrawable,
             uint256 soulboundPixels
         );
 

@@ -61,6 +61,7 @@ library WittyPixels {
         bytes32 tokenStatsWitnetRadHash;
         ERC721TokenEvent theEvent;
         ERC721TokenStats theStats;
+        ERC721TokenCharity theCharity;
     }
     
     struct ERC721TokenEvent {
@@ -80,17 +81,10 @@ library WittyPixels {
         uint256 totalScans;
     }
 
-    struct ERC721TokenSponsors {
-        address[] addresses;
-        uint256 totalJackpots;        
-        mapping (address => ERC721TokenJackpot) jackpots;
-    }
-
-    struct ERC721TokenJackpot {
-        bool authorized;
-        address winner;
-        uint256 value;
-        string text;
+    struct ERC721TokenCharity {
+        string  description;
+        uint8   percentage; 
+        address wallet;
     }
     
     struct ERC721TokenWitnetQueries {
@@ -139,17 +133,18 @@ library WittyPixels {
         mapping (address => uint256) legacyPixels;
         mapping (address => bool) redeemed;
         mapping (uint256 => TokenVaultPlayerInfo) players;
-    }
 
-    struct TokenVaultJackpotWinner {
-        bool awarded;
-        bool claimed;
-        uint256 index;
+        TokenVaultCharity charity;
     }
 
     struct TokenVaultPlayerInfo {
         address addr;
         uint256 pixels;
+    }
+
+    struct TokenVaultCharity {
+        uint8 percentage;
+        address wallet;
     }
 
 }

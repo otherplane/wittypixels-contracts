@@ -82,8 +82,8 @@ module.exports = async function (deployer, network, [, from]) {
       console.info("   > old vault prototype:", prototype)
       console.info("   > new vault prototype:", vault.address)
       const tx = await token.setTokenVaultFactoryPrototype(vault.address, { from })
-      console.info("   => transaction hash :", tx.receipt.transactionHash)
-      console.info("   => transaction gas  :", tx.receipt.gasUsed)
+      console.info("   > transaction hash   :", tx.receipt.transactionHash)
+      console.info("   > transaction gas    :", tx.receipt.gasUsed)
     }
   }
 }

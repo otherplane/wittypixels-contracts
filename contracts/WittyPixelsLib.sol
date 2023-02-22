@@ -211,7 +211,10 @@ library WittyPixelsLib {
     /// @dev following an OpenSea-compatible schema.
     function toJSON(
             WittyPixels.ERC721Token memory self,
-            uint256 tokenId
+            uint256 tokenId,
+            address tokenVaultAddress,
+            uint256 wpxSoFarClaimed,
+            uint256 weiSoFarDonated
         )
         public pure
         returns (string memory)
@@ -221,7 +224,7 @@ library WittyPixelsLib {
         ));
         string memory _description = string(abi.encodePacked(
             "\"description\": \"",
-            _loadJsonDescription(self, tokenId),
+            _loadJsonDescription(self, tokenId, tokenVaultAddress, weiSoFarDonated),
             "\","
         ));
         string memory _externalUrl = string(abi.encodePacked(
@@ -232,7 +235,7 @@ library WittyPixelsLib {
         ));
         string memory _attributes = string(abi.encodePacked(
             "\"attributes\": [",
-            _loadJsonAttributes(self),
+            _loadJsonAttributes(self, wpxSoFarClaimed, weiSoFarDonated),
             "]"
         ));
         return string(abi.encodePacked(
@@ -442,23 +445,44 @@ library WittyPixelsLib {
     }
 
     /// @dev Converts a `bytes32` to its hex `string` representation with no "0x" prefix.
+    function toHexString(address value)
+        internal pure
+        returns (string memory)
+    {
+        return toHexString(abi.encodePacked(value));
+    }
+
     function toHexString(bytes32 value)
         internal pure
         returns (string memory)
     {
-        bytes memory buffer = new bytes(64);
-        for (uint256 i = 64; i > 0; i --) {
-            buffer[i - 1] = _HEX_SYMBOLS_[uint(value) & 0xf];
-            value >>= 4;
+        return toHexString(abi.encodePacked(value));
+    }
+
+    /// @dev Converts a bytes buff to its hex `string` representation with no "0x" prefix.
+    function toHexString(bytes memory buf)
+        internal pure
+        returns (string memory)
+    {
+        unchecked {
+            bytes memory str = new bytes(buf.length * 2);
+            for (uint i = 0; i < buf.length; i++) {
+                str[i*2] = _HEX_SYMBOLS_[uint(uint8(buf[i] >> 4))];
+                str[i*2 + 1] = _HEX_SYMBOLS_[uint(uint8(buf[i] & 0x0f))];
+            }
+            return string(str);
         }
-        return string(buffer);
     }
 
 
     // ================================================================================================================
     // --- WittyPixelsLib private methods ----------------------------------------------------------------------------
 
-    function _loadJsonAttributes(WittyPixels.ERC721Token memory self)
+    function _loadJsonAttributes(
+            WittyPixels.ERC721Token memory self,
+            uint256 wpx20SoFarClaimed,
+            uint256 weiSoFarDonated
+        )
         private pure
         returns (string memory)
     {
@@ -481,20 +505,6 @@ library WittyPixelsLib {
                 "\"value\": ", toString(self.theEvent.startTs),
             "},"
         ));
-        string memory _eventEndDate = string(abi.encodePacked(
-             "{",
-                "\"display_type\": \"date\",",
-                "\"trait_type\": \"Event End Date\",",
-                "\"value\": ", toString(self.theEvent.endTs),
-            "},"
-        ));
-        string memory _authorshipRoot = string(abi.encodePacked(
-            "{",
-                "\"trait_type\": \"Authorship's Root\",",
-                "\"value\": \"", toHexString(self.theStats.canvasRoot), "\"",
-            "},"
-        ));
-        
         string memory _totalPlayers = string(abi.encodePacked(
             "{", 
                 "\"trait_type\": \"Total Players\",",
@@ -511,18 +521,26 @@ library WittyPixelsLib {
             _eventName,
             _eventVenue,
             _eventStartDate,
-            _eventEndDate,
-            _authorshipRoot,
-            _loadJsonCanvasAttributes(self),
+            _loadJsonCharityAttributes(self, weiSoFarDonated),
+            _loadJsonCanvasAttributes(self, wpx20SoFarClaimed),
             _totalPlayers,
             _totalScans
         ));
     }
 
-    function _loadJsonCanvasAttributes(WittyPixels.ERC721Token memory self)
+    function _loadJsonCanvasAttributes(
+            WittyPixels.ERC721Token memory self,
+            uint256 wpx20SoFarClaimed
+        )
         private pure
         returns (string memory)
     {
+        string memory _authorsRoot = string(abi.encodePacked(
+            "{",
+                "\"trait_type\": \"Authors' Root\",",
+                "\"value\": \"", toHexString(self.theStats.canvasRoot), "\"",
+            "},"
+        ));
         string memory _canvasDate = string(abi.encodePacked(
              "{",
                 "\"display_type\": \"date\",",
@@ -535,7 +553,7 @@ library WittyPixelsLib {
                 "\"trait_type\": \"Canvas Digest\",",
                 "\"value\": \"", self.imageDigest, "\"",
             "},"
-        ));        
+        )); 
         string memory _canvasHeight = string(abi.encodePacked(
              "{",
                 "\"display_type\": \"number\",",
@@ -561,43 +579,121 @@ library WittyPixelsLib {
             self.theStats.totalPixels > 0
                 && self.theStats.totalPixels > self.theStats.canvasPixels
         ) {
-            uint _ratio = (self.theStats.totalPixels - self.theStats.canvasPixels);
-            _ratio *= 10 ** 6;
+            uint _ratio = 100 * (self.theStats.totalPixels - self.theStats.canvasPixels);
             _ratio /= self.theStats.totalPixels;
-            _ratio /= 10 ** 4;
             _canvasOverpaint = string(abi.encodePacked(
                 "{",
                     "\"display_type\": \"boost_percentage\",",
-                    "\"trait_type\": \"Canvas Overpaint\",",
+                    "\"trait_type\": \"Canvas Overpaint Ratio\",",
                     "\"value\": ", toString(_ratio),
                 "},"
             ));
         }
+        string memory _canvasRedemption;
+        uint _redemptionRatio = (100 * wpx20SoFarClaimed) / self.theStats.canvasPixels;
+        if (_redemptionRatio > 0) {
+            _canvasRedemption = string(abi.encodePacked(
+                "{",
+                    "\"display_type\": \"boost_percentage\",",
+                    "\"trait_type\": \"Canvas Redemption Ratio\",",
+                    "\"value\": ", toString(_redemptionRatio),
+                "},"
+            ));
+        }
         return string(abi.encodePacked(
+            _authorsRoot,
             _canvasDate,
             _canvasDigest,
             _canvasHeight,            
             _canvasWidth,
             _canvasPixels,
-            _canvasOverpaint
+            _canvasOverpaint,
+            _canvasRedemption
         ));
     }
 
-    function _loadJsonDescription(WittyPixels.ERC721Token memory self, uint256 tokenId)
+    function _loadJsonCharityAttributes(
+            WittyPixels.ERC721Token memory self,
+            uint256 weiSoFarDonated
+        )
+        private pure
+        returns (string memory)
+    {
+        string memory _charityAddress;        
+        string memory _charityDonatedETH;
+        if (self.theCharity.wallet != address(0)) {
+            _charityAddress = string(abi.encodePacked(
+                "{",
+                    "\"trait_type\": \"Charity Address\",",
+                    "\"value\": \"0x", toHexString(self.theCharity.wallet), "\"",
+                "},"
+            ));
+            uint _eth100 = (100 * weiSoFarDonated) / 10 ** 18;
+            if (_eth100 > 0) {
+                _charityDonatedETH = string(abi.encodePacked(
+                    "{",
+                        "\"trait_type\": \"Charity Donations\",",
+                        "\"value\": \"", _fixed2String(_eth100), " ETH\"",
+                    "},"
+                ));
+            }
+        }
+        return string(abi.encodePacked(
+            _charityAddress,
+            _charityDonatedETH
+        ));
+    }
+
+    function _loadJsonDescription(
+            WittyPixels.ERC721Token memory self,
+            uint256 tokenId,
+            address tokenVaultAddress,
+            uint256 weiSoFarDonated
+        )
         private pure
         returns (string memory)
     {
         string memory _tokenIdStr = toString(tokenId);
         string memory _totalPlayersString = toString(self.theStats.totalPlayers);
         string memory _radHashHexString = toHexString(self.tokenStatsWitnetRadHash);
+        string memory _charityDescription;
+        if (self.theCharity.wallet != address(0)) {
+            string memory _charityDonations;
+            if (weiSoFarDonated > 0) {
+                _charityDonations = string(abi.encodePacked(
+                    "See actual donations in [Etherscan](https://etherscan.io/address/0x",
+                    toHexString(self.theCharity.wallet), "?fromaddress=0x",
+                    toHexString(tokenVaultAddress)
+                ));
+            }
+            _charityDescription = string(abi.encodePacked(
+                "Up to ", toString(self.theCharity.percentage),
+                self.theCharity.description,
+                _charityDonations
+            ));
+        }
         return string(abi.encodePacked(
             "WittyPixelsTM collaborative art canvas #", _tokenIdStr, " drawn by ", _totalPlayersString,
             " attendees during '<b>", self.theEvent.name, "</b>' in ", self.theEvent.venue, 
             ". This token was fractionalized and secured by the [Witnet multichain",
             " oracle](https://witnet.io). Historical WittyPixelsTM game info and",
-            " authorship's root during '", self.theEvent.name, "'",
-            " can be audited on [Witnet's block explorer](https://witnet.network/",
-            _radHashHexString, ")."
+            " authors' root can be audited on [Witnet's block explorer](https://witnet.network/search/",
+            _radHashHexString, "). ",
+            _charityDescription          
+        ));
+    }
+
+    function _fixed2String(uint value)
+        private pure
+        returns (string memory)
+    {
+        uint _int = value / 100;
+        uint _decimals = value - _int;
+        return string(abi.encodePacked(
+            toString(_int),
+            ".",
+            _decimals < 10 ? "0" : "",
+            toString(_decimals)
         ));
     }
 

@@ -17,6 +17,10 @@ interface IWittyPixelsToken {
     /// ===============================================================================================================
     /// --- WittyPixels token specific methods ------------------------------------------------------------------------
 
+
+    /// @notice Returns WittyPixels token charity metadata of given token.
+    function getTokenCharityValues(uint256 tokenId) external view returns (address walet, uint8 percentage);
+
     /// @notice Returns WittyPixels token metadata of given token.
     function getTokenMetadata(uint256 tokenId) external view returns (WittyPixels.ERC721Token memory);
 

@@ -299,8 +299,28 @@ contract WittyPixelsToken
         tokenExists(_tokenId)
         returns (string memory)
     {
-        return __wpx721().items[_tokenId].toJSON(_tokenId);
+        IWittyPixelsTokenVault _tokenVault = __wpx721().vaults[_tokenId];
+        IWittyPixelsTokenVault.Stats memory _dynamicMetadata = _tokenVault.getStats();
+        return __wpx721().items[_tokenId].toJSON(
+            _tokenId,
+            address(_tokenVault),
+            _dynamicMetadata.redeemedPixels,
+            _dynamicMetadata.ethSoFarDonated
+        );
     }
+
+    /// @notice Returns WittyPixels token charity metadata of given token.
+    function getTokenCharityValues(uint256 _tokenId)
+        override external view
+        initialized
+        returns (address, uint8)
+    {
+        return (
+            __wpx721().items[_tokenId].theCharity.wallet,
+            __wpx721().items[_tokenId].theCharity.percentage
+        );
+    }
+
     /// @notice Returns WittyPixels token metadata of given token.
     function getTokenMetadata(uint256 _tokenId)
         override external view
@@ -462,7 +482,11 @@ contract WittyPixelsToken
 
     /// @notice Settle next token's event related metadata.
     /// @param _theEvent Event metadata, including name, venut, starting and ending timestamps.
-    function launch(WittyPixels.ERC721TokenEvent calldata _theEvent)
+    /// @param _theCharity Charity metadata, if any. Charity address and percentage > 0 must be provided.
+    function launch(
+            WittyPixels.ERC721TokenEvent calldata _theEvent,
+            WittyPixels.ERC721TokenCharity calldata _theCharity
+        )
         override external
         onlyOwner
         returns (uint256 _tokenId)
@@ -484,8 +508,24 @@ contract WittyPixelsToken
             _theEvent.startTs <= _theEvent.endTs,
             "WittyPixelsToken: event bad timestamps"
         );
-        // Change token status:
+        // Save token's event data:
         __wpx721().items[_tokenId].theEvent = _theEvent;
+        // Save token's charity data, if any:
+        if (_theCharity.wallet != address(0)) {
+            require(
+                _theCharity.wallet.code.length == 0,
+                "WittyPixelsToken: charity wallet not an EOA"
+            );
+            require(
+                _theCharity.percentage > 0 && _theCharity.percentage <= 100,
+                "WittyPixelsToken: bad charity percentage"
+            );
+            require(
+                bytes(_theCharity.description).length > 0,
+                "WittyPixelsToken: no charity description"
+            );
+            __wpx721().items[_tokenId].theCharity = _theCharity;
+        }
     }
     
     /// @notice Mint next WittyPixelsTM token: one new token id per ERC721TokenEvent where WittyPixelsTM is played.

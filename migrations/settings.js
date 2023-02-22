@@ -9,11 +9,21 @@ module.exports = {
     },
     events: [
       {
-        metadata: {
-          name: "ETHDenver 2023",
-          venue: "National Western $SPORK Castle",
-          startTs: 1677193200 + 7 * 3600,          // Thu, 24 February 2023 0:00 GMT-7
-          endTs:   1677866400 + 7 * 3600,          // Fri, 3 March 2023 18:00 GMT-7
+        launch: {
+          metadata: {
+            name: "ETHDenver 2023",
+            venue: "National Western $SPORK Castle",
+            startTs: 1677193200 + 7 * 3600, // Thu, 24 February 2023 0:00 GMT-7
+            endTs:   1677866400 + 7 * 3600, // Fri, 3 March 2023 18:00 GMT-7
+          },
+          charity: {
+            description: "% of the $ETH from the first saling auction of this token is to be \
+              donated to the GivingBlock's [Ukraine Emergency Response Fund](https://thegivingblock.com/campaigns/ukraine-emergency-response-fund/). \
+              The rest will be distributed to players proportionally to the $WPX/ERC20 fractions they've claim to own via \
+              the [WittyPixelsTM offical dapp](https://wittypixels.art).",
+            percentage: 50,
+            wallet: "0x0000000000000000000000000000000000000000",
+          },
         },
         mint: {
           witnetSLA: {

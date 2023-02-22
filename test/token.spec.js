@@ -12,7 +12,7 @@ const WittyPixelsTokenVault = artifacts.require("WittyPixelsTokenVault")
 
 const settings = require("../migrations/settings")
 
-contract("WittyPixels", ([curator, master, stranger, player, player2, patron]) => {
+contract("WittyPixels", ([curator, master, stranger, player, player2, patron, charity]) => {
 
     var backend, backendWallet
     var bytecodes
@@ -36,6 +36,8 @@ contract("WittyPixels", ([curator, master, stranger, player, player2, patron]) =
             '0x0000000000000000000000000000000000000000000000000000000000000001'
         )
         backend = backendWallet.address
+        console.log("backend =>", backend)
+        console.log("token.address =>", token.address)
     })
 
     context(`Token implementation address`, async () => {
@@ -112,11 +114,17 @@ contract("WittyPixels", ([curator, master, stranger, player, player2, patron]) =
             it("cannot launch new event", async () => {
                 await expectRevert(
                     implementation.launch([
-                        settings.core.events[0].metadata.name,
-                        settings.core.events[0].metadata.venue,
-                        settings.core.events[0].metadata.startTs,
-                        settings.core.events[0].metadata.endTs
-                    ], { from: master }),
+                            settings.core.events[0].launch.metadata.name,
+                            settings.core.events[0].launch.metadata.venue,
+                            settings.core.events[0].launch.metadata.startTs,
+                            settings.core.events[0].launch.metadata.endTs
+                        ],  [
+                            "description",
+                            50,
+                            charity
+                        ], 
+                        { from: master }
+                    ),
                     "not the owner"
                 )
             })
@@ -448,11 +456,16 @@ contract("WittyPixels", ([curator, master, stranger, player, player2, patron]) =
                 })
                 it("stranger cannot launch next token", async () => {
                     await expectRevert(
-                        token.launch([
-                                settings.core.events[0].metadata.name,
-                                settings.core.events[0].metadata.venue,
-                                settings.core.events[0].metadata.startTs,
-                                settings.core.events[0].metadata.endTs
+                        token.launch(
+                            [
+                                settings.core.events[0].launch.metadata.name,
+                                settings.core.events[0].launch.metadata.venue,
+                                settings.core.events[0].launch.metadata.startTs,
+                                settings.core.events[0].launch.metadata.endTs
+                            ], [
+                                "description",
+                                50,
+                                charity
                             ],
                             { from: stranger }
                         ), "not the owner"
@@ -460,24 +473,81 @@ contract("WittyPixels", ([curator, master, stranger, player, player2, patron]) =
                 })
                 it("owner cannot launch event with bad timestamps", async () => {
                     await expectRevert(
-                        token.launch([
-                                settings.core.events[0].metadata.name,
-                                settings.core.events[0].metadata.venue,
-                                settings.core.events[0].metadata.startTs,
-                                0
-                            ],
+                        token.launch(
+                            [
+                                settings.core.events[0].launch.metadata.name,
+                                settings.core.events[0].launch.metadata.venue,
+                                settings.core.events[0].launch.metadata.startTs,
+                                0,
+                            ], [
+                                "description",
+                                50,
+                                charity
+                            ], 
                             { from: curator }
                         ), "bad timestamps"
                     )
                     await expectRevert(
-                        token.launch([
-                                settings.core.events[0].metadata.name,
-                                settings.core.events[0].metadata.venue,
-                                settings.core.events[0].metadata.endTs,
-                                settings.core.events[0].metadata.startTs,
-                            ],
+                        token.launch(
+                            [
+                                settings.core.events[0].launch.metadata.name,
+                                settings.core.events[0].launch.metadata.venue,
+                                settings.core.events[0].launch.metadata.endTs,
+                                settings.core.events[0].launch.metadata.startTs,
+                            ], [
+                                "description",
+                                50,
+                                charity
+                            ], 
                             { from: curator }
                         ), "bad timestamps"
+                    )
+                })
+                it("owner cannot launch event with bad charity settings", async () => {
+                    await expectRevert(
+                        token.launch(
+                            [
+                                settings.core.events[0].launch.metadata.name,
+                                settings.core.events[0].launch.metadata.venue,
+                                settings.core.events[0].launch.metadata.startTs,
+                                settings.core.events[0].launch.metadata.endTs
+                            ], [
+                                "description",
+                                101,
+                                charity
+                            ],
+                            { from: curator }
+                        ), "bad charity percentage"
+                    )
+                    await expectRevert(
+                        token.launch(
+                            [
+                                settings.core.events[0].launch.metadata.name,
+                                settings.core.events[0].launch.metadata.venue,
+                                settings.core.events[0].launch.metadata.startTs,
+                                settings.core.events[0].launch.metadata.endTs
+                            ], [
+                                "",
+                                50,
+                                charity
+                            ],
+                            { from: curator }
+                        ), "no charity description"
+                    )
+                    await expectRevert(
+                        token.launch(
+                            [
+                                settings.core.events[0].launch.metadata.name,
+                                settings.core.events[0].launch.metadata.venue,
+                                settings.core.events[0].launch.metadata.startTs,
+                                settings.core.events[0].launch.metadata.endTs
+                            ], [
+                                "description",
+                                50,
+                                token.address
+                            ],
+                            { from: curator }
+                        ), "not an EOA"
                     )
                 })
                 it("owner cannot start minting", async() => {
@@ -497,22 +567,31 @@ contract("WittyPixels", ([curator, master, stranger, player, player2, patron]) =
             })
             context("Upon launching:", async () => {
                 it("owner can launch next token with valid timestamps", async () => {
-                    await token.launch([
-                            settings.core.events[0].metadata.name,
-                            settings.core.events[0].metadata.venue,
-                            settings.core.events[0].metadata.startTs,
-                            settings.core.events[0].metadata.endTs
+                    await token.launch(
+                        [
+                            settings.core.events[0].launch.metadata.name,
+                            settings.core.events[0].launch.metadata.venue,
+                            settings.core.events[0].launch.metadata.startTs,
+                            settings.core.events[0].launch.metadata.endTs
+                        ], [
+                            "description",
+                            50,
+                            charity
                         ],
                         { from: curator }
                     )
                 })
                 it("owner can reset token's event in 'Launching' status", async () => {
                     await token.launch([
-                            settings.core.events[0].metadata.name,
-                            settings.core.events[0].metadata.venue,
+                            settings.core.events[0].launch.metadata.name,
+                            settings.core.events[0].launch.metadata.venue,
                             Math.round(Date.now() / 1000) - 86400,
                             Math.round(Date.now() / 1000) - 86400,
-                        ],
+                        ], [
+                            "description",
+                            50,
+                            charity
+                        ], 
                         { from: curator }
                     )
                 })
@@ -523,7 +602,7 @@ contract("WittyPixels", ([curator, master, stranger, player, player2, patron]) =
                 })
                 it("getTokenMetadata(1) should contain event data only", async () => {
                     var metadata = await token.getTokenMetadata.call(1)
-                    assert.equal(metadata.theEvent.name, settings.core.events[0].metadata.name)
+                    assert.equal(metadata.theEvent.name, settings.core.events[0].launch.metadata.name)
                 })
                 it("tokenURI(1) must still fail", async () => {
                     await expectRevert(
@@ -615,13 +694,17 @@ contract("WittyPixels", ([curator, master, stranger, player, player2, patron]) =
                 })
                 it("owner cannot change event data anymore", async () => {
                     await expectRevert(
-                        token.launch(
-                            [
-                                settings.core.events[0].metadata.name,
-                                settings.core.events[0].metadata.venue,
-                                settings.core.events[0].metadata.startTs,
-                                settings.core.events[0].metadata.endTs
-                            ], { from: curator }
+                        token.launch([
+                                settings.core.events[0].launch.metadata.name,
+                                settings.core.events[0].launch.metadata.venue,
+                                settings.core.events[0].launch.metadata.startTs,
+                                settings.core.events[0].launch.metadata.endTs
+                            ],  [
+                                "description",
+                                50,
+                                charity
+                            ], 
+                            { from: curator }
                         ), "bad mood"
                     )
                 })

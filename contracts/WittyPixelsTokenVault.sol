@@ -256,16 +256,35 @@ contract WittyPixelsTokenVault
         );
         
         // check vault contract has enough funds for the cash out:
-        _withdrawn = (__wpx20().finalPrice * _erc20balance) / (__wpx20().stats.totalPixels * 10 ** 18);
+        _withdrawn = (
+            __wpx20().finalPrice * _erc20balance
+        ) / (
+            __wpx20().stats.totalPixels * 10 ** 18
+        );
         require(
             address(this).balance >= _withdrawn,
             "WittyPixelsTokenVault: insufficient funds"
         );
         
-        // burn erc20 tokens about to be cashed out:
+        // burn erc20 tokens before cashing out !!
         _burn(msg.sender, _erc20balance);
         
-        // cash out: 
+        // cash out donation, if any:
+        WittyPixels.TokenVaultCharity storage __charity = __wpx20().charity;
+        if (__charity.wallet != address(0)) {
+            uint _donation = (
+                __charity.percentage * __wpx20().finalPrice * balanceOf(msg.sender)
+            ) / (
+                100 * __wpx20().stats.totalPixels * 10 ** 18
+            );
+            payable(__charity.wallet).transfer(_donation);
+            emit Donation(msg.sender, __charity.wallet, _donation);
+            // substract donation from owner's withdrawal
+            __wpx20().stats.ethSoFarDonated += _donation;
+            _withdrawn -= _donation;
+        }
+        
+        // cash out to the wpx20 owner:
         payable(msg.sender).transfer(_withdrawn);
         emit Withdrawal(msg.sender, _withdrawn);
 
@@ -282,7 +301,11 @@ contract WittyPixelsTokenVault
         returns (uint256)
     {
         if (acquired()) {
-            return (__wpx20().finalPrice * balanceOf(_from)) / (__wpx20().stats.totalPixels * 10 ** 18);
+            return (
+                __wpx20().finalPrice * balanceOf(_from) * (100 - __wpx20().charity.percentage)
+            ) / (
+                100 * __wpx20().stats.totalPixels * 10 ** 18
+            );
         } else {
             return 0;
         }
@@ -371,6 +394,28 @@ contract WittyPixelsTokenVault
         nextPriceTs = getNextPriceTimestamp();
     }
 
+    /// @notice Returns Charity information related to this token vault contract.
+    /// @return wallet The Charity EVM address where donations will be transferred to.
+    /// @return percentage Percentage of the final price that will be eventually donated to the Charity wallet.
+    /// @return ethSoFarDonated Cumuled amount of ETH that has been so far donated to the Charity wallet.
+    function getCharityInfo()
+        virtual override
+        external view
+        wasInitialized
+        returns (
+            address wallet,
+            uint8   percentage,
+            uint256 ethSoFarDonated
+        )
+    {
+        WittyPixels.TokenVaultCharity storage __charity = __wpx20().charity;
+        return (
+            __charity.wallet,
+            __charity.percentage,
+            __wpx20().stats.ethSoFarDonated
+        );
+    }
+
     /// @notice Gets info regarding a formerly verified player, given its index. 
     /// @return Address from which the token's ownership was redeemed. Zero if this player hasn't redeemed ownership yet.
     /// @return Number of pixels formerly redemeed by given player. 
@@ -387,11 +432,22 @@ contract WittyPixelsTokenVault
         );
     }
 
+    /// @notice Returns set of meters reflecting number of pixels, players, ERC20 transfers, withdrawals, 
+    /// @notice and totally donated funds up to now.
+    function getStats()
+        virtual override
+        external view
+        wasInitialized 
+        returns (Stats memory stats)
+    {
+        return __wpx20().stats;
+    }
+
     /// @notice Gets accounting info regarding given address.
     /// @return wpxBalance Current ERC20 balance.
-    /// @return wpxShare10000 NFT ownership percentage based on current ERC20 balance, multiplied by a 100.
-    /// @return withdrawableWeis ETH/wei amount that can be potentially withdrawn from this address.
-    /// @return soulboundPixels Soulbound pixels contributed from this wallet address, if any.
+    /// @return wpxShare10000 NFT ownership percentage based on current ERC20 balance, multiplied by 100.
+    /// @return ethWithdrawable ETH/wei amount that can be potentially withdrawn from this address.
+    /// @return soulboundPixels Soulbound pixels contributed from this wallet address, if any.    
     function getWalletInfo(address _addr)
         virtual override
         external view
@@ -399,7 +455,7 @@ contract WittyPixelsTokenVault
         returns (
             uint256 wpxBalance,
             uint256 wpxShare10000,
-            uint256 withdrawableWeis,
+            uint256 ethWithdrawable,
             uint256 soulboundPixels
         )
     {
@@ -606,12 +662,31 @@ contract WittyPixelsTokenVault
 
         // mint initial supply that will be owned by the contract itself
         _mint(address(this), _params.tokenPixels * 10 ** 18);
-            
+
         // initialize clone storage:
         __wpx20().curator = _params.curator;
         __wpx20().parentToken = _params.token;
         __wpx20().parentTokenId = _params.tokenId;
         __wpx20().stats.totalPixels = _params.tokenPixels;
+
+        // read charity values from parent token:
+        (address _charityWallet, uint8 _charityPercentage) = IWittyPixelsToken(
+            _params.token
+        ).getTokenCharityValues(_params.tokenId);
+        require(
+            (_charityWallet == address(0) && _charityPercentage == 0)
+                || (_charityWallet != address(0) && _charityPercentage <= 100)
+            , "WittyPixelsTokenVault: bad charity values"
+        );
+        if (
+            _charityWallet != address(0) 
+                && _charityPercentage == uint8(0)
+        ) {
+            __wpx20().charity.wallet = _charityWallet;
+            __wpx20().charity.percentage = _charityPercentage;
+        }
+
+        // deserialize and set auction settings passed over from the vault factory:
         __setAuctionSettings(_params.settings);
     }
 
