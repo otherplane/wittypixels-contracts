@@ -17,44 +17,41 @@ module.exports = async function (_deployer, network, [,from]) {
     var totalSupply = await token.totalSupply.call(0)
     var index = parseInt(totalSupply) 
 
-    const settings = require("../../settings").core.events[index].launch
+    const settings = require("../../settings").core.events[index].fractionalize
     if (!settings) {
-        console.error(`No event settings found for next token #${index + 1} !`)
+        console.error(`No fractionalizing parameters found for token #${index + 1} !`)
         process.exit(2)
     }
 
-    utils.traceHeader(`Launching next event on '${name}' collection`)
+    utils.traceHeader(`Fractionalizing token #${index + 1} on '${name}' collection`)
     console.info("  ", "> from address:  ", from)
     console.info("  ", "> token address: ", token.address)    
-    console.info("  ", "> next token id: ", index + 1)
     console.info("  ", "> current status:", await token.getTokenStatusString.call(index + 1))
-    console.info("  ", "> event data:")
-    console.info("  ", `  - name:    '${settings.metadata.name}'`)
-    console.info("  ", `  - venue:   '${settings.metadata.venue}'`)
-    console.info("  ", "  - starts: ", new Date(settings.metadata.startTs * 1000).toString())
-    console.info("  ", "  - ends:   ", new Date(settings.metadata.endTs * 1000).toString())
-    console.info("  ", "> charity settings:")
-    console.info("  ", `  - EVM address:  ${settings.charity.wallet || "0x0000000000000000000000000000000000000000"}`)
-    console.info("  ", `  - percentage:   ${settings.charity.percentage || 50}%`)
-    console.info("  ", `  - description: "${settings.charity.description || ""}"`)
+    console.info("  ", "> create2 salt:  ", settings.salt)
+    console.info("  ", "> auction settings:")
+    console.info("  ", `  - deltaPrice:        ${web3.utils.fromWei(settings.auctionSettings.deltaPrice)} ETH`)
+    console.info("  ", `  - deltaSeconds:      ${settings.auctionSettings.deltaSeconds} "`)
+    console.info("  ", `  - reservePrice:      ${web3.utils.fromWei(settings.auctionSettings.reservePrice)} ETH`)
+    console.info("  ", `  - startingPrice:     ${web3.utils.fromWei(settings.auctionSettings.startingPrice)} ETH`)
+    console.info("  ", "  - startingTs:       ", new Date(settings.auctiongSettings.startingTs * 1000).toString())
     
     var balance = await web3.eth.getBalance(from)
     var tx
     try {
-        tx = await token.launch(
-            [
-                settings.metadata.name,
-                settings.metadata.venue,
-                settings.metadata.startTs,
-                settings.metadata.endTs,
-            ], [
-                settings.charity.description || "",
-                settings.charity.percentage || 50,
-                settings.charity.wallet || "0x0000000000000000000000000000000000000000",
-            ], { from }
+        tx = await token.fractionalize(
+            settings.salt, 
+            web3.eth.abi.encodeParameter(
+                "uint256[5]", [
+                    settings.auctionSettings.deltaPrice,
+                    settings.auctionSettings.deltaSeconds,
+                    settings.auctionSettings.reservePrice,
+                    settings.auctionSettings.startingPrice,
+                    settings.auctionSettings.startingTs,
+                ]
+            ), { from }
         )
     } catch (e) {
-        console.error(`Couldn't set next event metadata: ${e}`)
+        console.error(`Couldn't fractionalize: ${e}`)
         process.exit(3)
     }
     console.info("  ", "> Done:")

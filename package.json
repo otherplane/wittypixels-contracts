@@ -17,6 +17,7 @@
     "migrate": "truffle migrate",
     "wpx:launch": "truffle migrate --migrations_directory ./migrations/ops/launch --network",
     "wpx:mint": "truffle migrate --migrations_directory ./migrations/ops/mint --network",
+    "wpx:fractionalize": "truffle migrate --migrations_directory ./migrations/ops/fractionalize --network",
     "test": "truffle test"
   },
   "keywords": [],
