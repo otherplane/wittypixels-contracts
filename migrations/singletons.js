@@ -5,6 +5,6 @@ module.exports = {
   },
   WittyPixelsTokenVaultPrototype: {
     gas: 4000000,
-    salt: 468599,
+    salt: 4861716,
   }
 }

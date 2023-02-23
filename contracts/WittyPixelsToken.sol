@@ -422,6 +422,7 @@ contract WittyPixelsToken
     function pixelsOf(uint256 _tokenId)
         virtual override
         external view
+        initialized
         returns (uint256)
     {
         return __wpx721().items[_tokenId].theStats.totalPixels;
@@ -433,6 +434,7 @@ contract WittyPixelsToken
     function pixelsFrom(uint256 _tokenId, address _from)
         virtual override
         external view
+        initialized
         returns (uint256)
     {
         IWittyPixelsTokenVault _vault = IWittyPixelsTokenVault(address(getTokenVault(_tokenId)));
@@ -440,6 +442,20 @@ contract WittyPixelsToken
             ? _vault.pixelsOf(_from)
             : 0
         );
+    }
+
+    /// @notice Emits MetadataUpdate event as specified by EIP-4906.
+    /// @dev Only acceptable if called from token's vault and given token is 'Fractionalized' status.
+    function updateMetadataFromTokenVault(uint256 _tokenId)
+        virtual override
+        external
+        tokenInStatus(_tokenId, WittyPixels.ERC721TokenStatus.Fractionalized)
+    {
+        require(
+            msg.sender == address(__wpx721().vaults[_tokenId]),
+            "WittyPixelsToken: not the token's vault"
+        );
+        emit MetadataUpdate(_tokenId);
     }
 
     /// @notice Count NFTs tracked by this contract.

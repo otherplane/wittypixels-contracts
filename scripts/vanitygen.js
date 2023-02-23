@@ -55,7 +55,7 @@ module.exports = async function () {
         if (addr.toLowerCase().startsWith(target)) {
             var found = `${offset} => ${web3.utils.toChecksumAddress(addr)}`
             console.log(found)
-            fs.appendFileSync(`./migrations/salts/${from.toLowerCase()}$${artifact.contractName}.tmp`, found + "\n")
+            fs.appendFileSync(`./migrations/salts/${artifact.contractName}@${from.toLowerCase()}.tmp`, found + "\n")
             count ++
         }
         offset ++

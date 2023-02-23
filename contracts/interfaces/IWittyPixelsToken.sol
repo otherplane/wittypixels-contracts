@@ -7,6 +7,8 @@ interface IWittyPixelsToken {
 
     /// ===============================================================================================================
     /// --- ERC721 extensions -----------------------------------------------------------------------------------------
+
+    event MetadataUpdate(uint256 tokenId);
     
     function baseURI() external view returns (string memory);    
     function imageURI(uint256 tokenId) external view returns (string memory);    
@@ -55,6 +57,10 @@ interface IWittyPixelsToken {
     /// @dev Every WittyPixels player needs to claim contribution to a WittyPixels Canvas by calling 
     /// @dev to the `redeem(bytes deeds)` method on the corresponding token's vault contract.
     function pixelsFrom(uint256 tokenId, address from) external view returns (uint256);
+
+    /// @notice Emits MetadataUpdate event as specified by EIP-4906.
+    /// @dev Only acceptable if called from token's vault and given token is 'Fractionalized' status.
+    function updateMetadataFromTokenVault(uint256 tokenId) external;
 
     /// @notice Verifies the provided Merkle Proof matches the token's authorship's root that
     /// @notice was retrieved by the Witnet Oracle upon minting of given token. 

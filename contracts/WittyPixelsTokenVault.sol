@@ -221,6 +221,9 @@ contract WittyPixelsTokenVault
             _deeds.playerAddress,
             _deeds.playerPixels * 10 ** 18
         );
+
+        // emit wpx721 token's EIP-4906 MetadataUpdate event
+        IWittyPixelsToken(__wpx20().parentToken).updateMetadataFromTokenVault(__wpx20().parentTokenId);
     }
 
     /// @notice Returns whether this NFT vault has already been acquired. 
@@ -290,6 +293,9 @@ contract WittyPixelsTokenVault
 
         // update stats meters:
         __wpx20().stats.totalWithdrawals ++;
+
+        // emit wpx721 token's EIP-4906 MetadataUpdate event
+        IWittyPixelsToken(__wpx20().parentToken).updateMetadataFromTokenVault(__wpx20().parentTokenId);
     }
 
     /// @notice Tells withdrawable amount in weis from the given address.
