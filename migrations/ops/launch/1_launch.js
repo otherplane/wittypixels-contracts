@@ -31,6 +31,7 @@ module.exports = async function (_deployer, network, [,from]) {
     console.info("  ", "> event data:")
     console.info("  ", `  - name:    '${settings.metadata.name}'`)
     console.info("  ", `  - venue:   '${settings.metadata.venue}'`)
+    console.info("  ", `  - location:'${settings.metadata.whereabouts}'`)
     console.info("  ", "  - starts: ", new Date(settings.metadata.startTs * 1000).toString())
     console.info("  ", "  - ends:   ", new Date(settings.metadata.endTs * 1000).toString())
     console.info("  ", "> charity settings:")
@@ -45,6 +46,7 @@ module.exports = async function (_deployer, network, [,from]) {
             [
                 settings.metadata.name,
                 settings.metadata.venue,
+                settings.metadata.whereabouts,
                 settings.metadata.startTs,
                 settings.metadata.endTs,
             ], [

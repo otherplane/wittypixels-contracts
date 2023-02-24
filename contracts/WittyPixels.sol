@@ -67,6 +67,7 @@ library WittyPixels {
     struct ERC721TokenEvent {
         string  name;
         string  venue;
+        string  whereabouts;
         uint256 startTs;
         uint256 endTs;
     }

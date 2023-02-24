@@ -282,8 +282,8 @@ contract WittyPixelsTokenVault
             );
             payable(__charity.wallet).transfer(_donation);
             emit Donation(msg.sender, __charity.wallet, _donation);
-            // substract donation from owner's withdrawal
             __wpx20().stats.ethSoFarDonated += _donation;
+            // substract donation from owner's withdrawal
             _withdrawn -= _donation;
         }
         

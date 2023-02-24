@@ -213,8 +213,8 @@ library WittyPixelsLib {
             WittyPixels.ERC721Token memory self,
             uint256 tokenId,
             address tokenVaultAddress,
-            uint256 wpxSoFarClaimed,
-            uint256 weiSoFarDonated
+            uint256 redeemedPixels,
+            uint256 ethSoFarDonated
         )
         public pure
         returns (string memory)
@@ -224,18 +224,18 @@ library WittyPixelsLib {
         ));
         string memory _description = string(abi.encodePacked(
             "\"description\": \"",
-            _loadJsonDescription(self, tokenId, tokenVaultAddress, weiSoFarDonated),
+            _loadJsonDescription(self, tokenId, tokenVaultAddress),
             "\","
         ));
         string memory _externalUrl = string(abi.encodePacked(
-            "\"external_url\": \"", tokenMetadataURI(tokenId, self.baseURI), "\","
+            "\"external_url\": \"https://witnet.io\","
         ));
         string memory _image = string(abi.encodePacked(
             "\"image\": \"", tokenImageURI(tokenId, self.baseURI), "\","
         ));
         string memory _attributes = string(abi.encodePacked(
             "\"attributes\": [",
-            _loadJsonAttributes(self, wpxSoFarClaimed, weiSoFarDonated),
+            _loadJsonAttributes(self, redeemedPixels, ethSoFarDonated),
             "]"
         ));
         return string(abi.encodePacked(
@@ -444,7 +444,7 @@ library WittyPixelsLib {
         }
     }
 
-    /// @dev Converts a `bytes32` to its hex `string` representation with no "0x" prefix.
+    /// @dev Converts an `address` to its hex `string` representation with no "0x" prefix.
     function toHexString(address value)
         internal pure
         returns (string memory)
@@ -452,6 +452,7 @@ library WittyPixelsLib {
         return toHexString(abi.encodePacked(value));
     }
 
+    /// @dev Converts a `bytes32` value to its hex `string` representation with no "0x" prefix.
     function toHexString(bytes32 value)
         internal pure
         returns (string memory)
@@ -474,14 +475,22 @@ library WittyPixelsLib {
         }
     }
 
+    // @dev Converts a `bytes7`value to its hex `string`representation with no "0x" prefix.
+    function toHexString7(bytes7 value)
+        internal pure
+        returns (string memory)
+    {
+        return toHexString(abi.encodePacked(value));
+    }
+
 
     // ================================================================================================================
     // --- WittyPixelsLib private methods ----------------------------------------------------------------------------
 
     function _loadJsonAttributes(
             WittyPixels.ERC721Token memory self,
-            uint256 wpx20SoFarClaimed,
-            uint256 weiSoFarDonated
+            uint256 redeemedPixels,
+            uint256 ethSoFarDonated
         )
         private pure
         returns (string memory)
@@ -498,10 +507,16 @@ library WittyPixelsLib {
                 "\"value\": \"", self.theEvent.venue, "\"",
             "},"
         ));
+        string memory _eventWhereabouts = string(abi.encodePacked(
+            "{",
+                "\"trait_type\": \"Event Whereabouts\",",
+                "\"value\": \"", self.theEvent.whereabouts, "\"",
+            "},"
+        ));
         string memory _eventStartDate = string(abi.encodePacked(
              "{",
                 "\"display_type\": \"date\",",
-                "\"trait_type\": \"Event Start Date\",",
+                "\"trait_type\": \"Kick-off Date\",",
                 "\"value\": ", toString(self.theEvent.startTs),
             "},"
         ));
@@ -520,9 +535,10 @@ library WittyPixelsLib {
         return string(abi.encodePacked(
             _eventName,
             _eventVenue,
+            _eventWhereabouts,
             _eventStartDate,
-            _loadJsonCharityAttributes(self, weiSoFarDonated),
-            _loadJsonCanvasAttributes(self, wpx20SoFarClaimed),
+            _loadJsonCharityAttributes(self, ethSoFarDonated),
+            _loadJsonCanvasAttributes(self, redeemedPixels),
             _totalPlayers,
             _totalScans
         ));
@@ -530,7 +546,7 @@ library WittyPixelsLib {
 
     function _loadJsonCanvasAttributes(
             WittyPixels.ERC721Token memory self,
-            uint256 wpx20SoFarClaimed
+            uint256 redeemedPixels
         )
         private pure
         returns (string memory)
@@ -538,13 +554,13 @@ library WittyPixelsLib {
         string memory _authorsRoot = string(abi.encodePacked(
             "{",
                 "\"trait_type\": \"Authors' Root\",",
-                "\"value\": \"", toHexString(self.theStats.canvasRoot), "\"",
+                "\"value\": \"", toHexString7(bytes7(self.theStats.canvasRoot)), "\"",
             "},"
         ));
         string memory _canvasDate = string(abi.encodePacked(
              "{",
                 "\"display_type\": \"date\",",
-                "\"trait_type\": \"Canvas Date\",",
+                "\"trait_type\": \"Minting Date\",",
                 "\"value\": ", toString(self.birthTs),
             "},"
         ));
@@ -579,23 +595,37 @@ library WittyPixelsLib {
             self.theStats.totalPixels > 0
                 && self.theStats.totalPixels > self.theStats.canvasPixels
         ) {
-            uint _ratio = 100 * (self.theStats.totalPixels - self.theStats.canvasPixels);
-            _ratio /= self.theStats.totalPixels;
+            uint _index = 100 * (self.theStats.totalPixels - self.theStats.canvasPixels);
+            _index /= self.theStats.totalPixels;
             _canvasOverpaint = string(abi.encodePacked(
                 "{",
                     "\"display_type\": \"boost_percentage\",",
-                    "\"trait_type\": \"Canvas Overpaint Ratio\",",
-                    "\"value\": ", toString(_ratio),
+                    "\"trait_type\": \"Canvas Rivalry Index\",",
+                    "\"value\": ", toString(_index),
+                "},"
+            ));
+        }
+        string memory _canvasParticipation;
+        if (
+            self.theStats.totalScans >= self.theStats.totalPlayers
+        ) {
+            uint _index = 100 * (self.theStats.totalScans - self.theStats.totalPlayers);
+            _index /= self.theStats.totalScans;
+            _canvasParticipation = string(abi.encodePacked(
+                "{",
+                    "\"display_type\": \"boost_percentage\",",
+                    "\"trait_type\": \"Canvas Interactive Index\",",
+                    "\"value\": ", toString(_index),
                 "},"
             ));
         }
         string memory _canvasRedemption;
-        uint _redemptionRatio = (100 * wpx20SoFarClaimed) / self.theStats.canvasPixels;
+        uint _redemptionRatio = (100 * redeemedPixels) / self.theStats.canvasPixels;
         if (_redemptionRatio > 0) {
             _canvasRedemption = string(abi.encodePacked(
                 "{",
                     "\"display_type\": \"boost_percentage\",",
-                    "\"trait_type\": \"Canvas Redemption Ratio\",",
+                    "\"trait_type\": \"$WPX Redemption Ratio\",",
                     "\"value\": ", toString(_redemptionRatio),
                 "},"
             ));
@@ -608,27 +638,29 @@ library WittyPixelsLib {
             _canvasWidth,
             _canvasPixels,
             _canvasOverpaint,
+            _canvasParticipation,
             _canvasRedemption
         ));
     }
 
     function _loadJsonCharityAttributes(
             WittyPixels.ERC721Token memory self,
-            uint256 weiSoFarDonated
+            uint256 ethSoFarDonated
         )
         private pure
         returns (string memory)
     {
-        string memory _charityAddress;        
+        string memory _charityAddress;
         string memory _charityDonatedETH;
+        string memory _charityPercentage;
         if (self.theCharity.wallet != address(0)) {
             _charityAddress = string(abi.encodePacked(
                 "{",
-                    "\"trait_type\": \"Charity Address\",",
+                    "\"trait_type\": \"Charity Wallet\",",
                     "\"value\": \"0x", toHexString(self.theCharity.wallet), "\"",
                 "},"
             ));
-            uint _eth100 = (100 * weiSoFarDonated) / 10 ** 18;
+            uint _eth100 = (100 * ethSoFarDonated) / 10 ** 18;
             if (_eth100 > 0) {
                 _charityDonatedETH = string(abi.encodePacked(
                     "{",
@@ -637,18 +669,26 @@ library WittyPixelsLib {
                     "},"
                 ));
             }
+            _charityPercentage = string(abi.encodePacked(
+                "{",
+                    "\"display_type\": \"boost_number\",",
+                    "\"trait_type\": \"Charitable Cause Percentage\",",
+                    "\"max_value\": 100,",
+                    "\"value\": ", toString(self.theCharity.percentage),
+                "},"
+            ));
         }
         return string(abi.encodePacked(
-            _charityAddress,
-            _charityDonatedETH
-        ));
+                _charityAddress,
+                _charityDonatedETH,
+                _charityPercentage
+            ));
     }
 
     function _loadJsonDescription(
             WittyPixels.ERC721Token memory self,
             uint256 tokenId,
-            address tokenVaultAddress,
-            uint256 weiSoFarDonated
+            address tokenVaultAddress
         )
         private pure
         returns (string memory)
@@ -659,18 +699,19 @@ library WittyPixelsLib {
         string memory _charityDescription;
         if (self.theCharity.wallet != address(0)) {
             string memory _charityDonations;
-            if (weiSoFarDonated > 0) {
-                _charityDonations = string(abi.encodePacked(
-                    "See actual donations in [Etherscan](https://etherscan.io/address/0x",
-                    toHexString(self.theCharity.wallet), "?fromaddress=0x",
-                    toHexString(tokenVaultAddress)
-                ));
-            }
-            _charityDescription = string(abi.encodePacked(
-                "Up to ", toString(self.theCharity.percentage),
-                self.theCharity.description,
-                _charityDonations
+            _charityDonations = string(abi.encodePacked(
+                "See actual donations in [Etherscan](https://etherscan.io/address/0x",
+                toHexString(self.theCharity.wallet), "?fromaddress=0x",
+                toHexString(tokenVaultAddress)
             ));
+            if (bytes(self.theCharity.description).length > 0) {
+                _charityDescription = string(abi.encodePacked(
+                    self.theCharity.description,
+                    _charityDonations
+                ));
+            } else {
+                _charityDescription = _charityDonations;
+            }
         }
         return string(abi.encodePacked(
             "WittyPixelsTM collaborative art canvas #", _tokenIdStr, " drawn by ", _totalPlayersString,
@@ -678,8 +719,7 @@ library WittyPixelsLib {
             ". This token was fractionalized and secured by the [Witnet multichain",
             " oracle](https://witnet.io). Historical WittyPixelsTM game info and",
             " authors' root can be audited on [Witnet's block explorer](https://witnet.network/search/",
-            _radHashHexString, "). ",
-            _charityDescription          
+            _radHashHexString, "). ", _charityDescription          
         ));
     }
 
