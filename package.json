@@ -1,6 +1,6 @@
 {
   "name": "wittypixels-contracts",
-  "version": "1.1.6",
+  "version": "1.1.7",
   "description": "WittyPixelsTM Solidity Contracts",
   "author": "Guillermo Diaz <guillermo@otherplane.com>",
   "license": "MIT",
@@ -15,9 +15,9 @@
     "fmt:js!": "eslint test --ext .js,.ts,.cjs --fix --ignore-path .gitignore",
     "lint": "yarn fmt:sol! && yarn fmt:js!",
     "migrate": "truffle migrate",
-    "wpx:launch": "truffle migrate --migrations_directory ./migrations/ops/launch --network",
-    "wpx:mint": "truffle migrate --migrations_directory ./migrations/ops/mint --network",
-    "wpx:fractionalize": "truffle migrate --migrations_directory ./migrations/ops/fractionalize --network",
+    "wpx:launch": "truffle migrate --migrations_directory ./migrations/ops/launch",
+    "wpx:mint": "truffle migrate --migrations_directory ./migrations/ops/mint",
+    "wpx:fractionalize": "truffle migrate --migrations_directory ./migrations/ops/fractionalize",
     "test": "truffle test"
   },
   "keywords": [],
