@@ -449,8 +449,12 @@ contract WittyPixelsToken
     function updateMetadataFromTokenVault(uint256 _tokenId)
         virtual override
         external
-        tokenInStatus(_tokenId, WittyPixels.ERC721TokenStatus.Fractionalized)
+        initialized
     {
+        require(
+            _tokenId <= __wpx721().totalSupply,
+            "WittyPixelsToken: unknown token"
+        );
         require(
             msg.sender == address(__wpx721().vaults[_tokenId]),
             "WittyPixelsToken: not the token's vault"

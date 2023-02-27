@@ -275,11 +275,7 @@ contract WittyPixelsTokenVault
         // cash out donation, if any:
         WittyPixels.TokenVaultCharity storage __charity = __wpx20().charity;
         if (__charity.wallet != address(0)) {
-            uint _donation = (
-                __charity.percentage * __wpx20().finalPrice * balanceOf(msg.sender)
-            ) / (
-                100 * __wpx20().stats.totalPixels * 10 ** 18
-            );
+            uint _donation = (__charity.percentage * _withdrawn) / 100;
             payable(__charity.wallet).transfer(_donation);
             emit Donation(msg.sender, __charity.wallet, _donation);
             __wpx20().stats.ethSoFarDonated += _donation;
@@ -295,7 +291,9 @@ contract WittyPixelsTokenVault
         __wpx20().stats.totalWithdrawals ++;
 
         // emit wpx721 token's EIP-4906 MetadataUpdate event
-        IWittyPixelsToken(__wpx20().parentToken).updateMetadataFromTokenVault(__wpx20().parentTokenId);
+        IWittyPixelsToken(__wpx20().parentToken).updateMetadataFromTokenVault(
+            __wpx20().parentTokenId
+        );
     }
 
     /// @notice Tells withdrawable amount in weis from the given address.
@@ -686,7 +684,7 @@ contract WittyPixelsTokenVault
         );
         if (
             _charityWallet != address(0) 
-                && _charityPercentage == uint8(0)
+                && _charityPercentage != uint8(0)
         ) {
             __wpx20().charity.wallet = _charityWallet;
             __wpx20().charity.percentage = _charityPercentage;
