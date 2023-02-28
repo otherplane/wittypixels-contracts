@@ -59,7 +59,8 @@ module.exports = async function (_deployer, network, [,from]) {
         console.error(`Couldn't set next event metadata: ${e}`)
         process.exit(3)
     }
-    console.info("  ", "> Done:")
+    console.info()
+    console.info("=>", "Done:")
     console.info("  ", "  - transaction hash:", tx.tx)
     console.info("  ", "  - transaction gas: ", tx.receipt.gasUsed)
     console.info("  ", "  - eff. gas price:  ", tx.receipt.effectiveGasPrice / 10 ** 9, "gwei")

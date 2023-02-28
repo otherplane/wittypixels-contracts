@@ -22,24 +22,27 @@ module.exports = async function (_deployer, network, [,from]) {
         console.error(`No fractionalizing parameters found for token #${index + 1} !`)
         process.exit(2)
     }
+    const salt = "0x" + utils.padLeft(settings.salt.toString(16), "0", 32)
 
     utils.traceHeader(`Fractionalizing token #${index + 1} on '${name}' collection`)
     console.info("  ", "> from address:  ", from)
     console.info("  ", "> token address: ", token.address)    
+    console.info("  ", "> prototype address:", await token.getTokenVaultFactoryPrototype.call())
     console.info("  ", "> current status:", await token.getTokenStatusString.call(index + 1))
-    console.info("  ", "> create2 salt:  ", settings.salt)
+    console.info("  ", "> create2 salt:  ", salt)
     console.info("  ", "> auction settings:")
     console.info("  ", `  - deltaPrice:        ${web3.utils.fromWei(settings.auctionSettings.deltaPrice)} ETH`)
     console.info("  ", `  - deltaSeconds:      ${settings.auctionSettings.deltaSeconds} "`)
     console.info("  ", `  - reservePrice:      ${web3.utils.fromWei(settings.auctionSettings.reservePrice)} ETH`)
     console.info("  ", `  - startingPrice:     ${web3.utils.fromWei(settings.auctionSettings.startingPrice)} ETH`)
-    console.info("  ", "  - startingTs:       ", new Date(settings.auctiongSettings.startingTs * 1000).toString())
+    console.info("  ", "  - startingTs:       ", new Date(settings.auctionSettings.startingTs * 1000).toString())
     
     var balance = await web3.eth.getBalance(from)
     var tx
     try {
+        
         tx = await token.fractionalize(
-            settings.salt, 
+            salt, 
             web3.eth.abi.encodeParameter(
                 "uint256[5]", [
                     settings.auctionSettings.deltaPrice,
@@ -47,14 +50,15 @@ module.exports = async function (_deployer, network, [,from]) {
                     settings.auctionSettings.reservePrice,
                     settings.auctionSettings.startingPrice,
                     settings.auctionSettings.startingTs,
-                ]
+                 ]
             ), { from }
         )
     } catch (e) {
         console.error(`Couldn't fractionalize: ${e}`)
         process.exit(3)
     }
-    console.info("  ", "> Done:")
+    console.info()
+    console.info("=>", `Fractionalized into ${tx.logs[tx.logs.length - 1].args.tokenVault}:`)
     console.info("  ", "  - transaction hash:", tx.tx)
     console.info("  ", "  - transaction gas: ", tx.receipt.gasUsed)
     console.info("  ", "  - eff. gas price:  ", tx.receipt.effectiveGasPrice / 10 ** 9, "gwei")

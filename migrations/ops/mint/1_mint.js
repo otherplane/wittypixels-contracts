@@ -29,10 +29,10 @@ module.exports = async function (_deployer, network, [,from]) {
     console.info("  ", "> current status:", await token.getTokenStatusString.call(index + 1))
     console.info("  ", "> Witnet SLA:")
     console.info("  ", `  - numWitnesses:      ${settings.witnetSLA.numWitnesses}`)
-    console.info("  ", `  - minQuorumPct:      ${settings.witnetSLA.minConsensusPercentage} %`)
+    console.info("  ", `  - minConsensusPct:   ${settings.witnetSLA.minConsensusPercentage} %`)
     console.info("  ", `  - minerCommitFee:    ${settings.witnetSLA.minerCommitFee} nanoWits`)
     console.info("  ", `  - witnessReward:     ${settings.witnetSLA.witnessReward} nanoWits`)
-    console.info("  ", `  - witnessCollateral: ${settings.witnetSLA.witnessReward} nanoWits`)
+    console.info("  ", `  - witnessCollateral: ${settings.witnetSLA.witnessCollateral} nanoWits`)
     
     var balance = await web3.eth.getBalance(from)
     var tx
@@ -40,20 +40,24 @@ module.exports = async function (_deployer, network, [,from]) {
         tx = await token.mint([
                 settings.witnetSLA.numWitnesses,
                 settings.witnetSLA.minConsensusPercentage,
-                settings.witnetSLA.witnessCollateral,
                 settings.witnetSLA.witnessReward,
+                settings.witnetSLA.witnessCollateral,
                 settings.witnetSLA.minerCommitFee
-            ], { from }
+            ], { 
+                from,
+                value: settings.witnetEvmFee, 
+            }
         )
     } catch (e) {
         console.error(`Couldn't start minting: ${e}`)
         process.exit(3)
     }
-    console.info("  ", "> Done:")
+    console.info()
+    console.info("=>", "Done:")
     console.info("  ", "  - transaction hash:", tx.tx)
     console.info("  ", "  - transaction gas: ", tx.receipt.gasUsed)
     console.info("  ", "  - eff. gas price:  ", tx.receipt.effectiveGasPrice / 10 ** 9, "gwei")
     console.info("  ", "  - block number:    ", tx.receipt.blockNumber)
     console.info("  ", "  - total cost:      ", web3.utils.fromWei((balance - await web3.eth.getBalance(from)).toString()), "ETH")
-    console.info()
+    console.info("")
 }
