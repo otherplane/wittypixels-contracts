@@ -149,18 +149,7 @@ contract WittyPixelsTokenVault
             (WittyPixels.TokenVaultOwnershipDeeds)
         );
 
-        // verify player's pixels proof:
-        require(
-            IWittyPixelsToken(_deeds.parentToken).verifyTokenAuthorship(
-                _deeds.parentTokenId,
-                _deeds.playerIndex,
-                _deeds.playerPixels,
-                _deeds.playerPixelsProof
-            ),
-            "WittyPixelsTokenVault: false deeds"
-        );
-        
-        // verify intrinsicals:
+        // check intrinsicals:
         require(
             _deeds.parentToken == __wpx20().parentToken
                 && _deeds.parentTokenId == __wpx20().parentTokenId
@@ -179,6 +168,17 @@ contract WittyPixelsTokenVault
             "WittyPixelsTokenVault: overbooking :/"
         );
 
+        // verify player's pixels proof:
+        require(
+            IWittyPixelsToken(_deeds.parentToken).verifyTokenAuthorship(
+                _deeds.parentTokenId,
+                _deeds.playerIndex,
+                _deeds.playerPixels,
+                _deeds.playerPixelsProof
+            ),
+            "WittyPixelsTokenVault: false deeds"
+        );
+        
         // verify curator's signature:
         bytes32 _deedshash = keccak256(abi.encode(
             _deeds.parentToken,
