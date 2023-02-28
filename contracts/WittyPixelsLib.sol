@@ -614,7 +614,7 @@ library WittyPixelsLib {
             _canvasParticipation = string(abi.encodePacked(
                 "{",
                     "\"display_type\": \"boost_percentage\",",
-                    "\"trait_type\": \"Canvas Interactive Index\",",
+                    "\"trait_type\": \"Canvas Interactivity Index\",",
                     "\"value\": ", toString(_index),
                 "},"
             ));
@@ -698,20 +698,15 @@ library WittyPixelsLib {
         string memory _radHashHexString = toHexString(self.tokenStatsWitnetRadHash);
         string memory _charityDescription;
         if (self.theCharity.wallet != address(0)) {
-            string memory _charityDonations;
-            _charityDonations = string(abi.encodePacked(
+            _charityDescription = string(abi.encodePacked(
                 "See actual donations in [Etherscan](https://etherscan.io/address/0x",
                 toHexString(self.theCharity.wallet), "?fromaddress=0x",
-                toHexString(tokenVaultAddress)
+                toHexString(tokenVaultAddress), ").",
+                (bytes(self.theCharity.description).length > 0
+                    ? self.theCharity.description
+                    : string(hex"")
+                )
             ));
-            if (bytes(self.theCharity.description).length > 0) {
-                _charityDescription = string(abi.encodePacked(
-                    self.theCharity.description,
-                    _charityDonations
-                ));
-            } else {
-                _charityDescription = _charityDonations;
-            }
         }
         return string(abi.encodePacked(
             "WittyPixelsTM collaborative art canvas #", _tokenIdStr, " drawn by ", _totalPlayersString,
