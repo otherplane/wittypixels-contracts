@@ -259,29 +259,19 @@ contract WittyPixelsTokenVault
         );
         
         // check vault contract has enough funds for the cash out:
+        WittyPixels.TokenVaultCharity storage __charity = __wpx20().charity;
         _withdrawn = (
-            __wpx20().finalPrice * _erc20balance
+            (100 - __charity.percentage) * __wpx20().finalPrice * _erc20balance
         ) / (
-            __wpx20().stats.totalPixels * 10 ** 18
+            100 * __wpx20().stats.totalPixels * 10 ** 18
         );
         require(
             address(this).balance >= _withdrawn,
-            "WittyPixelsTokenVault: insufficient funds"
+            "WittyPixelsTokenVault: insufficient funds :/"
         );
         
         // burn erc20 tokens before cashing out !!
         _burn(msg.sender, _erc20balance);
-        
-        // cash out donation, if any:
-        WittyPixels.TokenVaultCharity storage __charity = __wpx20().charity;
-        if (__charity.wallet != address(0)) {
-            uint _donation = (__charity.percentage * _withdrawn) / 100;
-            payable(__charity.wallet).transfer(_donation);
-            emit Donation(msg.sender, __charity.wallet, _donation);
-            __wpx20().stats.ethSoFarDonated += _donation;
-            // substract donation from owner's withdrawal
-            _withdrawn -= _donation;
-        }
         
         // cash out to the wpx20 owner:
         payable(msg.sender).transfer(_withdrawn);
@@ -289,11 +279,6 @@ contract WittyPixelsTokenVault
 
         // update stats meters:
         __wpx20().stats.totalWithdrawals ++;
-
-        // emit wpx721 token's EIP-4906 MetadataUpdate event
-        IWittyPixelsToken(__wpx20().parentToken).updateMetadataFromTokenVault(
-            __wpx20().parentTokenId
-        );
     }
 
     /// @notice Tells withdrawable amount in weis from the given address.
@@ -521,11 +506,25 @@ contract WittyPixelsTokenVault
 
         // store final price:
         __wpx20().finalPrice = _finalPrice;
+
+        WittyPixels.TokenVaultCharity storage __charity = __wpx20().charity;
+        if (__charity.wallet != address(0)) {
+            // transfer charitable donation, if any:
+            uint _donation = (__charity.percentage * _finalPrice) / 100;
+            payable(__charity.wallet).transfer(_donation);
+            __wpx20().stats.ethSoFarDonated = _donation;
+            emit Donation(msg.sender, __charity.wallet, _donation);
+        }
         
         // transfer back unused funds if `msg.value` was higher than current price:
         if (msg.value > _finalPrice) {
             payable(msg.sender).transfer(msg.value - _finalPrice);
         }
+
+        // emit wpx721 token's EIP-4906 MetadataUpdate event
+        IWittyPixelsToken(__wpx20().parentToken).updateMetadataFromTokenVault(
+            __wpx20().parentTokenId
+        );
     }
 
     function auctioning()
