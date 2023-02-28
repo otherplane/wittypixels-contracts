@@ -5,13 +5,6 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
 
-// Witnet deployment and testing dependencies:
-import "witnet-solidity-bridge/contracts/apps/WitnetRequestFactory.sol";
-import "witnet-solidity-bridge/contracts/impls/WitnetProxy.sol";
-import "witnet-solidity-bridge/contracts/impls/bytecodes/WitnetBytecodes.sol";
-import "witnet-solidity-bridge/contracts/impls/boards/trustable/WitnetRequestBoardTrustableDefault.sol";
-import "witnet-solidity-bridge/contracts/libs/WitnetEncodingLib.sol";
-
 // Witnet compilation dependencies:
 import "witnet-solidity-bridge/contracts/UsingWitnet.sol";
 import "witnet-solidity-bridge/contracts/apps/WitnetRequestFactory.sol";
