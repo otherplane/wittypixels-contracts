@@ -175,6 +175,7 @@ contract WittyPixelsToken
             bytes memory _tokenVaultSettings
         )
         virtual external
+        onlyOwner
         tokenInStatus(
             __wpx721().totalSupply + 1,
             WittyPixels.ERC721TokenStatus.Minting
@@ -313,6 +314,13 @@ contract WittyPixelsToken
             __wpx721().items[_tokenId].theCharity.percentage
         );
     }
+
+function setTokenCharityDescription(uint256 _tokenId, string memory _description)
+    external
+    onlyOwner
+{
+    __wpx721().items[_tokenId].theCharity.description = _description;
+}
 
     /// @notice Returns WittyPixels token metadata of given token.
     function getTokenMetadata(uint256 _tokenId)
