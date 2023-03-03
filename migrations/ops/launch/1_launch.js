@@ -13,8 +13,8 @@ module.exports = async function (_deployer, network, [,from]) {
     
     WittyPixelsToken.address = addresses[ecosystem][network].WittyPixelsToken   
     var token = await WittyPixelsToken.deployed()
-    var name = await token.name.call()
-    var totalSupply = await token.totalSupply.call(0)
+    var name = await token.name.call({ from })
+    var totalSupply = await token.totalSupply.call({ from })
     var index = parseInt(totalSupply) 
 
     const settings = require("../../settings").core.events[index].launch
@@ -27,7 +27,7 @@ module.exports = async function (_deployer, network, [,from]) {
     console.info("  ", "> from address:  ", from)
     console.info("  ", "> token address: ", token.address)    
     console.info("  ", "> next token id: ", index + 1)
-    console.info("  ", "> current status:", await token.getTokenStatusString.call(index + 1))
+    console.info("  ", "> current status:", await token.getTokenStatusString.call(index + 1, { from }))
     console.info("  ", "> event data:")
     console.info("  ", `  - name:    '${settings.metadata.name}'`)
     console.info("  ", `  - venue:   '${settings.metadata.venue}'`)
@@ -60,7 +60,7 @@ module.exports = async function (_deployer, network, [,from]) {
         process.exit(3)
     }
     console.info()
-    console.info("=>", "Done:")
+    console.info("  ", "=> Done:")
     console.info("  ", "  - transaction hash:", tx.tx)
     console.info("  ", "  - transaction gas: ", tx.receipt.gasUsed)
     console.info("  ", "  - eff. gas price:  ", tx.receipt.effectiveGasPrice / 10 ** 9, "gwei")

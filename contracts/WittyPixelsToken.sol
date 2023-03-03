@@ -315,12 +315,12 @@ contract WittyPixelsToken
         );
     }
 
-function setTokenCharityDescription(uint256 _tokenId, string memory _description)
-    external
-    onlyOwner
-{
-    __wpx721().items[_tokenId].theCharity.description = _description;
-}
+    function setTokenCharityDescription(uint256 _tokenId, string memory _description)
+        external
+        onlyOwner
+    {
+        __wpx721().items[_tokenId].theCharity.description = _description;
+    }
 
     /// @notice Returns WittyPixels token metadata of given token.
     function getTokenMetadata(uint256 _tokenId)

@@ -2,11 +2,19 @@
     "polygon": {
         "polygon.goerli": {
             "Create2Factory": "0x1B99e3b8d5981D829E1C9a7f520B33515E7133d1",
-            "WittyPixelsLib": "0x6F95b1464EE9d1911D517a4348cC850454ac4B69",
-            "WittyPixelsToken": "0xC0FfEe05161063e7faBeddBa903aA0BdF6D6F8A8",
-            "WittyPixelsTokenImplementation": "0x3e14808a8196A1381bF70eBD1adE626824e3ac4B",
+            "WittyPixelsLib": "0x862C6b6D73A381C9893d06E7f37D8993e51C45D1",
+            "WittyPixelsToken": "0xC0FFee0a590cf5e6cc21234fD7688E727898eF19",
+            "WittyPixelsTokenImplementation": "0x24571160e86ae8312d223E6A1Eb77CBb1E18606c",
             "WittyPixelsTokenVaultPrototype": "0x0000004Bbf1240B52CaBe5A77c13767f01A70Aa9"
         }
     },
-    "default": {}
+    "default": {
+        "ethereum.mainnet": {
+            "Create2Factory": "0x1B99e3b8d5981D829E1C9a7f520B33515E7133d1",
+            "WittyPixelsLib": "0x4ce3f78cDe08806691fe5EB2A3aEE0c2976D3C18",
+            "WittyPixelsTokenImplementation": "0x11496Ea480Afe2C03780206982f396d96da3943c",
+            "WittyPixelsToken": "0xC0FFee0a590cf5e6cc21234fD7688E727898eF19",
+            "WittyPixelsTokenVaultPrototype": "0x0e3BC27A9c450F50536B36e6350226a933193A04"
+        }
+    }
 }

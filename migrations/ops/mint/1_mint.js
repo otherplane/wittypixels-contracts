@@ -13,8 +13,8 @@ module.exports = async function (_deployer, network, [,from]) {
     
     WittyPixelsToken.address = addresses[ecosystem][network].WittyPixelsToken   
     var token = await WittyPixelsToken.deployed()
-    var name = await token.name.call()
-    var totalSupply = await token.totalSupply.call(0)
+    var name = await token.name.call({ from })
+    var totalSupply = await token.totalSupply.call({ from })
     var index = parseInt(totalSupply) 
 
     const settings = require("../../settings").core.events[index].mint
@@ -26,7 +26,7 @@ module.exports = async function (_deployer, network, [,from]) {
     utils.traceHeader(`Minting token #${index + 1} on '${name}' collection`)
     console.info("  ", "> from address:  ", from)
     console.info("  ", "> token address: ", token.address)    
-    console.info("  ", "> current status:", await token.getTokenStatusString.call(index + 1))
+    console.info("  ", "> current status:", await token.getTokenStatusString.call(index + 1, { from }))
     console.info("  ", "> Witnet SLA:")
     console.info("  ", `  - numWitnesses:      ${settings.witnetSLA.numWitnesses}`)
     console.info("  ", `  - minConsensusPct:   ${settings.witnetSLA.minConsensusPercentage} %`)
@@ -53,7 +53,7 @@ module.exports = async function (_deployer, network, [,from]) {
         process.exit(3)
     }
     console.info()
-    console.info("=>", "Done:")
+    console.info("  ", "=> Done:")
     console.info("  ", "  - transaction hash:", tx.tx)
     console.info("  ", "  - transaction gas: ", tx.receipt.gasUsed)
     console.info("  ", "  - eff. gas price:  ", tx.receipt.effectiveGasPrice / 10 ** 9, "gwei")

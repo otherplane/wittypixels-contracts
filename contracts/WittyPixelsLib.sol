@@ -701,7 +701,7 @@ library WittyPixelsLib {
             _charityDescription = string(abi.encodePacked(
                 "See actual donations in [Etherscan](https://etherscan.io/address/0x",
                 toHexString(self.theCharity.wallet), "?fromaddress=0x",
-                toHexString(tokenVaultAddress), ").",
+                toHexString(tokenVaultAddress), "). ",
                 (bytes(self.theCharity.description).length > 0
                     ? self.theCharity.description
                     : string(hex"")
@@ -710,10 +710,10 @@ library WittyPixelsLib {
         }
         return string(abi.encodePacked(
             "WittyPixelsTM collaborative art canvas #", _tokenIdStr, " drawn by ", _totalPlayersString,
-            " attendees during '<b>", self.theEvent.name, "</b>' in ", self.theEvent.venue, 
+            " attendees during <b>", self.theEvent.name, "</b> in ", self.theEvent.venue, 
             ". This token was fractionalized and secured by the [Witnet multichain",
             " oracle](https://witnet.io). Historical WittyPixelsTM game info and",
-            " authors' root can be audited on [Witnet's block explorer](https://witnet.network/search/",
+            " authors' root can be audited with [Witnet's block explorer](https://witnet.network/search/",
             _radHashHexString, "). ", _charityDescription          
         ));
     }

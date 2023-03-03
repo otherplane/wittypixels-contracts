@@ -24,7 +24,7 @@
   "dependencies": {
     "@openzeppelin/contracts": "4.8.0",
     "@openzeppelin/contracts-upgradeable": "4.8.0",
-    "witnet-solidity-bridge": "https://github.com/guidiaz/witnet-solidity-bridge#feat/WitnetRequestFactory#f780e3664e58add5edf71fce625285fa0c2a36ad"
+    "witnet-solidity-bridge": "https://github.com/witnet/witnet-solidity-bridge#5c13979bc4c10c7560961e6d687882b7eeecbc05"
   },
   "devDependencies": {
     "chai": "4.3.6",

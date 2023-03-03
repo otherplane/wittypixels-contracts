@@ -13,8 +13,8 @@ module.exports = async function (_deployer, network, [,from]) {
     
     WittyPixelsToken.address = addresses[ecosystem][network].WittyPixelsToken   
     var token = await WittyPixelsToken.deployed()
-    var name = await token.name.call()
-    var totalSupply = await token.totalSupply.call(0)
+    var name = await token.name.call({ from })
+    var totalSupply = await token.totalSupply.call({ from })
     var index = parseInt(totalSupply) 
 
     const settings = require("../../settings").core.events[index].fractionalize
@@ -22,13 +22,14 @@ module.exports = async function (_deployer, network, [,from]) {
         console.error(`No fractionalizing parameters found for token #${index + 1} !`)
         process.exit(2)
     }
-    const salt = "0x" + utils.padLeft(settings.salt.toString(16), "0", 32)
+    var salt = settings?.salt || index + 1
+    salt = "0x" + utils.padLeft(salt.toString(16), "0", 32)
 
     utils.traceHeader(`Fractionalizing token #${index + 1} on '${name}' collection`)
     console.info("  ", "> from address:  ", from)
     console.info("  ", "> token address: ", token.address)    
-    console.info("  ", "> prototype address:", await token.getTokenVaultFactoryPrototype.call())
-    console.info("  ", "> current status:", await token.getTokenStatusString.call(index + 1))
+    console.info("  ", "> prototype address:", await token.getTokenVaultFactoryPrototype.call({ from }))
+    console.info("  ", "> current status:", await token.getTokenStatusString.call(index + 1, { from }))
     console.info("  ", "> create2 salt:  ", salt)
     console.info("  ", "> auction settings:")
     console.info("  ", `  - deltaPrice:        ${web3.utils.fromWei(settings.auctionSettings.deltaPrice)} ETH`)
@@ -58,7 +59,7 @@ module.exports = async function (_deployer, network, [,from]) {
         process.exit(3)
     }
     console.info()
-    console.info("=>", `Fractionalized into ${tx.logs[tx.logs.length - 1].args.tokenVault}:`)
+    console.info("  ", `=> Fractionalized into ${tx.logs[tx.logs.length - 1].args.tokenVault}:`)
     console.info("  ", "  - transaction hash:", tx.tx)
     console.info("  ", "  - transaction gas: ", tx.receipt.gasUsed)
     console.info("  ", "  - eff. gas price:  ", tx.receipt.effectiveGasPrice / 10 ** 9, "gwei")
